@@ -14,6 +14,9 @@ export default class Peer {
   private opened: boolean = false
   private closing: boolean = false
 
+  // Connection stats:
+  public latency: number = -1
+
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
 
@@ -136,6 +139,14 @@ export default class Peer {
     if (this.conn.connectionState !== 'connected') {
       this.close(`connection ${this.conn.connectionState}/${this.conn.signalingState}`)
     }
+
+    this.conn.getStats().then(stats => {
+      stats.forEach((report) => {
+        if (report.type === 'transport') {
+          this.latency = report.currentRoundTripTime
+        }
+      })
+    }).catch(_ => {})
   }
 
   private onError (e: RTCErrorEvent): void {

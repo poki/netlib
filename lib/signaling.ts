@@ -19,7 +19,7 @@ export default class Signaling {
       this.network.emit('signalingerror', e)
     })
     this.ws.addEventListener('close', () => {
-      // TODO: ...
+      this.network.close('signaling websocket closed')
     })
     this.ws.addEventListener('message', ev => {
       this.handleSignalingMessage(ev.data).catch(_ => {})
@@ -35,7 +35,6 @@ export default class Signaling {
       })
     }
     this.ws.close()
-    this.connections.clear()
   }
 
   send (packet: SignalingPacketTypes): void {
@@ -64,7 +63,7 @@ export default class Signaling {
 
         case 'connect':
           if (this.receivedID === packet.id) {
-            return
+            return // Skip self
           }
           this.network._addPeer(packet.id, packet.polite)
           break

@@ -10,6 +10,7 @@ import (
 
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal"
+	"github.com/poki/netlib/internal/turn"
 	"github.com/poki/netlib/internal/util"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
@@ -41,6 +42,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  650 * time.Second,
 	}
+
+	go turn.Run(ctx, addr)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

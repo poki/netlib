@@ -7,6 +7,14 @@ export const DefaultRTCConfiguration: RTCConfiguration = {
         'stun:stun.l.google.com:19302',
         'stun:stun3.l.google.com:19302'
       ]
+    },
+    {
+      urls: [
+        'turn:localhost:8080'
+      ],
+      username: 'optional-username',
+      credential: 'secret',
+      credentialType: 'password'
     }
   ]
 }

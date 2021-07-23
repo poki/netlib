@@ -7,7 +7,7 @@
   "scripts": {
     "build": "parcel build lib/index.ts",
     "lint": "ts-standard",
-    "watch": "parcel example/index.html"
+    "watch": "parcel --no-hmr example/index.html"
   },
   "dependencies": {
     "eventemitter3": "^4.0.7"

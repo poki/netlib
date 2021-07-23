@@ -1,12 +1,4 @@
 
-const JOIN = 'join'
-const LEAVE = 'leave'
-const CONNECT = 'connect'
-const CANDIDATE = 'candidate'
-const DESCRIPTION = 'description'
-const CONNECTED = 'connected'
-const DISCONNECTED = 'disconnected'
-
 interface Base {
   type: string
 }
@@ -14,47 +6,59 @@ interface Base {
 interface Signaling extends Base {
 }
 
-export interface JoinPacket extends Signaling {
-  type: typeof JOIN
+export interface CreatePacket extends Signaling {
+  type: 'create'
   game: string
-  lobby?: string
+}
+
+export interface JoinPacket extends Signaling {
+  type: 'join'
+  game: string
+  lobby: string
   id?: string
 }
 
+export interface JoinedPacket extends Signaling {
+  type: 'joined'
+  lobby: string
+  id: string
+}
+
 export interface LeavePacket extends Signaling {
-  type: typeof LEAVE
+  type: 'leave'
   id: string
   reason: string
 }
 
 export interface ConnectPacket extends Signaling {
-  type: typeof CONNECT
+  type: 'connect'
   id: string
-  ref: string
   polite: boolean
 }
 
 export interface ConnectedPacket extends Signaling {
-  type: typeof CONNECTED
-  ref: string
+  type: 'connected'
+  id: string
 }
 
 export interface DisconnectedPacket extends Signaling {
-  type: typeof DISCONNECTED
-  ref: string
+  type: 'disconnected'
+  id: string
   reason: string
 }
 
 export interface CandidatePacket extends Signaling {
-  type: typeof CANDIDATE
-  ref: string
+  type: 'candidate'
+  source: string
+  recipient: string
   candidate: RTCIceCandidate | null
 }
 
 export interface DescriptionPacket extends Signaling {
-  type: typeof DESCRIPTION
-  ref: string
+  type: 'description'
+  source: string
+  recipient: string
   description: RTCSessionDescription
 }
 
-export type SignalingPacketTypes = JoinPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket
+export type SignalingPacketTypes = CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket

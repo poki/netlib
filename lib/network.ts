@@ -10,7 +10,7 @@ interface NetworkListeners {
   peerconnecting: (peer: Peer) => void | Promise<void>
   peerconnected: (peer: Peer) => void | Promise<void>
   peerdisconnected: (peer: Peer) => void | Promise<void>
-  message: (peer: Peer, channel: string, data: any) => void | Promise<void>
+  message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
   rtcerror: (e: RTCErrorEvent) => void | Promise<void>
   signalingerror: (e: Event) => void | Promise<void>
@@ -25,10 +25,17 @@ export default class Network extends EventEmitter<NetworkListeners> {
   constructor (public readonly gameID: string, private readonly signalingURL: string = DefaultSignalingURL) {
     super()
     this.peers = new Map<string, Peer>()
-    this.signaling = new Signaling(this, signalingURL)
+    this.signaling = new Signaling(this, this.peers, signalingURL)
   }
 
-  join (lobby?: string): void {
+  create (): void {
+    this.signaling.send({
+      type: 'create',
+      game: this.gameID
+    })
+  }
+
+  join (lobby: string): void {
     this.signaling.send({
       type: 'join',
       game: this.gameID,
@@ -66,10 +73,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
   }
 
-  _addPeer (id: string, ref: string, polite: boolean): Peer {
-    const peer = new Peer(this, this.signaling, id, ref, polite, DefaultRTCConfiguration)
+  _addPeer (id: string, polite: boolean): Peer {
+    const peer = new Peer(this, this.signaling, id, polite, DefaultRTCConfiguration)
     this.peers.set(id, peer)
     return peer
+  }
+
+  _removePeer (peer: Peer): boolean {
+    return this.peers.delete(peer.id)
   }
 
   get id (): string {

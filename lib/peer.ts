@@ -7,7 +7,7 @@ export default class Peer {
 
   // Signaling state:
   private makingOffer: boolean = false
-  private ignoringOffer: boolean = false
+  private ignoreOffer: boolean = false
   private isSettingRemoteAnswerPending: boolean = false
 
   // Connection state:
@@ -17,51 +17,60 @@ export default class Peer {
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
 
-  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, public readonly ref: string, private readonly polite: boolean, config: RTCConfiguration) {
+  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, private readonly polite: boolean, config: RTCConfiguration) {
     this.channels = {}
 
     this.conn = new RTCPeerConnection(config)
     this.conn.addEventListener('icecandidate', e => {
       const candidate = e.candidate
-      // TODO: Test out if candidate is ever null/empty and do we want to send that?
-      signaling.send({
-        type: 'candidate',
-        ref,
-        candidate
-      })
+      if (candidate !== null) {
+        signaling.send({
+          type: 'candidate',
+          source: this.network.id,
+          recipient: this.id,
+          candidate
+        })
+      }
     })
     this.conn.addEventListener('negotiationneeded', () => {
-      (async () => {
-        try {
-          this.makingOffer = true
-          await this.conn.setLocalDescription()
-          const description = this.conn.localDescription
-          if (description != null) {
-            signaling.send({
-              type: 'description',
-              ref,
-              description
-            })
-          } // TODO: Else?
-        } catch (e) {
-          this.network.emit('signalingerror', e)
-        } finally {
-          this.makingOffer = false
-        }
-      })().catch(_ => {})
+      setTimeout(() => {
+        (async () => {
+          try {
+            this.makingOffer = true
+            await this.conn.setLocalDescription()
+            const description = this.conn.localDescription
+            if (description != null) {
+              this.signaling.send({
+                type: 'description',
+                source: this.network.id,
+                recipient: this.id,
+                description
+              })
+            }
+          } catch (e) {
+            this.network.emit('signalingerror', e)
+          } finally {
+            this.makingOffer = false
+          }
+        })().catch(_ => {})
+      }, this.polite ? 100 : 0)
     })
 
-    this.conn.addEventListener('signalingstatechange', () => this.checkState())
-    this.conn.addEventListener('connectionstatechange', () => this.checkState())
     this.checkStateInterval = setInterval(() => {
       this.checkState()
     }, 500)
+    this.conn.addEventListener('signalingstatechange', () => this.checkState())
+    this.conn.addEventListener('connectionstatechange', () => this.checkState())
+    this.conn.addEventListener('iceconnectionstatechange', () => {
+      if (this.conn.iceConnectionState === 'failed') {
+        this.conn.restartIce()
+      }
+    })
 
     this.network.emit('peerconnecting', this)
 
     let i = 0
     for (const label in this.network.dataChannels) {
-      console.log('debug: setting up datachannel', label, this.network.dataChannels[label])
       const chan = this.conn.createDataChannel(label, {
         ...this.network.dataChannels[label],
         id: i++,
@@ -70,11 +79,10 @@ export default class Peer {
       chan.addEventListener('error', e => this.onError(e))
       chan.addEventListener('close', () => this.checkState())
       chan.addEventListener('open', () => {
-        console.log('debug:', label, 'open', chan.readyState)
         if (!Object.values(this.channels).some(c => c.readyState !== 'open')) {
           this.signaling.send({
             type: 'connected',
-            ref: this.ref
+            id: this.id
           })
           this.opened = true
           this.network.emit('peerconnected', this)
@@ -99,11 +107,17 @@ export default class Peer {
 
     this.signaling.send({
       type: 'disconnected',
-      ref: this.ref,
+      id: this.id,
       reason: reason ?? 'normal closure'
     })
     Object.values(this.channels).forEach(c => c.close())
     this.conn.close()
+
+    this.network._removePeer(this)
+
+    if (this.checkStateInterval != null) {
+      clearInterval(this.checkStateInterval)
+    }
   }
 
   private checkState (): void {
@@ -119,7 +133,7 @@ export default class Peer {
     if (Object.values(this.channels).some(c => c.readyState !== 'open')) {
       this.close('data channel closed')
     }
-    if (this.conn.connectionState !== 'connected' || this.conn.signalingState === 'stable') {
+    if (this.conn.connectionState !== 'connected') {
       this.close(`connection ${this.conn.connectionState}/${this.conn.signalingState}`)
     }
   }
@@ -136,7 +150,7 @@ export default class Peer {
           try {
             await this.conn.addIceCandidate(packet.candidate)
           } catch (e) {
-            if (!this.ignoringOffer) {
+            if (!this.ignoreOffer) {
               throw e
             }
           }
@@ -151,8 +165,8 @@ export default class Peer {
             (this.conn.signalingState === 'stable' || this.isSettingRemoteAnswerPending)
           const offerCollision = description.type === 'offer' && !readyForOffer
 
-          this.ignoringOffer = !this.polite && offerCollision
-          if (this.ignoringOffer) {
+          this.ignoreOffer = !this.polite && offerCollision
+          if (this.ignoreOffer) {
             return
           }
           this.isSettingRemoteAnswerPending = description.type === 'answer'
@@ -164,7 +178,8 @@ export default class Peer {
             if (description != null) {
               this.signaling.send({
                 type: 'description',
-                ref: packet.ref,
+                source: this.network.id,
+                recipient: this.id,
                 description
               })
             }

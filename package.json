@@ -5,7 +5,7 @@
   "private": true,
   "browser": "dist/netlib.js",
   "scripts": {
-    "build": "parcel build lib/index.ts",
+    "build": "npx parcel build lib/index.ts",
     "lint": "ts-standard",
     "watch": "parcel --no-hmr example/index.html"
   },

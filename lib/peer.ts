@@ -134,10 +134,12 @@ export default class Peer {
       return
     }
     if (Object.values(this.channels).some(c => c.readyState !== 'open')) {
-      this.close('data channel closed')
+      console.log('data channel closed');
+      //this.close('data channel closed')
     }
     if (this.conn.connectionState !== 'connected') {
-      this.close(`connection ${this.conn.connectionState}/${this.conn.signalingState}`)
+      console.log(`connection ${this.conn.connectionState}/${this.conn.signalingState}`);
+      //this.close(`connection ${this.conn.connectionState}/${this.conn.signalingState}`)
     }
 
     this.conn.getStats().then(stats => {

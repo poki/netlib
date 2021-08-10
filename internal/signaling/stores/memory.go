@@ -2,11 +2,19 @@ package stores
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"strings"
 	"sync"
 )
 
+type Lobby struct {
+	MaxPlayers int
+	Players    map[string]struct{}
+}
+
 type Memory struct {
-	Lobbies map[string]map[string]struct{}
+	Lobbies map[string]*Lobby
 
 	mutex  *sync.Mutex
 	topics map[string]map[chan []byte]struct{}
@@ -14,7 +22,7 @@ type Memory struct {
 
 func NewMemoryStore() *Memory {
 	m := &Memory{}
-	m.Lobbies = make(map[string]map[string]struct{})
+	m.Lobbies = make(map[string]*Lobby)
 	m.mutex = &sync.Mutex{}
 	m.topics = make(map[string]map[chan []byte]struct{})
 	return m
@@ -30,7 +38,12 @@ func (m *Memory) CreateLobby(ctx context.Context, game, lobby, id string) error 
 		return ErrLobbyExists
 	}
 
-	m.Lobbies[key] = make(map[string]struct{})
+	m.Lobbies[key] = &Lobby{
+		MaxPlayers: 8, // TODO: combine some args into a struct and add this.
+		Players: map[string]struct{}{
+			id: {},
+		},
+	}
 
 	return nil
 }
@@ -41,24 +54,72 @@ func (m *Memory) JoinLobby(ctx context.Context, game, lobby, id string) ([]strin
 
 	key := game + lobby
 
-	peers, found := m.Lobbies[key]
+	lb, found := m.Lobbies[key]
 	if !found {
 		return nil, ErrNotFound
 	}
 
-	_, found = peers[id]
+	_, found = lb.Players[id]
 	if found {
 		return nil, ErrAlreadyInLobby
 	}
 
+	if len(lb.Players) >= lb.MaxPlayers {
+		return nil, ErrLobbyFull
+	}
+
 	peerlist := []string{}
-	for id := range peers {
+	for id := range lb.Players {
 		peerlist = append(peerlist, id)
 	}
 
-	m.Lobbies[key][id] = struct{}{}
+	lb.Players[id] = struct{}{}
 
 	return peerlist, nil
+}
+
+// JoinOrCreateLobby joins the first none-full lobby with lobbyPrefix or
+// otherwise creates a new lobby with a random identifier starting with lobbyPrefix.
+func (m *Memory) JoinOrCreateLobby(ctx context.Context, game, lobbyPrefix, id string) (string, []string, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	prefix := game + lobbyPrefix
+
+	lobby := ""
+	peerlist := []string{}
+
+	for key, lb := range m.Lobbies {
+		if strings.HasPrefix(key, prefix) && len(lb.Players) < lb.MaxPlayers {
+			for id := range lb.Players {
+				peerlist = append(peerlist, id)
+			}
+
+			lobby = key
+			lb.Players[id] = struct{}{}
+
+			break
+		}
+	}
+
+	if lobby == "" {
+		for {
+			lobby = game + lobbyPrefix + fmt.Sprintf("%d", rand.Int63())
+			_, found := m.Lobbies[lobby]
+			if !found {
+				break
+			}
+		}
+
+		m.Lobbies[lobby] = &Lobby{
+			MaxPlayers: 2, // TODO: combine some args into a struct and add this.
+			Players: map[string]struct{}{
+				id: {},
+			},
+		}
+	}
+
+	return lobby, peerlist, nil
 }
 
 func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(context.Context, []byte)) {

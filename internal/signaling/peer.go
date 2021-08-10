@@ -94,6 +94,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "joinOrCreate":
+		packet := JoinOrCreatePacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleJoinOrCreatePacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	case "connected": // TODO: Handle
 	case "disconnected": // TODO: Handle
 
@@ -131,17 +141,12 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	p.Lobby = strconv.FormatInt(rand.Int63(), 36)
 	p.ID = strconv.FormatInt(rand.Int63(), 36)
 
-	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
-
 	err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID)
 	if err != nil {
 		return err
 	}
 
-	_, err = p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
-	if err != nil {
-		return err
-	}
+	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	return p.Send(ctx, JoinedPacket{
 		Type:  "joined",
@@ -166,12 +171,55 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	p.Lobby = packet.Lobby
 	p.ID = strconv.FormatInt(rand.Int63(), 36)
 
-	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
-
 	others, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
 	if err != nil {
 		return err
 	}
+
+	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+
+	err = p.Send(ctx, JoinedPacket{
+		Type:  "joined",
+		Lobby: p.Lobby,
+		ID:    p.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, otherID := range others {
+		err := p.RequestConnection(ctx, otherID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *Peer) HandleJoinOrCreatePacket(ctx context.Context, packet JoinOrCreatePacket) error {
+	if p.Game != "" || p.Lobby != "" || p.ID != "" {
+		// TODO: Maybe return an error to the client.
+		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
+	}
+	if packet.Game == "" { // TODO: Validate uuid
+		return fmt.Errorf("no game id supplied")
+	}
+	if packet.Prefix == "" {
+		return fmt.Errorf("no prefix supplied")
+	}
+
+	p.Game = packet.Game
+	p.ID = strconv.FormatInt(rand.Int63(), 36)
+
+	lobby, others, err := p.store.JoinOrCreateLobby(ctx, p.Game, packet.Prefix, p.ID)
+	if err != nil {
+		return err
+	}
+
+	p.Lobby = lobby
+
+	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	err = p.Send(ctx, JoinedPacket{
 		Type:  "joined",

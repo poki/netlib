@@ -43,6 +43,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     })
   }
 
+  joinOrCreate (prefix: string): void {
+    this.signaling.send({
+      type: 'joinOrCreate',
+      game: this.gameID,
+      prefix
+    })
+  }
+
   close (reason?: string): void {
     if (this.closing) {
       return

@@ -18,6 +18,13 @@ export interface JoinPacket extends Signaling {
   id?: string
 }
 
+export interface JoinOrCreatePacket extends Signaling {
+  type: 'joinOrCreate'
+  game: string
+  prefix: string
+  id?: string
+}
+
 export interface JoinedPacket extends Signaling {
   type: 'joined'
   lobby: string
@@ -61,4 +68,4 @@ export interface DescriptionPacket extends Signaling {
   description: RTCSessionDescription
 }
 
-export type SignalingPacketTypes = CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket
+export type SignalingPacketTypes = CreatePacket | JoinPacket | JoinOrCreatePacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket

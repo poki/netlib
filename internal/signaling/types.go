@@ -13,6 +13,13 @@ type JoinPacket struct {
 	Lobby string `json:"lobby"`
 }
 
+type JoinOrCreatePacket struct {
+	Type string `json:"type"`
+
+	Game   string `json:"game"`
+	Prefix string `json:"prefix"`
+}
+
 type JoinedPacket struct {
 	Type string `json:"type"`
 

@@ -1,11 +1,26 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "esnext",
     "module": "commonjs",
+    "noEmit": true,
+
+    "outDir": "./dist",
+    "sourceMap": true,
+
     "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "resolveJsonModule": true,
+
     "forceConsistentCasingInFileNames": true,
-    "downlevelIteration": true
-  }
+    "downlevelIteration": true,
+    "experimentalDecorators": true
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

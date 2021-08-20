@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -17,14 +18,16 @@ import (
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.TODO(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	logger := logging.New(ctx, "netlib", "signaling")
 	defer logger.Sync() // nolint:errcheck
 	logger.Info("init")
 	ctx = logging.WithLogger(ctx, logger)
 
-	if os.Getenv("ENV") != "local" {
+	if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "test" {
+		rand.Seed(0)
+	} else {
 		rand.Seed(time.Now().UnixNano())
 	}
 
@@ -43,7 +46,9 @@ func main() {
 		IdleTimeout:  650 * time.Second,
 	}
 
-	go turn.Run(ctx, addr)
+	if os.Getenv("ENV") != "test" {
+		go turn.Run(ctx, addr) //nolint:errcheck
+	}
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -59,4 +64,5 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Fatal("failed to shutdown server", zap.Error(err))
 	}
+	logger.Info("fin")
 }

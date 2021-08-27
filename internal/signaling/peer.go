@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/koenbollen/logging"
+	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 	"nhooyr.io/websocket"
@@ -24,6 +26,23 @@ type Peer struct {
 }
 
 func (p *Peer) Close() {
+	if p.ID != "" && p.Game != "" && p.Lobby != "" {
+		packet := DisconnectedPacket{
+			Type: "disconnected",
+			ID:   p.ID,
+		}
+		data, err := json.Marshal(packet)
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			defer cancel()
+			peers, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
+			if err == nil {
+				for _, id := range peers {
+					_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+				}
+			}
+		}
+	}
 	p.conn.Close(websocket.StatusInternalError, "error")
 }
 
@@ -94,8 +113,8 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "connected": // TODO: Handle
-	case "disconnected": // TODO: Handle
+	case "connected": // TODO: Handle, keep track of connected peers
+	case "disconnected": // TODO: Handle, idem
 
 	case "candidate":
 		fallthrough
@@ -108,7 +127,12 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			util.ErrorAndDisconnect(ctx, p.conn, fmt.Errorf("invalid source set"))
 		}
 		err = p.store.Publish(ctx, p.Game+p.Lobby+routing.Recipient, raw)
-		if err != nil {
+		if err == stores.ErrNoSuchTopic {
+			util.ReplyError(ctx, p.conn, &MissingRecipientError{
+				Recipient: routing.Recipient,
+				Cause:     err,
+			})
+		} else if err != nil {
 			return fmt.Errorf("unable to publish packet to forward: %w", err)
 		}
 
@@ -120,6 +144,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 }
 
 func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) error {
+	logger := logging.GetLogger(ctx)
 	if p.Game != "" || p.Lobby != "" || p.ID != "" {
 		// TODO: Maybe return an error to the client.
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
@@ -143,6 +168,8 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return err
 	}
 
+	logger.Info("created lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby))
+
 	return p.Send(ctx, JoinedPacket{
 		Type:  "joined",
 		Lobby: p.Lobby,
@@ -151,6 +178,8 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 }
 
 func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
+	logger := logging.GetLogger(ctx)
+
 	if p.Game != "" || p.Lobby != "" || p.ID != "" {
 		// TODO: Maybe return an error to the client.
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
@@ -188,6 +217,8 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 			return err
 		}
 	}
+
+	logger.Info("joined lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby))
 
 	return nil
 }

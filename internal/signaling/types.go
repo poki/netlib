@@ -27,6 +27,13 @@ type ConnectPacket struct {
 	Polite bool   `json:"polite"`
 }
 
+type DisconnectedPacket struct {
+	Type string `json:"type"`
+
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
+}
+
 type LeavePacket struct {
 	Type string `json:"type"`
 
@@ -39,4 +46,17 @@ type ForwardablePacket struct {
 
 	Source    string `json:"source"`
 	Recipient string `json:"recipient"`
+}
+
+type MissingRecipientError struct {
+	Recipient string
+	Cause     error
+}
+
+func (e *MissingRecipientError) Error() string {
+	return "missing recipient: " + e.Recipient
+}
+
+func (e *MissingRecipientError) Unwrap() error {
+	return e.Cause
 }

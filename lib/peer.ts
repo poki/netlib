@@ -15,7 +15,7 @@ export default class Peer {
   private closing: boolean = false
 
   // Connection stats:
-  public latency: number = -1
+  public latency: number = 0
 
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
@@ -104,22 +104,22 @@ export default class Peer {
     }
     this.closing = true
 
-    if (this.opened) {
-      this.network.emit('peerdisconnected', this)
-    }
-
+    // Inform signaling server that the peer has been disconnected:
     this.signaling.send({
       type: 'disconnected',
       id: this.id,
       reason: reason ?? 'normal closure'
     })
+
     Object.values(this.channels).forEach(c => c.close())
     this.conn.close()
-
     this.network._removePeer(this)
-
     if (this.checkStateInterval != null) {
       clearInterval(this.checkStateInterval)
+    }
+
+    if (this.opened) {
+      this.network.emit('peerdisconnected', this)
     }
   }
 
@@ -143,7 +143,7 @@ export default class Peer {
     this.conn.getStats().then(stats => {
       stats.forEach((report) => {
         if (report.type === 'transport') {
-          this.latency = report.currentRoundTripTime
+          this.latency = report.currentRoundTripTime ?? 0
         }
       })
     }).catch(_ => {})

@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"os"
@@ -47,10 +48,14 @@ func ErrorAndAbort(w http.ResponseWriter, r *http.Request, status int, key strin
 
 func ErrorAndDisconnect(ctx context.Context, conn *websocket.Conn, err error) {
 	logger := logging.GetLogger(ctx)
-	logger.Error("error during connection", zap.Error(err))
+	if !IsPipeError(err) {
+		logger.Warn("error during connection", zap.Error(err))
+	}
 	payload := struct {
+		Type  string `json:"type"`
 		Error string `json:"error"`
 	}{
+		Type:  "error",
 		Error: err.Error(),
 	}
 	err = wsjson.Write(ctx, conn, &payload)
@@ -58,6 +63,21 @@ func ErrorAndDisconnect(ctx context.Context, conn *websocket.Conn, err error) {
 		logger.Warn("uncaught server error", zap.Error(err))
 	}
 	panic(http.ErrAbortHandler)
+}
+
+func ReplyError(ctx context.Context, conn *websocket.Conn, err error) {
+	payload := struct {
+		Type  string `json:"type"`
+		Error string `json:"error"`
+	}{
+		Type:  "error",
+		Error: err.Error(),
+	}
+	err = wsjson.Write(ctx, conn, &payload)
+	if err != nil && !IsPipeError(err) {
+		logger := logging.GetLogger(ctx)
+		logger.Warn("uncaught server error", zap.Error(err))
+	}
 }
 
 // RenderJSON will write a json response to the given ResponseWriter.
@@ -80,6 +100,14 @@ func IsPipeError(err error) bool {
 		return IsPipeError(v.Err)
 	case *os.SyscallError:
 		return IsPipeError(v.Err)
+	default:
+		if errors.Is(err, context.Canceled) {
+			return true
+		}
+		closeErr := websocket.CloseError{}
+		if errors.As(err, &closeErr) {
+			return true
+		}
 	}
 	return false
 }

@@ -58,6 +58,35 @@ func (m *Memory) JoinLobby(ctx context.Context, game, lobby, id string) ([]strin
 
 	m.Lobbies[key][id] = struct{}{}
 
+	go func() {
+		<-ctx.Done()
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		delete(m.Lobbies[key], id)
+		if len(m.Lobbies[key]) == 0 {
+			delete(m.Lobbies, key)
+		}
+	}()
+
+	return peerlist, nil
+}
+
+func (m *Memory) GetLobby(ctx context.Context, game, lobby string) ([]string, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	key := game + lobby
+
+	peers, found := m.Lobbies[key]
+	if !found {
+		return nil, ErrNotFound
+	}
+
+	peerlist := []string{}
+	for id := range peers {
+		peerlist = append(peerlist, id)
+	}
+
 	return peerlist, nil
 }
 

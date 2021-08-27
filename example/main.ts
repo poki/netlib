@@ -10,6 +10,7 @@ const log = (text: string): void => {
   if (out?.innerText != null) {
     const time = (new Date()).toLocaleTimeString()
     out.value += `[${time}] ${text.trim()}\n`
+    out.scrollTop = out.scrollHeight
   }
 }
 
@@ -43,8 +44,11 @@ n.on('lobby', code => {
 n.on('signalingerror', console.error.bind(console.error))
 n.on('rtcerror', console.error.bind(console.error))
 
+n.on('peerconnecting', peer => { log(`peer connecting ${peer.id}`) })
+n.on('peerdisconnected', peer => { log(`peer disconnected ${peer.id} (${n.size} peers now)`) })
+
 n.on('peerconnected', peer => {
-  log(`peer connected: ${peer.id}@${Math.floor(peer.latency * 1000)}ms (${n.size} peers now)`)
+  log(`peer connected: ${peer.id} (${n.size} peers now)`)
   n.broadcast('reliable', `got new peer! ${peer.id}`)
   setInterval(() => {
     n.send('unreliable', peer.id, 'bogus data')

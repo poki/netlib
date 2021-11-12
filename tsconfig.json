@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "target": "esnext",
+    "lib": [
+      "dom",
+      "esnext"
+    ],
     "module": "commonjs",
     "noEmit": true,
 
@@ -21,6 +25,7 @@
     "experimentalDecorators": true,
 
     "typeRoots": [
+      "node_modules/@types",
       "./types"
     ]
   },

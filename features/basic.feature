@@ -28,3 +28,21 @@ Feature: Players can create and connect a network of players
     And "yellow" has recieved the peer ID "prb67ouj837u"
     And "blue" receives the network event "peerconnected" with the argument "[Peer: prb67ouj837u]"
     And "yellow" receives the network event "peerconnected" with the argument "[Peer: 3t3cfgcqup9e]"
+
+
+  Scenario: Connect three players to a lobby and broadcast a message
+    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "green" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+
+    Given "blue,yellow" are joined in a lobby
+    When "green" connects to the lobby "3t3cfgcqup9e"
+    Then "green" has recieved the peer ID "dhgp75mn2bll"
+    And "blue" receives the network event "peerconnected" with the argument "[Peer: dhgp75mn2bll]"
+    And "yellow" receives the network event "peerconnected" with the argument "[Peer: dhgp75mn2bll]"
+    And "green" receives the network event "peerconnected" with the argument "[Peer: ka9qy8em4vxr]"
+    And "green" receives the network event "peerconnected" with the argument "[Peer: prb67ouj837u]"
+
+    When "blue" boardcasts "Hello, world!" over the reliable channel
+    Then "yellow" receives the network event "message" with the arguments "[Peer: dhgp75mn2bll]", "reliable" and "Hello, world!"
+    And "green" receives the network event "message" with the arguments "[Peer: dhgp75mn2bll]", "reliable" and "Hello, world!"

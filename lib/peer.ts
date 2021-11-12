@@ -92,7 +92,7 @@ export default class Peer {
       chan.addEventListener('error', e => this.onError(e))
       chan.addEventListener('close', () => this.checkState())
       chan.addEventListener('open', () => {
-        if (!Object.values(this.channels).some(c => c.readyState !== 'open')) {
+        if (!this.opened && !Object.values(this.channels).some(c => c.readyState !== 'open')) {
           this.signaling.send({
             type: 'connected',
             id: this.id

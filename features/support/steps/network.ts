@@ -20,6 +20,29 @@ Given('{string} is connected and ready for game {string}', async function (this:
   }
 })
 
+Given('{string} are joined in a lobby', async function (this: World, playerNamesRaw: string) {
+  const playerNames = playerNamesRaw.split(',').map(s => s.trim())
+  if (playerNames.length < 2) {
+    throw new Error('need at least 2 players to join a lobby')
+  }
+  const first = this.players.get(playerNames[0])
+  if (first === undefined) {
+    throw new Error(`player ${playerNames[0]} not found`)
+  }
+  first.network.create()
+  const lobbyEvent = await first.waitForEvent('lobby')
+  const lobbyCode = lobbyEvent.eventPayload[0] as string
+  for (let i = 1; i < playerNames.length; i++) {
+    const playerName = playerNames[i]
+    const player = this.players.get(playerName)
+    if (player == null) {
+      return new Error(`player ${playerName} not found`)
+    }
+    player.network.join(lobbyCode)
+    await player.waitForEvent('lobby')
+  }
+})
+
 When('{string} creates a network for game {string}', function (this: World, playerName: string, gameID: string) {
   const network = new Network(gameID, this.signalingURL)
   const player = new Player(playerName, network)
@@ -42,6 +65,14 @@ When('{string} connects to the lobby {string}', function (this: World, playerNam
   player.network.join(lobbyCode)
 })
 
+When('{string} boardcasts {string} over the reliable channel', function (this: World, playerName: string, message: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  player.network.broadcast('reliable', message)
+})
+
 Then('{string} receives the network event {string}', async function (this: World, playerName: string, eventName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
@@ -58,13 +89,20 @@ Then('{string} receives the network event {string} with the argument {string}', 
   if (player == null) {
     throw new Error('no such player')
   }
-  const event = await player.waitForEvent(eventName)
+  const event = await player.waitForEvent(eventName, expectedArgument)
   if (event == null) {
-    throw new Error(`no event ${eventName} received`)
+    throw new Error(`no event ${eventName}(${expectedArgument}) received`)
   }
-  // Let's fool typescript into calling toString() on the event argument:
-  if (`${event.eventPayload[0] as string}` !== expectedArgument) {
-    throw new Error(`event ${eventName} received with wrong argument ${event.eventPayload[0] as string}`)
+})
+
+Then('{string} receives the network event {string} with the arguments {string}, {string} and {string}', async function (this: World, playerName: string, eventName: string, expectedArgument0: string, expectedArgument1: string, expectedArgument2: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const event = await player.waitForEvent(eventName, expectedArgument0, expectedArgument1, expectedArgument2)
+  if (event == null) {
+    throw new Error(`no event ${eventName}(${expectedArgument0}, ${expectedArgument1}, ${expectedArgument2}) received`)
   }
 })
 

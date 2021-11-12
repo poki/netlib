@@ -22,6 +22,7 @@ export default class Peer {
 
   constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, private readonly polite: boolean, config: RTCConfiguration) {
     this.channels = {}
+    this.network.log('creating peer')
 
     this.conn = new RTCPeerConnection(config)
     this.conn.addEventListener('icecandidate', e => {
@@ -39,8 +40,17 @@ export default class Peer {
       setTimeout(() => {
         (async () => {
           try {
+            if (this.closing) {
+              return
+            }
             this.makingOffer = true
-            await this.conn.setLocalDescription()
+            if (process.env.NODE_ENV === 'test') {
+              // Running tests with node and the wrtc package causes the
+              // setLocalDescription to fail with undefined as argment.
+              await this.conn.setLocalDescription(await this.conn.createOffer())
+            } else {
+              await this.conn.setLocalDescription()
+            }
             const description = this.conn.localDescription
             if (description != null) {
               this.signaling.send({
@@ -137,7 +147,7 @@ export default class Peer {
       this.close('data channel closed')
     }
     if (this.conn.connectionState !== 'connected') {
-      this.close(`connection ${this.conn.connectionState}/${this.conn.signalingState}`)
+      this.close(`invalid connection state ${this.conn.connectionState}/${this.conn.signalingState}`)
     }
 
     this.conn.getStats().then(stats => {
@@ -184,7 +194,11 @@ export default class Peer {
           await this.conn.setRemoteDescription(description)
           this.isSettingRemoteAnswerPending = false
           if (description.type === 'offer') {
-            await this.conn.setLocalDescription()
+            if (process.env.NODE_ENV === 'test') {
+              await this.conn.setLocalDescription(await this.conn.createAnswer())
+            } else {
+              await this.conn.setLocalDescription()
+            }
             const description = this.conn.localDescription
             if (description != null) {
               this.signaling.send({
@@ -208,5 +222,9 @@ export default class Peer {
     if (chan.readyState === 'open') {
       chan.send(data as any)
     }
+  }
+
+  toString (): string {
+    return `[Peer: ${this.id}]`
   }
 }

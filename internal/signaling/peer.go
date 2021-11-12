@@ -113,6 +113,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "leave": // TODO: Handle.
 	case "connected": // TODO: Handle, keep track of connected peers
 	case "disconnected": // TODO: Handle, idem
 

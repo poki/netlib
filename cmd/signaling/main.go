@@ -18,11 +18,13 @@ import (
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
 	logger := logging.New(ctx, "netlib", "signaling")
 	defer logger.Sync() // nolint:errcheck
 	logger.Info("init")
+	defer logger.Info("fin")
 	ctx = logging.WithLogger(ctx, logger)
 
 	if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "test" {
@@ -64,5 +66,4 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Fatal("failed to shutdown server", zap.Error(err))
 	}
-	logger.Info("fin")
 }

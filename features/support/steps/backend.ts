@@ -30,15 +30,27 @@ Given('the {string} backend is running', async function (this: World, backend: s
     prc.addListener('exit', () => {
       this.print(`${backend} exited`)
     })
-    prc.addListener('close', () => {
-      this.print(`${backend} closed`)
+
+    // Create a promise that resolves when the backend is closed so
+    // we can block for it in the After step that kills the backend:
+    const waiter = new Promise<void>(resolve => {
+      prc.addListener('close', () => {
+        this.print(`${backend} closed (exitcode: ${prc.exitCode ?? 0})`)
+        prc.unref()
+        prc.removeAllListeners()
+        resolve()
+      })
     })
+
+    this.backend = { process: prc, wait: waiter }
     this.signalingURL = `ws://127.0.0.1:${port}/v0/signaling`
-    this.backend = prc
   })
 })
 
-After(function (this: World) {
-  this.print('killin')
-  this.backend?.kill()
+After(async function (this: World) {
+  if (this.backend !== undefined) {
+    this.print('killing backend')
+    this.backend.process.kill()
+    await this.backend.wait // wait for the backend to close
+  }
 })

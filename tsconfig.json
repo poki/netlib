@@ -18,7 +18,11 @@
 
     "forceConsistentCasingInFileNames": true,
     "downlevelIteration": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+
+    "typeRoots": [
+      "./types"
+    ]
   },
   "exclude": [
     "node_modules"

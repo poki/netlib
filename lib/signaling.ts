@@ -39,7 +39,7 @@ export default class Signaling {
 
   send (packet: SignalingPacketTypes): void {
     if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
-      console.log('sending signaling packet:', packet)
+      this.network.log('sending signaling packet:', packet.type)
       const data = JSON.stringify(packet)
       this.ws.send(data)
     }
@@ -48,7 +48,7 @@ export default class Signaling {
   private async handleSignalingMessage (data: string): Promise<void> {
     try {
       const packet = JSON.parse(data) as SignalingPacketTypes
-      console.log('signaling packet received:', packet)
+      this.network.log('signaling packet received:', packet.type)
       switch (packet.type) {
         case 'joined':
           if (packet.id === '') {

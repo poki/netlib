@@ -3,10 +3,11 @@ import { Network } from '../../../lib'
 import { Player } from '../types'
 import { World } from '../world'
 
-After(function (this: World) {
+After(async function (this: World) {
   this.players.forEach(p => {
     p.network.close()
   })
+  this.players.clear()
 })
 
 Given('{string} is connected and ready for game {string}', async function (this: World, playerName: string, gameID: string) {
@@ -33,6 +34,14 @@ When('{string} creates a lobby', function (this: World, playerName: string) {
   player.network.create()
 })
 
+When('{string} connects to the lobby {string}', function (this: World, playerName: string, lobbyCode: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  player.network.join(lobbyCode)
+})
+
 Then('{string} receives the network event {string}', async function (this: World, playerName: string, eventName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
@@ -53,7 +62,8 @@ Then('{string} receives the network event {string} with the argument {string}', 
   if (event == null) {
     throw new Error(`no event ${eventName} received`)
   }
-  if (event.eventPayload[0] !== expectedArgument) {
+  // Let's fool typescript into calling toString() on the event argument:
+  if (`${event.eventPayload[0] as string}` !== expectedArgument) {
     throw new Error(`event ${eventName} received with wrong argument ${event.eventPayload[0] as string}`)
   }
 })
@@ -62,6 +72,9 @@ Then('{string} has recieved the peer ID {string}', async function (this: World, 
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
+  }
+  if (player.network.id === '') {
+    await player.waitForEvent('lobby')
   }
   if (player.network.id !== exepctedID) {
     throw new Error(`expected peer ID ${exepctedID} but got ${player.network.id}`)

@@ -13,14 +13,16 @@ interface NetworkListeners {
   message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
   rtcerror: (e: RTCErrorEvent) => void | Promise<void>
-  signalingerror: (e: Event) => void | Promise<void>
+  signalingerror: (e: any) => void | Promise<void>
 }
 
 export default class Network extends EventEmitter<NetworkListeners> {
   private closing: boolean = false
-  private readonly peers: Map<string, Peer>
+  public readonly peers: Map<string, Peer>
   private readonly signaling: Signaling
   public dataChannels: {[label: string]: RTCDataChannelInit} = DefaultDataChannels
+
+  public log: (...data: any[]) => void = (...args: any[]) => {} // console.log
 
   constructor (public readonly gameID: string, private readonly signalingURL: string = DefaultSignalingURL) {
     super()

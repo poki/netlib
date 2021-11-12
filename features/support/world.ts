@@ -3,22 +3,27 @@ import { spawn } from 'child_process'
 import { unlinkSync } from 'fs'
 
 import ws from 'ws'
+import wrtc from 'wrtc'
 
 import { Player } from './types'
 
 ;(global as any).WebSocket = ws
+;(global as any).RTCPeerConnection = wrtc.RTCPeerConnection
+
+process.env.NODE_ENV = 'test'
 
 export class World extends CucumberWorld {
   public scenarioRunning: boolean = false
 
   public signalingURL?: string
-  public backend?: ReturnType<typeof spawn>
+  public backend?: {process: ReturnType<typeof spawn>, wait: Promise<void>}
 
   public players: Map<string, Player> = new Map<string, Player>()
 
   public print (message: string): void {
     if (this.scenarioRunning) {
       this.log(message) as any
+      // console.log(message)
     } else {
       // console.log(message)
     }

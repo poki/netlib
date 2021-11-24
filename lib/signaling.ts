@@ -17,6 +17,9 @@ export default class Signaling {
     })
     this.ws.addEventListener('error', e => {
       this.network.emit('signalingerror', e)
+      if (this.network.listenerCount('signalingerror') === 0) {
+        console.error('signallingerror not handled:', e)
+      }
     })
     this.ws.addEventListener('close', () => {
       this.network.close('signaling websocket closed')
@@ -78,7 +81,9 @@ export default class Signaling {
           if (this.connections.has(packet.source)) {
             await this.connections.get(packet.source)?._onSignalingMessage(packet)
           } else {
-            console.error('recieved packet for unknown connection (id):', packet.source)
+            if (!this.network.closing) {
+              console.error(this.network.id, 'recieved packet for unknown connection (id):', packet.source)
+            }
           }
           break
       }

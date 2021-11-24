@@ -17,7 +17,7 @@ interface NetworkListeners {
 }
 
 export default class Network extends EventEmitter<NetworkListeners> {
-  private closing: boolean = false
+  private _closing: boolean = false
   public readonly peers: Map<string, Peer>
   private readonly signaling: Signaling
   public dataChannels: {[label: string]: RTCDataChannelInit} = DefaultDataChannels
@@ -46,10 +46,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   close (reason?: string): void {
-    if (this.closing) {
+    if (this._closing) {
       return
     }
-    this.closing = true
+    this._closing = true
     this.emit('close', reason)
     for (const peer of this.peers.values()) {
       peer.close(reason)
@@ -87,6 +87,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   get id (): string {
     return this.signaling.receivedID ?? ''
+  }
+
+  get closing (): boolean {
+    return this._closing
   }
 
   get size (): number {

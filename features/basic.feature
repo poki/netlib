@@ -46,3 +46,15 @@ Feature: Players can create and connect a network of players
     When "blue" boardcasts "Hello, world!" over the reliable channel
     Then "yellow" receives the network event "message" with the arguments "[Peer: dhgp75mn2bll]", "reliable" and "Hello, world!"
     And "green" receives the network event "message" with the arguments "[Peer: dhgp75mn2bll]", "reliable" and "Hello, world!"
+
+
+  Scenario: A player leaves a lobby
+    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "green" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+
+    Given "blue,yellow,green" are joined in a lobby
+    When "yellow" disconnects
+    Then "yellow" receives the network event "close"
+    Then "blue" receives the network event "peerdisconnected" with the argument "[Peer: ka9qy8em4vxr]"
+    Then "green" receives the network event "peerdisconnected" with the argument "[Peer: ka9qy8em4vxr]"

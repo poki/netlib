@@ -29,9 +29,11 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
   if (first === undefined) {
     throw new Error(`player ${playerNames[0]} not found`)
   }
+
   first.network.create()
   const lobbyEvent = await first.waitForEvent('lobby')
   const lobbyCode = lobbyEvent.eventPayload[0] as string
+
   for (let i = 1; i < playerNames.length; i++) {
     const playerName = playerNames[i]
     const player = this.players.get(playerName)
@@ -40,6 +42,17 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
     }
     player.network.join(lobbyCode)
     await player.waitForEvent('lobby')
+  }
+
+  for (let i = 0; i < playerNames.length; i++) {
+    const playerName = playerNames[i]
+    const player = this.players.get(playerName)
+    if (player?.network.peers.size !== playerNames.length - 1) {
+      return new Error('player not connected with enough others')
+    }
+    for (const [, peer] of player?.network.peers) {
+      await player?.waitForEvent('peerconnected', peer)
+    }
   }
 })
 
@@ -71,6 +84,14 @@ When('{string} boardcasts {string} over the reliable channel', function (this: W
     return 'no such player'
   }
   player.network.broadcast('reliable', message)
+})
+
+When('{string} disconnects', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  player.network.close()
 })
 
 Then('{string} receives the network event {string}', async function (this: World, playerName: string, eventName: string) {

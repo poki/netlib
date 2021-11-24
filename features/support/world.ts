@@ -47,6 +47,11 @@ BeforeAll((cb: Function) => {
 
 AfterAll(function (this: World) {
   unlinkSync('/tmp/netlib-cucumber-signaling')
+
+  // node-webrtc seem to always SEGFAULT when the process is killed, this is
+  // a quick workaround to make sure the process is killed neatly.
+  // source: https://github.com/node-webrtc/node-webrtc/issues/636#issuecomment-774171409
+  process.on('beforeExit', (code) => process.exit(code))
 })
 
 Before(function (this: World) {

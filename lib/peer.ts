@@ -81,6 +81,7 @@ export default class Peer {
       if (this.conn.iceConnectionState === 'failed') {
         this.conn.restartIce()
       }
+      this.checkState()
     })
 
     this.network.emit('peerconnecting', this)
@@ -137,11 +138,12 @@ export default class Peer {
   }
 
   private checkState (): void {
+    const connectionState = this.conn.connectionState ?? this.conn.iceConnectionState
     if (this.closing) {
       return
     }
     if (!this.opened) {
-      if (this.conn.connectionState === 'failed') {
+      if (connectionState === 'failed') {
         this.close('connecting failed')
       }
       return
@@ -149,8 +151,8 @@ export default class Peer {
     if (Object.values(this.channels).some(c => c.readyState !== 'open')) {
       this.close('data channel closed')
     }
-    if (this.conn.connectionState !== 'connected') {
-      this.close(`invalid connection state ${this.conn.connectionState}/${this.conn.signalingState}`)
+    if (connectionState !== 'connected') {
+      this.close(`invalid connection state ${connectionState}/${this.conn.signalingState}`)
     }
 
     this.conn.getStats().then(stats => {

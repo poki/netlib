@@ -22,7 +22,7 @@ interface backend {
   wait: Promise<void>
 }
 
-setDefaultTimeout(20 * 1000)
+setDefaultTimeout(30 * 1000)
 
 export class World extends CucumberWorld {
   public scenarioRunning: boolean = false

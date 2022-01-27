@@ -44,10 +44,10 @@ n.on('lobby', code => {
 n.on('signalingerror', console.error.bind(console.error))
 n.on('rtcerror', console.error.bind(console.error))
 
-n.on('peerconnecting', peer => { log(`peer connecting ${peer.id}`) })
-n.on('peerdisconnected', peer => { log(`peer disconnected ${peer.id} (${n.size} peers now)`) })
+n.on('connecting', peer => { log(`peer connecting ${peer.id}`) })
+n.on('disconnected', peer => { log(`peer disconnected ${peer.id} (${n.size} peers now)`) })
 
-n.on('peerconnected', peer => {
+n.on('connected', peer => {
   log(`peer connected: ${peer.id} (${n.size} peers now)`)
   n.broadcast('reliable', `got new peer! ${peer.id}`)
   setInterval(() => {

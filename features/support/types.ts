@@ -5,7 +5,7 @@ interface RecordedEvent {
   eventPayload: IArguments
 }
 
-const allEvents = ['close', 'ready', 'lobby', 'peerconnected', 'peerdisconnected', 'message']
+const allEvents = ['close', 'ready', 'lobby', 'connected', 'disconnected', 'reconnecting', 'reconnected', 'message']
 
 export class Player {
   public events: RecordedEvent[] = []

@@ -26,8 +26,8 @@ Feature: Players can create and connect a network of players
 
     When "yellow" connects to the lobby "19yrzmetd2bn7"
     And "yellow" has recieved the peer ID "prb67ouj837u"
-    And "blue" receives the network event "peerconnected" with the argument "[Peer: prb67ouj837u]"
-    And "yellow" receives the network event "peerconnected" with the argument "[Peer: 3t3cfgcqup9e]"
+    And "blue" receives the network event "connected" with the argument "[Peer: prb67ouj837u]"
+    And "yellow" receives the network event "connected" with the argument "[Peer: 3t3cfgcqup9e]"
 
 
   Scenario: Connect three players to a lobby and broadcast a message
@@ -38,10 +38,10 @@ Feature: Players can create and connect a network of players
     Given "blue,yellow" are joined in a lobby
     When "green" connects to the lobby "3t3cfgcqup9e"
     Then "green" has recieved the peer ID "dhgp75mn2bll"
-    And "blue" receives the network event "peerconnected" with the argument "[Peer: dhgp75mn2bll]"
-    And "yellow" receives the network event "peerconnected" with the argument "[Peer: dhgp75mn2bll]"
-    And "green" receives the network event "peerconnected" with the argument "[Peer: ka9qy8em4vxr]"
-    And "green" receives the network event "peerconnected" with the argument "[Peer: prb67ouj837u]"
+    And "blue" receives the network event "connected" with the argument "[Peer: dhgp75mn2bll]"
+    And "yellow" receives the network event "connected" with the argument "[Peer: dhgp75mn2bll]"
+    And "green" receives the network event "connected" with the argument "[Peer: ka9qy8em4vxr]"
+    And "green" receives the network event "connected" with the argument "[Peer: prb67ouj837u]"
 
     When "blue" boardcasts "Hello, world!" over the reliable channel
     Then "yellow" receives the network event "message" with the arguments "[Peer: dhgp75mn2bll]", "reliable" and "Hello, world!"
@@ -56,5 +56,5 @@ Feature: Players can create and connect a network of players
     Given "blue,yellow,green" are joined in a lobby
     When "yellow" disconnects
     Then "yellow" receives the network event "close"
-    Then "blue" receives the network event "peerdisconnected" with the argument "[Peer: ka9qy8em4vxr]"
-    Then "green" receives the network event "peerdisconnected" with the argument "[Peer: ka9qy8em4vxr]"
+    Then "blue" receives the network event "disconnected" with the argument "[Peer: ka9qy8em4vxr]"
+    Then "green" receives the network event "disconnected" with the argument "[Peer: ka9qy8em4vxr]"

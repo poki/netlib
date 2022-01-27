@@ -47,7 +47,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
       return new Error('player not connected with enough others')
     }
     for (const [, peer] of player?.network.peers) {
-      await player?.waitForEvent('peerconnected', peer)
+      await player?.waitForEvent('connected', peer)
     }
   }
 })

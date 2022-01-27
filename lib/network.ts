@@ -8,9 +8,11 @@ import Peer from './peer'
 interface NetworkListeners {
   ready: () => void | Promise<void>
   lobby: (code: string) => void | Promise<void>
-  peerconnecting: (peer: Peer) => void | Promise<void>
-  peerconnected: (peer: Peer) => void | Promise<void>
-  peerdisconnected: (peer: Peer) => void | Promise<void>
+  connecting: (peer: Peer) => void | Promise<void>
+  connected: (peer: Peer) => void | Promise<void>
+  reconnecting: (peer: Peer) => void | Promise<void>
+  reconnected: (peer: Peer) => void | Promise<void>
+  disconnected: (peer: Peer) => void | Promise<void>
   message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
   rtcerror: (e: RTCErrorEvent) => void | Promise<void>

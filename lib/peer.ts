@@ -13,6 +13,7 @@ export default class Peer {
   // Connection state:
   private opened: boolean = false
   private closing: boolean = false
+  private reconnecting: boolean = false
 
   // Connection stats:
   public latency: number = 0
@@ -86,14 +87,9 @@ export default class Peer {
     }, 500)
     this.conn.addEventListener('signalingstatechange', () => this.checkState())
     this.conn.addEventListener('connectionstatechange', () => this.checkState())
-    this.conn.addEventListener('iceconnectionstatechange', () => {
-      if (this.conn.iceConnectionState === 'failed') {
-        this.conn.restartIce()
-      }
-      this.checkState()
-    })
+    this.conn.addEventListener('iceconnectionstatechange', () => this.checkState())
 
-    this.network.emit('peerconnecting', this)
+    this.network.emit('connecting', this)
 
     let i = 0
     for (const label in this.network.dataChannels) {
@@ -112,7 +108,7 @@ export default class Peer {
             id: this.id
           })
           this.opened = true
-          this.network.emit('peerconnected', this)
+          this.network.emit('connected', this)
         }
       })
       chan.addEventListener('message', e => {
@@ -143,7 +139,7 @@ export default class Peer {
     }
 
     if (this.opened) {
-      this.network.emit('peerdisconnected', this)
+      this.network.emit('disconnected', this)
     }
   }
 
@@ -161,9 +157,18 @@ export default class Peer {
     if (Object.values(this.channels).some(c => c.readyState !== 'open')) {
       this.close('data channel closed')
     }
-    if (connectionState === 'failed' || connectionState === 'closed') {
-      this.close(`invalid connection state ${connectionState}/${this.conn.signalingState}`)
+    // console.log('state', this.id, this.conn.connectionState, this.conn.iceConnectionState, Object.values(this.channels).map(c => c.readyState))
+    if (!this.reconnecting && (connectionState === 'disconnected' || connectionState === 'failed')) {
+      this.reconnecting = true
+      this.network.emit('reconnecting', this)
+    } else if (this.reconnecting && connectionState === 'connected') {
+      this.reconnecting = false
+      this.network.emit('reconnected', this)
     }
+    if (connectionState === 'failed' || connectionState === 'closed') {
+      this.conn.restartIce()
+    }
+    // TODO: Actually close at some point. 😅
 
     this.conn.getStats().then(stats => {
       stats.forEach((report) => {

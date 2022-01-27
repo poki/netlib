@@ -1,6 +1,7 @@
 import { EventEmitter } from 'eventemitter3'
 
 import { DefaultDataChannels, DefaultRTCConfiguration, DefaultSignalingURL } from '.'
+import { PeerConfiguration } from './types'
 import Signaling from './signaling'
 import Peer from './peer'
 
@@ -24,7 +25,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   public log: (...data: any[]) => void = (...args: any[]) => {} // console.log
 
-  constructor (public readonly gameID: string, private readonly signalingURL: string = DefaultSignalingURL) {
+  constructor (public readonly gameID: string, private readonly signalingURL: string = DefaultSignalingURL, private readonly rtcConfig: PeerConfiguration = DefaultRTCConfiguration) {
     super()
     this.peers = new Map<string, Peer>()
     this.signaling = new Signaling(this, this.peers, signalingURL)
@@ -76,7 +77,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   _addPeer (id: string, polite: boolean): Peer {
-    const peer = new Peer(this, this.signaling, id, polite, DefaultRTCConfiguration)
+    const peer = new Peer(this, this.signaling, id, polite, this.rtcConfig)
     this.peers.set(id, peer)
     return peer
   }

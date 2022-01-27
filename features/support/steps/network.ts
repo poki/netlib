@@ -1,19 +1,15 @@
 import { After, Given, Then, When } from '@cucumber/cucumber'
-import { Network } from '../../../lib'
-import { Player } from '../types'
 import { World } from '../world'
 
 After(async function (this: World) {
   this.players.forEach(p => {
-    p.network.close()
+    p.network.close('closing test suite')
   })
   this.players.clear()
 })
 
 Given('{string} is connected and ready for game {string}', async function (this: World, playerName: string, gameID: string) {
-  const network = new Network(gameID, this.signalingURL)
-  const player = new Player(playerName, network)
-  this.players.set(playerName, player)
+  const player = this.createPlayer(playerName, gameID)
   const event = await player.waitForEvent('ready')
   if (event == null) {
     throw new Error(`unable to add player ${playerName} to network`)
@@ -57,9 +53,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
 })
 
 When('{string} creates a network for game {string}', function (this: World, playerName: string, gameID: string) {
-  const network = new Network(gameID, this.signalingURL)
-  const player = new Player(playerName, network)
-  this.players.set(playerName, player)
+  this.createPlayer(playerName, gameID)
 })
 
 When('{string} creates a lobby', function (this: World, playerName: string) {

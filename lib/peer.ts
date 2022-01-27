@@ -1,6 +1,6 @@
 import Network from './network'
 import Signaling from './signaling'
-import { SignalingPacketTypes } from './types'
+import { PeerConfiguration, SignalingPacketTypes } from './types'
 
 export default class Peer {
   public readonly conn: RTCPeerConnection
@@ -20,22 +20,30 @@ export default class Peer {
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
 
-  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, private readonly polite: boolean, config: RTCConfiguration) {
+  private readonly testSessionWrapper?: (desc: RTCSessionDescription, config: PeerConfiguration, selfID: string, otherID: string) => Promise<void>
+
+  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, private readonly polite: boolean, private readonly config: PeerConfiguration) {
     this.channels = {}
     this.network.log('creating peer')
 
+    this.testSessionWrapper = undefined
+
     this.conn = new RTCPeerConnection(config)
-    this.conn.addEventListener('icecandidate', e => {
-      const candidate = e.candidate
-      if (candidate !== null) {
-        signaling.send({
-          type: 'candidate',
-          source: this.network.id,
-          recipient: this.id,
-          candidate
-        })
-      }
-    })
+    if (config.testproxyURL === undefined) { // we dont push candidates in a test setup
+      this.conn.addEventListener('icecandidate', e => {
+        const candidate = e.candidate
+        if (candidate !== null) {
+          signaling.send({
+            type: 'candidate',
+            source: this.network.id,
+            recipient: this.id,
+            candidate
+          })
+        }
+      })
+    } else {
+      this.testSessionWrapper = wrapSessionDescription
+    }
     this.conn.addEventListener('negotiationneeded', () => {
       setTimeout(() => {
         (async () => {
@@ -53,6 +61,7 @@ export default class Peer {
             }
             const description = this.conn.localDescription
             if (description != null) {
+              await this.testSessionWrapper?.(description, this.config, this.network.id, this.id)
               this.signaling.send({
                 type: 'description',
                 source: this.network.id,
@@ -94,6 +103,7 @@ export default class Peer {
         negotiated: true
       })
       chan.addEventListener('error', e => this.onError(e))
+      chan.addEventListener('closing', () => this.checkState())
       chan.addEventListener('close', () => this.checkState())
       chan.addEventListener('open', () => {
         if (!this.opened && !Object.values(this.channels).some(c => c.readyState !== 'open')) {
@@ -151,7 +161,7 @@ export default class Peer {
     if (Object.values(this.channels).some(c => c.readyState !== 'open')) {
       this.close('data channel closed')
     }
-    if (connectionState !== 'connected') {
+    if (connectionState === 'failed' || connectionState === 'closed') {
       this.close(`invalid connection state ${connectionState}/${this.conn.signalingState}`)
     }
 
@@ -209,6 +219,7 @@ export default class Peer {
             }
             const description = this.conn.localDescription
             if (description != null) {
+              await this.testSessionWrapper?.(description, this.config, this.network.id, this.id)
               this.signaling.send({
                 type: 'description',
                 source: this.network.id,
@@ -235,4 +246,29 @@ export default class Peer {
   toString (): string {
     return `[Peer: ${this.id}]`
   }
+}
+
+async function wrapSessionDescription (desc: RTCSessionDescription, config: PeerConfiguration, selfID: string, otherID: string): Promise<void> {
+  if (config.testproxyURL === undefined) {
+    return
+  }
+
+  let lines = desc.sdp.split('\r\n')
+  lines = lines.filter(l => {
+    return !l.startsWith('a=candidate') || (l.includes('127.0.0.1') && l.includes('udp'))
+  })
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]
+    if (l.startsWith('a=candidate') && l.includes('127.0.0.1')) {
+      const orignalPort = l.split('127.0.0.1 ').pop()?.split(' ')[0] // find port
+      if (orignalPort != null) {
+        const resp = await fetch(`${config.testproxyURL}/create?id=${selfID + otherID}&port=${orignalPort}`)
+        const substitudePort = await resp.text()
+        lines[i] = l.replaceAll(` ${orignalPort} `, ` ${substitudePort} `)
+      }
+    }
+  }
+
+  ;(desc as any).sdp = lines.join('\r\n')
 }

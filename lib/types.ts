@@ -1,4 +1,8 @@
 
+export interface PeerConfiguration extends RTCConfiguration {
+  testproxyURL?: string
+}
+
 interface Base {
   type: string
 }

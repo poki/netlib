@@ -1,6 +1,8 @@
+import { PeerConfiguration } from './types'
+
 export const DefaultSignalingURL = 'ws://localhost:8080/v0/signaling'
 
-export const DefaultRTCConfiguration: RTCConfiguration = {
+export const DefaultRTCConfiguration: PeerConfiguration = {
   iceServers: [
     {
       urls: [

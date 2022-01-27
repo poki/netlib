@@ -42,15 +42,22 @@ Given('the {string} backend is running', async function (this: World, backend: s
       })
     })
 
-    this.backend = { process: prc, wait: waiter }
-    this.signalingURL = `ws://127.0.0.1:${port}/v0/signaling`
+    this.backends.set(backend, { process: prc, port, wait: waiter })
+    switch (backend) {
+      case 'signaling':
+        this.signalingURL = `ws://127.0.0.1:${port}/v0/signaling`
+        break
+      case 'testproxy':
+        this.testproxyURL = `http://127.0.0.1:${port}`
+        break
+    }
   })
 })
 
 After(async function (this: World) {
-  if (this.backend !== undefined) {
-    this.print('killing backend')
-    this.backend.process.kill()
-    await this.backend.wait // wait for the backend to close
+  for (const [key, backend] of this.backends) {
+    this.print('killing ' + key)
+    backend.process.kill()
+    await backend.wait // wait for the backend to close
   }
 })

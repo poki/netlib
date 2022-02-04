@@ -3,15 +3,19 @@ import Peer from './peer'
 import { SignalingPacketTypes } from './types'
 
 export default class Signaling {
-  private readonly ws: WebSocket
+  private ws: WebSocket | null = null
+  private readonly url: string
   receivedID?: string
 
   private readonly connections: Map<string, Peer>
 
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
+    this.url = url
     this.connections = peers
+  }
 
-    this.ws = new WebSocket(url)
+  connect (): void {
+    this.ws = new WebSocket(this.url)
     this.ws.addEventListener('open', () => {
       this.network.emit('ready')
     })
@@ -30,6 +34,7 @@ export default class Signaling {
   }
 
   close (reason?: string): void {
+    if (this.ws === null) return
     if (this.receivedID != null) {
       this.send({
         type: 'leave',
@@ -38,9 +43,11 @@ export default class Signaling {
       })
     }
     this.ws.close()
+    this.ws = null
   }
 
   send (packet: SignalingPacketTypes): void {
+    if (this.ws === null) return
     if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
       this.network.log('sending signaling packet:', packet.type)
       const data = JSON.stringify(packet)

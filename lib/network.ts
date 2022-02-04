@@ -33,6 +33,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
     this.signaling = new Signaling(this, this.peers, signalingURL)
   }
 
+  connect (): void {
+    this.signaling.connect()
+  }
+
   create (): void {
     this.signaling.send({
       type: 'create',

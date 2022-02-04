@@ -24,14 +24,14 @@ n.on('ready', () => {
   }
 
   n.on('message', (peer, channel, data) => {
-    if (channel === 'reliable') {
+    if (channel === Network.CHANNEL_RELIABLE) {
       log(`${peer.id} said "${data as string}" via ${channel}`)
     }
   })
   inp.addEventListener('keyup', e => {
     if (e.key === 'Enter') {
       log(`sending ${inp.value}`)
-      n.broadcast('reliable', inp.value)
+      n.broadcast(Network.CHANNEL_RELIABLE, inp.value)
       inp.value = ''
     }
   })
@@ -49,8 +49,8 @@ n.on('disconnected', peer => { log(`peer disconnected ${peer.id} (${n.size} peer
 
 n.on('connected', peer => {
   log(`peer connected: ${peer.id} (${n.size} peers now)`)
-  n.broadcast('reliable', `got new peer! ${peer.id}`)
+  n.broadcast(Network.CHANNEL_RELIABLE, `got new peer! ${peer.id}`)
   setInterval(() => {
-    n.send('unreliable', peer.id, 'bogus data')
+    n.send(Network.CHANNEL_UNRELIABLE, peer.id, 'bogus data')
   }, 16)
 })

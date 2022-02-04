@@ -1,4 +1,5 @@
 import { After, Given, Then, When } from '@cucumber/cucumber'
+import { Network } from '../../../lib'
 import { World } from '../world'
 
 After(async function (this: World) {
@@ -77,7 +78,7 @@ When('{string} boardcasts {string} over the reliable channel', function (this: W
   if (player == null) {
     return 'no such player'
   }
-  player.network.broadcast('reliable', message)
+  player.network.broadcast(Network.CHANNEL_RELIABLE, message)
 })
 
 When('{string} disconnects', async function (this: World, playerName: string) {

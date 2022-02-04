@@ -88,6 +88,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
     return this.peers.delete(peer.id)
   }
 
+  public static CHANNEL_RELIABLE = 'reliable'
+  public static CHANNEL_UNRELIABLE = 'unreliable'
+
   get id (): string {
     return this.signaling.receivedID ?? ''
   }

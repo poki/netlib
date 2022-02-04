@@ -48,9 +48,17 @@ n.on('connecting', peer => { log(`peer connecting ${peer.id}`) })
 n.on('disconnected', peer => { log(`peer disconnected ${peer.id} (${n.size} peers now)`) })
 
 n.on('connected', peer => {
+  (window as any).peer = peer
+
   log(`peer connected: ${peer.id} (${n.size} peers now)`)
   n.broadcast('reliable', `got new peer! ${peer.id}`)
+
+  const li = document.createElement('li')
+  li.innerHTML = `${peer.id} (ping: <span>0</span>)`
+  document.getElementById('peers')?.appendChild(li)
+
   setInterval(() => {
+    (li.querySelector('span') as any).innerHTML = `${peer.latency.average.toFixed(1)}ms ${peer.latency.jitter.toFixed(1)}ms`
     n.send('unreliable', peer.id, 'bogus data')
   }, 16)
 })

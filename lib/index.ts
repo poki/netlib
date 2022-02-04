@@ -26,8 +26,11 @@ export const DefaultDataChannels: {[label: string]: RTCDataChannelInit} = {
     ordered: true
   },
   unreliable: {
-    ordered: false,
+    ordered: true,
     maxRetransmits: 0
+  },
+  control: {
+    ordered: false
   }
 }
 

@@ -1,5 +1,6 @@
 import Network from './network'
 import Signaling from './signaling'
+import Latency from './latency'
 import { PeerConfiguration, SignalingPacketTypes } from './types'
 
 export default class Peer {
@@ -15,8 +16,7 @@ export default class Peer {
   private closing: boolean = false
   private reconnecting: boolean = false
 
-  // Connection stats:
-  public latency: number = 0
+  public latency: Latency = new Latency(this)
 
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
@@ -103,6 +103,10 @@ export default class Peer {
       chan.addEventListener('close', () => this.checkState())
       chan.addEventListener('open', () => {
         if (!this.opened && !Object.values(this.channels).some(c => c.readyState !== 'open')) {
+          if ('control' in this.channels) {
+            this.latency = new Latency(this, this.channels.control)
+          }
+
           this.signaling.send({
             type: 'connected',
             id: this.id
@@ -112,7 +116,9 @@ export default class Peer {
         }
       })
       chan.addEventListener('message', e => {
-        this.network.emit('message', this, label, e.data)
+        if (label !== 'control') {
+          this.network.emit('message', this, label, e.data)
+        }
       })
       this.channels[label] = chan
     }
@@ -169,14 +175,6 @@ export default class Peer {
       this.conn.restartIce()
     }
     // TODO: Actually close at some point. 😅
-
-    this.conn.getStats().then(stats => {
-      stats.forEach((report) => {
-        if (report.type === 'transport') {
-          this.latency = report.currentRoundTripTime ?? 0
-        }
-      })
-    }).catch(_ => {})
   }
 
   private onError (e: RTCErrorEvent): void {

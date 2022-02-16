@@ -79,7 +79,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   _addPeer (id: string, polite: boolean): Peer {
-    const peer = new Peer(this, this.signaling, id, polite, this.rtcConfig)
+    const peer = new Peer(this, this.signaling, id, this.rtcConfig, polite)
     this.peers.set(id, peer)
     return peer
   }

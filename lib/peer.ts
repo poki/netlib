@@ -3,6 +3,8 @@ import Signaling from './signaling'
 import Latency from './latency'
 import { PeerConfiguration, SignalingPacketTypes } from './types'
 
+const LatencyRestartIceThreshold = 1000 // ms
+
 export default class Peer {
   public readonly conn: RTCPeerConnection
 
@@ -15,15 +17,18 @@ export default class Peer {
   private opened: boolean = false
   private closing: boolean = false
   private reconnecting: boolean = false
+  private allowNextManualRestartIceAt: number = 0
 
   public latency: Latency = new Latency(this)
+  private lastMessageReceivedAt: number = 0
 
+  private politenessTimeout?: ReturnType<typeof setTimeout>
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
 
   private readonly testSessionWrapper?: (desc: RTCSessionDescription, config: PeerConfiguration, selfID: string, otherID: string) => Promise<void>
 
-  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, private readonly polite: boolean, private readonly config: PeerConfiguration) {
+  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, public readonly config: PeerConfiguration, private readonly polite: boolean) {
     this.channels = {}
     this.network.log('creating peer')
 
@@ -46,7 +51,7 @@ export default class Peer {
       this.testSessionWrapper = wrapSessionDescription
     }
     this.conn.addEventListener('negotiationneeded', () => {
-      setTimeout(() => {
+      this.politenessTimeout = setTimeout(() => {
         (async () => {
           try {
             if (this.closing) {
@@ -107,6 +112,10 @@ export default class Peer {
             this.latency = new Latency(this, this.channels.control)
           }
 
+          if (this.politenessTimeout !== undefined) {
+            clearTimeout(this.politenessTimeout)
+          }
+
           this.signaling.send({
             type: 'connected',
             id: this.id
@@ -116,6 +125,7 @@ export default class Peer {
         }
       })
       chan.addEventListener('message', e => {
+        this.lastMessageReceivedAt = performance.now()
         if (label !== 'control') {
           this.network.emit('message', this, label, e.data)
         }
@@ -166,13 +176,22 @@ export default class Peer {
     // console.log('state', this.id, this.conn.connectionState, this.conn.iceConnectionState, Object.values(this.channels).map(c => c.readyState))
     if (!this.reconnecting && (connectionState === 'disconnected' || connectionState === 'failed')) {
       this.reconnecting = true
+      this.conn.restartIce()
       this.network.emit('reconnecting', this)
     } else if (this.reconnecting && connectionState === 'connected') {
       this.reconnecting = false
       this.network.emit('reconnected', this)
     }
-    if (connectionState === 'failed' || connectionState === 'closed') {
-      this.conn.restartIce()
+    if (!this.reconnecting && 'control' in this.channels) {
+      const lastPing = this.lastMessageReceivedAt
+      if (lastPing !== 0) {
+        const now = performance.now()
+        const delta = now - lastPing
+        if (delta > LatencyRestartIceThreshold && now > this.allowNextManualRestartIceAt) {
+          this.allowNextManualRestartIceAt = now + 10000
+          this.conn.restartIce()
+        }
+      }
     }
     // TODO: Actually close at some point. 😅
   }

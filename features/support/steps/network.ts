@@ -133,3 +133,13 @@ Then('{string} has recieved the peer ID {string}', async function (this: World, 
     throw new Error(`expected peer ID ${exepctedID} but got ${player.network.id}`)
   }
 })
+
+When('{string} has not seen the {string} event', function (this: World, playerName: string, eventName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  if (player.hasSeenEvent(eventName)) {
+    throw new Error(`${playerName} has recieved a ${eventName} event`)
+  }
+})

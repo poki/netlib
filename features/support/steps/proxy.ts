@@ -5,6 +5,14 @@ Given('webrtc is intercepted by the testproxy', function (this: World) {
   this.useTestProxy = true
 })
 
+When('webrtc is no longer intercepted by the testproxy', function (this: World) {
+  this.players.forEach(player => {
+    player.network.peers.forEach(peer => {
+      peer.config.testproxyURL = undefined
+    })
+  })
+})
+
 When('the connection between {string} and {string} is interrupted until the first {string} state', async function (this: World, player0Name: string, player1Name: string, state: string) {
   const player0 = this.players.get(player0Name)
   if (player0 == null) {
@@ -30,4 +38,21 @@ When('the connection between {string} and {string} is interrupted until the firs
       }
     })
   }
+})
+
+When('the connection between {string} and {string} is interrupted', async function (this: World, player0Name: string, player1Name: string) {
+  const player0 = this.players.get(player0Name)
+  if (player0 == null) {
+    throw new Error('no such player: ' + player0Name)
+  }
+  const player1 = this.players.get(player1Name)
+  if (player1 == null) {
+    throw new Error('no such player: ' + player1Name)
+  }
+  if (this.testproxyURL === undefined) {
+    throw new Error('testproxy not active')
+  }
+
+  await fetch(`${this.testproxyURL}/interrupt?id=${player0.network.id + player1.network.id}`)
+  await fetch(`${this.testproxyURL}/interrupt?id=${player1.network.id + player0.network.id}`)
 })

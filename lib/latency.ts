@@ -16,8 +16,6 @@ export default class Latency {
   public max: number = 0
   public min: number = 0
 
-  public lastMessageRecievedAt?: Date
-
   constructor (private readonly peer: Peer, private readonly control?: RTCDataChannel) {
     if (control !== undefined) {
       this.ping()
@@ -28,13 +26,16 @@ export default class Latency {
 
   private ping (): void {
     this.lastPingSentAt = performance.now()
-    this.control?.send(PING)
+    if (this.control?.readyState === 'open') {
+      this.control?.send(PING)
+    }
   }
 
   private onMessage (data: string): void {
-    this.lastMessageRecievedAt = new Date()
     if (data === PING) {
-      this.control?.send(PONG)
+      if (this.control?.readyState === 'open') {
+        this.control?.send(PONG)
+      }
       return
     }
     if (data !== PONG) {

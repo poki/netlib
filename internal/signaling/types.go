@@ -48,6 +48,15 @@ type ForwardablePacket struct {
 	Recipient string `json:"recipient"`
 }
 
+type CredentialsPacket struct {
+	Type string `json:"type"`
+
+	URL        string `json:"url"`
+	Username   string `json:"username"`
+	Credential string `json:"credential"`
+	Lifetime   int    `json:"lifetime"`
+}
+
 type MissingRecipientError struct {
 	Recipient string
 	Cause     error

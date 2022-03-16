@@ -4,6 +4,7 @@ import { DefaultDataChannels, DefaultRTCConfiguration, DefaultSignalingURL } fro
 import { PeerConfiguration } from './types'
 import Signaling from './signaling'
 import Peer from './peer'
+import Credentials from './credentials'
 
 interface NetworkListeners {
   ready: () => void | Promise<void>
@@ -15,6 +16,7 @@ interface NetworkListeners {
   disconnected: (peer: Peer) => void | Promise<void>
   message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
+  // @ts-expect-error
   rtcerror: (e: RTCErrorEvent) => void | Promise<void>
   signalingerror: (e: any) => void | Promise<void>
 }
@@ -23,6 +25,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   private _closing: boolean = false
   public readonly peers: Map<string, Peer>
   private readonly signaling: Signaling
+  private readonly credentials: Credentials
   public dataChannels: {[label: string]: RTCDataChannelInit} = DefaultDataChannels
 
   public log: (...data: any[]) => void = (...args: any[]) => {} // console.log
@@ -31,6 +34,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
     super()
     this.peers = new Map<string, Peer>()
     this.signaling = new Signaling(this, this.peers, signalingURL)
+    this.credentials = new Credentials(this.signaling)
   }
 
   create (): void {
@@ -78,14 +82,21 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
   }
 
-  _addPeer (id: string, polite: boolean): Peer {
-    const peer = new Peer(this, this.signaling, id, this.rtcConfig, polite)
+  async _addPeer (id: string, polite: boolean): Promise<void> {
+    const config = await this.credentials.fillCredentials(this.rtcConfig)
+
+    config.iceServers = config.iceServers?.filter(server => !(server.urls.includes('turn:') && server.username === undefined))
+
+    const peer = new Peer(this, this.signaling, id, config, polite)
     this.peers.set(id, peer)
-    return peer
   }
 
   _removePeer (peer: Peer): boolean {
     return this.peers.delete(peer.id)
+  }
+
+  _prefetchTURNCredentials (): void {
+    this.credentials.fillCredentials(this.rtcConfig).catch(() => {})
   }
 
   get id (): string {

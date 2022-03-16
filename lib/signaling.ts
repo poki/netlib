@@ -1,19 +1,30 @@
+import { EventEmitter } from 'eventemitter3'
 import Network from './network'
 import Peer from './peer'
 import { SignalingPacketTypes } from './types'
 
-export default class Signaling {
+interface SignalingListeners {
+  credentials: (data: SignalingPacketTypes) => void | Promise<void>
+}
+
+export default class Signaling extends EventEmitter<SignalingListeners> {
   private readonly ws: WebSocket
   receivedID?: string
 
   private readonly connections: Map<string, Peer>
 
+  private readonly replayQueue: Map<string, SignalingPacketTypes[]>
+
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
+    super()
+
     this.connections = peers
+    this.replayQueue = new Map()
 
     this.ws = new WebSocket(url)
     this.ws.addEventListener('open', () => {
       this.network.emit('ready')
+      this.network._prefetchTURNCredentials()
     })
     this.ws.addEventListener('error', e => {
       this.network.emit('signalingerror', e)
@@ -68,7 +79,11 @@ export default class Signaling {
           if (this.receivedID === packet.id) {
             return // Skip self
           }
-          this.network._addPeer(packet.id, packet.polite)
+          await this.network._addPeer(packet.id, packet.polite)
+          for (const p of this.replayQueue.get(packet.id) ?? []) {
+            await this.connections.get(packet.id)?._onSignalingMessage(p)
+          }
+          this.replayQueue.delete(packet.id)
           break
         case 'disconnected':
           if (this.connections.has(packet.id)) {
@@ -81,10 +96,13 @@ export default class Signaling {
           if (this.connections.has(packet.source)) {
             await this.connections.get(packet.source)?._onSignalingMessage(packet)
           } else {
-            if (!this.network.closing) {
-              console.error(this.network.id, 'recieved packet for unknown connection (id):', packet.source)
-            }
+            const queue = this.replayQueue.get(packet.source) ?? []
+            queue.push(packet)
+            this.replayQueue.set(packet.source, queue)
           }
+          break
+        case 'credentials':
+          this.emit('credentials', packet)
           break
       }
     } catch (e) {

@@ -28,6 +28,7 @@ func Handler(store Store) http.HandlerFunc {
 	acceptOptions := &websocket.AcceptOptions{
 		InsecureSkipVerify: os.Getenv("ENV") != "production",
 	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		logger := logging.GetLogger(ctx)
@@ -59,6 +60,17 @@ func Handler(store Store) http.HandlerFunc {
 			typeOnly := struct{ Type string }{}
 			if err := json.Unmarshal(raw, &typeOnly); err != nil {
 				util.ErrorAndDisconnect(ctx, conn, err)
+			}
+
+			if typeOnly.Type == "credentials" {
+				credentials, err := GetCredentials(ctx)
+				if err != nil {
+					util.ReplyError(ctx, conn, err)
+					continue
+				}
+				if err := peer.Send(ctx, credentials); err != nil {
+					util.ErrorAndDisconnect(ctx, conn, err)
+				}
 			}
 
 			if err := peer.HandlePacket(ctx, typeOnly.Type, raw); err != nil {

@@ -1,3 +1,4 @@
+import { PokiTurnMatch } from './credentials'
 import { PeerConfiguration } from './types'
 
 export const DefaultSignalingURL = 'ws://localhost:8080/v0/signaling'
@@ -11,12 +12,7 @@ export const DefaultRTCConfiguration: PeerConfiguration = {
       ]
     },
     {
-      urls: [
-        'turn:localhost:8080'
-      ],
-      username: 'optional-username',
-      credential: 'secret',
-      credentialType: 'password'
+      urls: PokiTurnMatch
     }
   ]
 }

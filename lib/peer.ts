@@ -196,6 +196,7 @@ export default class Peer {
     // TODO: Actually close at some point. 😅
   }
 
+  // @ts-expect-error
   private onError (e: RTCErrorEvent): void {
     this.network.emit('rtcerror', e)
     if (this.network.listenerCount('rtcerror') === 0) {

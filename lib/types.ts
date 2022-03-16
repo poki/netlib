@@ -65,4 +65,13 @@ export interface DescriptionPacket extends Signaling {
   description: RTCSessionDescription
 }
 
-export type SignalingPacketTypes = CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket
+export interface CredentialsPacket extends Signaling {
+  type: 'credentials'
+
+  url?: string
+  username?: string
+  credential?: string
+  lifetime?: number
+}
+
+export type SignalingPacketTypes = CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket | CredentialsPacket

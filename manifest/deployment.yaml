@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signaling
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      deployment: signaling
+  template:
+    metadata:
+      labels:
+        deployment: signaling
+    spec:
+      containers:
+      - name: signaling
+        image: "eu.gcr.io/poki-core/netlib:$COMMIT_SHA"
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENV
+          value: production
+        - name: VERSION
+          value: "$COMMIT_SHA"

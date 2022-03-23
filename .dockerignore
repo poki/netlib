@@ -1,0 +1,7 @@
+.parcel-cache
+dist
+example
+features
+lib
+node_modules
+types

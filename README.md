@@ -6,11 +6,11 @@ The Poki networking library
 
 - [x] Try tcp/udp-proxy to test disconnects / packet drops
 - [x] Add robust reconnecting
-- [ ] Handle websocket reconnect
-- [ ] Handling/events of lost players
 - [x] Add latency measurement
 - [x] Built in cloudflare turnserver
 - [ ] Host the backend
+- [ ] Handle websocket reconnect
+- [ ] Handling/events of lost players
 - [ ] Collect Metrics
 - [ ] Joining a random lobby (krunker method)
       - or create one

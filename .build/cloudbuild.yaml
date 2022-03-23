@@ -1,0 +1,25 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'eu.gcr.io/$PROJECT_ID/netlib-deployer',
+    '-f', '.build/Dockerfile.deployer',
+    '.'
+  ]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'eu.gcr.io/$PROJECT_ID/netlib-deployer']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'eu.gcr.io/$PROJECT_ID/netlib:$COMMIT_SHA', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'eu.gcr.io/$PROJECT_ID/netlib:$COMMIT_SHA']
+
+- name: 'eu.gcr.io/$PROJECT_ID/netlib-deployer'
+  args: ['.build/deploy.sh']
+  env:
+  - BUILD_ID=${BUILD_ID}
+  - PROJECT_ID=${PROJECT_ID}
+  - BRANCH_NAME=${BRANCH_NAME}
+  - COMMIT_SHA=${COMMIT_SHA}
+  - CLOUDSDK_COMPUTE_ZONE=europe-west4-a
+  - CLUSTER=production-eu-west-4

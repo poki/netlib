@@ -1,0 +1,37 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: netlib-signaling
+spec:
+  selector:
+    deployment: signaling
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: netlib.poki.io
+spec:
+  domains:
+  - netlib.poki.io
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: netlib
+  annotations:
+    # gcloud compute addresses create netlib --global
+    kubernetes.io/ingress.global-static-ip-name: netlib
+    networking.gke.io/managed-certificates: netlib.poki.io
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+  - host: netlib.poki.io
+    http:
+      paths:
+      - backend:
+          serviceName: netlib-signaling
+          servicePort: 8080

@@ -1,7 +1,7 @@
 import { PokiTurnMatch } from './credentials'
 import { PeerConfiguration } from './types'
 
-export const DefaultSignalingURL = 'ws://localhost:8080/v0/signaling'
+export const DefaultSignalingURL = process.env.NODE_ENV === 'production' ? 'wss://netlib.poki.io/v0/signaling' : 'ws://localhost:8080/v0/signaling'
 
 export const DefaultRTCConfiguration: PeerConfiguration = {
   iceServers: [

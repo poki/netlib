@@ -22,11 +22,9 @@ export default class Credentials {
 
     const hasPokiTurn = cloned.iceServers?.some(s => s.urls === PokiTurnMatch || s.urls.includes(PokiTurnMatch)) ?? false
     if (!hasPokiTurn || cloned.iceServers === undefined) {
-      console.log('no match')
       return cloned
     }
     if (this.runningPromise === undefined) {
-      console.log('starting promise')
       this.runningPromise = new Promise<CredentialsPacket>((resolve) => {
         if (this.cachedCredentials != null && this.cachedCredentialsExpireAt > performance.now()) {
           resolve(this.cachedCredentials)
@@ -49,7 +47,6 @@ export default class Credentials {
     }
     const credentials = await this.runningPromise
     this.runningPromise = undefined
-    console.log('got credentials', credentials)
 
     if (credentials.url === undefined) {
       return cloned

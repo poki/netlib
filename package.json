@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "license": "ISC",
   "private": true,
-  "browser": "dist/netlib.js",
   "scripts": {
     "build": "parcel build lib/index.ts",
     "lint": "ts-standard",

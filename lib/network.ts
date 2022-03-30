@@ -30,7 +30,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   public log: (...data: any[]) => void = (...args: any[]) => {} // console.log
 
-  constructor (public readonly gameID: string, private readonly signalingURL: string = DefaultSignalingURL, private readonly rtcConfig: PeerConfiguration = DefaultRTCConfiguration) {
+  constructor (public readonly gameID: string, private readonly rtcConfig: PeerConfiguration = DefaultRTCConfiguration, signalingURL: string = DefaultSignalingURL) {
     super()
     this.peers = new Map<string, Peer>()
     this.signaling = new Signaling(this, this.peers, signalingURL)

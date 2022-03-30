@@ -46,7 +46,7 @@ export class World extends CucumberWorld {
 
   public createPlayer (playerName: string, gameID: string): Player {
     const config = this.useTestProxy ? { testproxyURL: this.testproxyURL } : undefined
-    const network = new Network(gameID, this.signalingURL, config)
+    const network = new Network(gameID, config, this.signalingURL)
     const player = new Player(playerName, network)
     this.players.set(playerName, player)
     return player

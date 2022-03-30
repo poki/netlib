@@ -103,6 +103,7 @@ export default class Peer {
         id: i++,
         negotiated: true
       })
+      chan.binaryType = 'arraybuffer'
       chan.addEventListener('error', e => this.onError(e))
       chan.addEventListener('closing', () => this.checkState())
       chan.addEventListener('close', () => this.checkState())

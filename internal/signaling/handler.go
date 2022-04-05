@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -26,7 +25,8 @@ type Store interface {
 
 func Handler(store Store) http.HandlerFunc {
 	acceptOptions := &websocket.AcceptOptions{
-		InsecureSkipVerify: os.Getenv("ENV") != "production",
+		// Allow any origin/game to connect.
+		InsecureSkipVerify: true,
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

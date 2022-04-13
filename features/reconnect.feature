@@ -12,16 +12,16 @@ Feature: Players can create and connect a network of players
     And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby
-    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
 
-    When "yellow" connects to the lobby "19yrzmetd2bn7"
-    And "blue" receives the network event "connected" with the argument "[Peer: prb67ouj837u]"
+    When "yellow" connects to the lobby "prb67ouj837u"
+    And "blue" receives the network event "connected" with the argument "[Peer: 3t3cfgcqup9e]"
 
     When the connection between "yellow" and "blue" is interrupted
     And webrtc is no longer intercepted by the testproxy
 
     And "blue" boardcasts "Hello, world!" over the reliable channel
-    And "yellow" receives the network event "message" with the arguments "[Peer: 3t3cfgcqup9e]", "reliable" and "Hello, world!"
+    And "yellow" receives the network event "message" with the arguments "[Peer: h5yzwyizlwao]", "reliable" and "Hello, world!"
     And "yellow" has not seen the "reconnecting" event
 
 
@@ -32,14 +32,14 @@ Feature: Players can create and connect a network of players
     And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby
-    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
 
-    When "yellow" connects to the lobby "19yrzmetd2bn7"
-    And "blue" receives the network event "connected" with the argument "[Peer: prb67ouj837u]"
+    When "yellow" connects to the lobby "prb67ouj837u"
+    And "blue" receives the network event "connected" with the argument "[Peer: 3t3cfgcqup9e]"
 
     When the connection between "yellow" and "blue" is interrupted until the first "disconnected" state
 
     And "blue" boardcasts "Goodbye, world!" over the reliable channel
-    Then "yellow" receives the network event "reconnecting" with the argument "[Peer: 3t3cfgcqup9e]"
-    And "yellow" receives the network event "reconnected" with the argument "[Peer: 3t3cfgcqup9e]"
-    And "yellow" receives the network event "message" with the arguments "[Peer: 3t3cfgcqup9e]", "reliable" and "Goodbye, world!"
+    Then "yellow" receives the network event "reconnecting" with the argument "[Peer: h5yzwyizlwao]"
+    And "yellow" receives the network event "reconnected" with the argument "[Peer: h5yzwyizlwao]"
+    And "yellow" receives the network event "message" with the arguments "[Peer: h5yzwyizlwao]", "reliable" and "Goodbye, world!"

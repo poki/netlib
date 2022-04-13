@@ -117,7 +117,6 @@ func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(cont
 			case payload := <-channel:
 				callback(ctx, payload)
 			case <-ctx.Done():
-				break
 			}
 		}
 	}()

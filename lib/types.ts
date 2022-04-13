@@ -10,16 +10,25 @@ interface Base {
 interface Signaling extends Base {
 }
 
+export interface HelloPacket extends Signaling {
+  type: 'hello'
+  game: string
+  id?: string
+  lobby?: string
+}
+
+export interface WelcomePacket extends Signaling {
+  type: 'welcome'
+  id: string
+}
+
 export interface CreatePacket extends Signaling {
   type: 'create'
-  game: string
 }
 
 export interface JoinPacket extends Signaling {
   type: 'join'
-  game: string
   lobby: string
-  id?: string
 }
 
 export interface JoinedPacket extends Signaling {
@@ -38,6 +47,11 @@ export interface ConnectPacket extends Signaling {
   type: 'connect'
   id: string
   polite: boolean
+}
+
+export interface DisconnectPacket extends Signaling {
+  type: 'disconnect'
+  id: string
 }
 
 export interface ConnectedPacket extends Signaling {
@@ -74,4 +88,4 @@ export interface CredentialsPacket extends Signaling {
   lifetime?: number
 }
 
-export type SignalingPacketTypes = CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectedPacket | CredentialsPacket
+export type SignalingPacketTypes = HelloPacket | WelcomePacket | CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectPacket | DisconnectedPacket | CredentialsPacket

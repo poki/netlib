@@ -23,7 +23,10 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 
     this.ws = new WebSocket(url)
     this.ws.addEventListener('open', () => {
-      this.network.emit('ready')
+      this.send({
+        type: 'hello',
+        game: this.network.gameID
+      })
       this.network._prefetchTURNCredentials()
     })
     this.ws.addEventListener('error', e => {
@@ -40,18 +43,12 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     })
   }
 
-  close (reason?: string): void {
-    if (this.receivedID != null) {
-      this.send({
-        type: 'leave',
-        id: this.receivedID,
-        reason: reason ?? 'normal closure'
-      })
-    }
+  close (): void {
     this.ws.close()
   }
 
   send (packet: SignalingPacketTypes): void {
+    // Check if you send packet (eg. do you have peer id)
     if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
       this.network.log('sending signaling packet:', packet.type)
       const data = JSON.stringify(packet)
@@ -64,14 +61,18 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       const packet = JSON.parse(data) as SignalingPacketTypes
       this.network.log('signaling packet received:', packet.type)
       switch (packet.type) {
-        case 'joined':
+        case 'welcome':
           if (packet.id === '') {
-            throw new Error('missing id on received connect packet')
+            throw new Error('missing id on received welcome packet')
           }
+          this.receivedID = packet.id
+          this.network.emit('ready')
+          break
+
+        case 'joined':
           if (packet.lobby === '') {
             throw new Error('missing lobby on received connect packet')
           }
-          this.receivedID = packet.id
           this.network.emit('lobby', packet.lobby)
           break
 
@@ -85,7 +86,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           }
           this.replayQueue.delete(packet.id)
           break
-        case 'disconnected':
+        case 'disconnect':
           if (this.connections.has(packet.id)) {
             this.connections.get(packet.id)?.close()
           }

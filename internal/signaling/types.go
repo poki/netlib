@@ -1,15 +1,25 @@
 package signaling
 
-type CreatePacket struct {
+type HelloPacket struct {
 	Type string `json:"type"`
 
 	Game string `json:"game"`
+	ID   string `json:"id"`
+}
+
+type WelcomePacket struct {
+	Type string `json:"type"`
+
+	ID string `json:"id"`
+}
+
+type CreatePacket struct {
+	Type string `json:"type"`
 }
 
 type JoinPacket struct {
 	Type string `json:"type"`
 
-	Game  string `json:"game"`
 	Lobby string `json:"lobby"`
 }
 
@@ -17,7 +27,6 @@ type JoinedPacket struct {
 	Type string `json:"type"`
 
 	Lobby string `json:"lobby"`
-	ID    string `json:"id"`
 }
 
 type ConnectPacket struct {

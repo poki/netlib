@@ -26,6 +26,8 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
     throw new Error(`player ${playerNames[0]} not found`)
   }
 
+  await first.waitForEvent('ready')
+
   first.network.create()
   const lobbyEvent = await first.waitForEvent('lobby')
   const lobbyCode = lobbyEvent.eventPayload[0] as string
@@ -36,6 +38,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
     if (player == null) {
       return new Error(`player ${playerName} not found`)
     }
+    await player.waitForEvent('ready')
     player.network.join(lobbyCode)
     await player.waitForEvent('lobby')
   }
@@ -43,11 +46,11 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
   for (let i = 0; i < playerNames.length; i++) {
     const playerName = playerNames[i]
     const player = this.players.get(playerName)
+    for (let j = 0; j < playerNames.length - 1; j++) {
+      await player?.waitForEvent('connected')
+    }
     if (player?.network.peers.size !== playerNames.length - 1) {
       return new Error('player not connected with enough others')
-    }
-    for (const [, peer] of player?.network.peers) {
-      await player?.waitForEvent('connected', peer)
     }
   }
 })
@@ -127,7 +130,7 @@ Then('{string} has recieved the peer ID {string}', async function (this: World, 
     throw new Error('no such player')
   }
   if (player.network.id === '') {
-    await player.waitForEvent('lobby')
+    await player.waitForEvent('ready')
   }
   if (player.network.id !== exepctedID) {
     throw new Error(`expected peer ID ${exepctedID} but got ${player.network.id}`)

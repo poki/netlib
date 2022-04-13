@@ -194,11 +194,10 @@ export default class Peer {
         }
       }
     }
-    // TODO: Actually close at some point. 😅
+    // TODO: Actually this.close() at some point. 😅
   }
 
-  // @ts-expect-error
-  private onError (e: RTCErrorEvent): void {
+  private onError (e: Event): void {
     this.network.emit('rtcerror', e)
     if (this.network.listenerCount('rtcerror') === 0) {
       console.error('rtcerror not handled:', e)

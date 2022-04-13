@@ -93,6 +93,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 
 	var err error
 	switch typ {
+	case "hello":
+		packet := HelloPacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleHelloPacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	case "create":
 		packet := CreatePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
@@ -144,18 +154,40 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 	return nil
 }
 
-func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) error {
+func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error {
 	logger := logging.GetLogger(ctx)
-	if p.Game != "" || p.Lobby != "" || p.ID != "" {
-		// TODO: Maybe return an error to the client.
-		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
+	if p.Game != "" {
+		return fmt.Errorf("already introduced %s for game %s", p.ID, p.Game)
 	}
 	if packet.Game == "" { // TODO: Validate uuid
 		return fmt.Errorf("no game id supplied")
 	}
 	p.Game = packet.Game
+
+	if packet.ID != "" { // TODO: Also send a secret and verify
+		p.ID = packet.ID
+		logger.Info("peer reconnected", zap.String("game", p.Game), zap.String("peer", p.ID))
+	} else {
+		p.ID = strconv.FormatInt(rand.Int63(), 36)
+		logger.Info("peer connected", zap.String("game", p.Game), zap.String("peer", p.ID))
+	}
+
+	return p.Send(ctx, WelcomePacket{
+		Type: "welcome",
+		ID:   p.ID,
+	})
+}
+
+func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) error {
+	logger := logging.GetLogger(ctx)
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	if p.Lobby != "" {
+		// TODO: Maybe return an error to the client.
+		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
+	}
 	p.Lobby = strconv.FormatInt(rand.Int63(), 36)
-	p.ID = strconv.FormatInt(rand.Int63(), 36)
 
 	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
@@ -174,27 +206,23 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	return p.Send(ctx, JoinedPacket{
 		Type:  "joined",
 		Lobby: p.Lobby,
-		ID:    p.ID,
 	})
 }
 
 func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	logger := logging.GetLogger(ctx)
-
-	if p.Game != "" || p.Lobby != "" || p.ID != "" {
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	if p.Lobby != "" {
 		// TODO: Maybe return an error to the client.
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
-	}
-	if packet.Game == "" { // TODO: Validate uuid
-		return fmt.Errorf("no game id supplied")
 	}
 	if packet.Lobby == "" {
 		return fmt.Errorf("no lobby code supplied")
 	}
 
-	p.Game = packet.Game
 	p.Lobby = packet.Lobby
-	p.ID = strconv.FormatInt(rand.Int63(), 36)
 
 	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
@@ -206,7 +234,6 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	err = p.Send(ctx, JoinedPacket{
 		Type:  "joined",
 		Lobby: p.Lobby,
-		ID:    p.ID,
 	})
 	if err != nil {
 		return err

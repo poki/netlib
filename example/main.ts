@@ -45,7 +45,10 @@ n.on('signalingerror', console.error.bind(console.error))
 n.on('rtcerror', console.error.bind(console.error))
 
 n.on('connecting', peer => { log(`peer connecting ${peer.id}`) })
-n.on('disconnected', peer => { log(`peer disconnected ${peer.id} (${n.size} peers now)`) })
+n.on('disconnected', peer => {
+  log(`peer disconnected ${peer.id} (${n.size} peers now)`)
+  document.getElementById(peer.id)?.remove()
+})
 
 n.on('connected', peer => {
   (window as any).peer = peer
@@ -54,6 +57,7 @@ n.on('connected', peer => {
   n.broadcast('reliable', `got new peer! ${peer.id}`)
 
   const li = document.createElement('li')
+  li.id = peer.id
   li.innerHTML = `${peer.id} (ping: <span>0</span>)`
   document.getElementById('peers')?.appendChild(li)
 

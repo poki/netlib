@@ -16,8 +16,7 @@ interface NetworkListeners {
   disconnected: (peer: Peer) => void | Promise<void>
   message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
-  // @ts-expect-error
-  rtcerror: (e: RTCErrorEvent) => void | Promise<void>
+  rtcerror: (e: Event) => void | Promise<void> // TODO: Figure out how to make this e type be RTCErrorEvent
   signalingerror: (e: any) => void | Promise<void>
 }
 
@@ -38,16 +37,16 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   create (): void {
+    // TODO: Don't allow this when not ready
     this.signaling.send({
-      type: 'create',
-      game: this.gameID
+      type: 'create'
     })
   }
 
   join (lobby: string): void {
+    // TODO: Don't allow this when not ready
     this.signaling.send({
       type: 'join',
-      game: this.gameID,
       lobby
     })
   }
@@ -58,10 +57,19 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
     this._closing = true
     this.emit('close', reason)
+
+    if (this.id !== '') {
+      this.signaling.send({
+        type: 'leave',
+        id: this.id,
+        reason: reason ?? 'normal closure'
+      })
+    }
+
     for (const peer of this.peers.values()) {
       peer.close(reason)
     }
-    this.signaling.close(reason)
+    this.signaling.close()
   }
 
   send (channel: string, peerID: string, data: string | Blob | ArrayBuffer | ArrayBufferView): void {

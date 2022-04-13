@@ -14,7 +14,7 @@ export class Player {
     allEvents.forEach(eventName => {
       const events = this.events
       this.network.on(eventName as any, function () {
-        // console.log(name, 'received event', eventName, `${arguments[0] as string}`, arguments[1], arguments[2])
+        // console.log(name, `(${network.id})`, 'received event', eventName, `${arguments[0] as string}`, arguments[1], arguments[2])
         events.push({
           eventName: eventName,
           eventPayload: arguments

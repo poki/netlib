@@ -2,6 +2,8 @@ kind: Service
 apiVersion: v1
 metadata:
   name: netlib-signaling
+  annotations:
+    cloud.google.com/backend-config: '{"default": "netlib-backendconfig"}'
 spec:
   selector:
     deployment: signaling
@@ -35,3 +37,10 @@ spec:
       - backend:
           serviceName: netlib-signaling
           servicePort: 8080
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: netlib-backendconfig
+spec:
+  timeoutSec: 86400

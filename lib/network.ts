@@ -29,11 +29,16 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   public log: (...data: any[]) => void = (...args: any[]) => {} // console.log
 
+  private readonly unloadListener: () => void
+
   constructor (public readonly gameID: string, private readonly rtcConfig: PeerConfiguration = DefaultRTCConfiguration, signalingURL: string = DefaultSignalingURL) {
     super()
     this.peers = new Map<string, Peer>()
     this.signaling = new Signaling(this, this.peers, signalingURL)
     this.credentials = new Credentials(this.signaling)
+
+    this.unloadListener = () => this.close()
+    window.addEventListener('unload', this.unloadListener)
   }
 
   create (): void {
@@ -70,6 +75,8 @@ export default class Network extends EventEmitter<NetworkListeners> {
       peer.close(reason)
     }
     this.signaling.close()
+
+    window.removeEventListener('unload', this.unloadListener)
   }
 
   send (channel: string, peerID: string, data: string | Blob | ArrayBuffer | ArrayBufferView): void {

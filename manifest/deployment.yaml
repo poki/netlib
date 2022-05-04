@@ -22,3 +22,10 @@ spec:
           value: production
         - name: VERSION
           value: "$COMMIT_SHA"
+        startupProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          periodSeconds: 1
+          failureThreshold: 10
+          initialDelaySeconds: 1

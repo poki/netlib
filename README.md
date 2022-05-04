@@ -8,10 +8,11 @@ The Poki networking library
 - [x] Add robust reconnecting
 - [x] Add latency measurement
 - [x] Built in cloudflare turnserver
-- [ ] Host the backend
+- [x] Host the backend
 - [ ] Handle websocket reconnect
 - [ ] Handling/events of lost players
 - [ ] Collect Metrics
+- [ ] Leave lobby and join a new one?
 - [ ] Joining a random lobby (krunker method)
       - or create one
       - settings (maybe by a tag, player amount)

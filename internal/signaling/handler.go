@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/koenbollen/logging"
+	"github.com/poki/netlib/internal/cloudflare"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 	"nhooyr.io/websocket"
@@ -23,7 +24,7 @@ type Store interface {
 	Publish(ctx context.Context, topic string, data []byte) error
 }
 
-func Handler(store Store) http.HandlerFunc {
+func Handler(store Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
 	acceptOptions := &websocket.AcceptOptions{
 		// Allow any origin/game to connect.
 		InsecureSkipVerify: true,
@@ -63,12 +64,16 @@ func Handler(store Store) http.HandlerFunc {
 			}
 
 			if typeOnly.Type == "credentials" {
-				credentials, err := GetCredentials(ctx)
+				credentials, err := cloudflare.GetCredentials(ctx)
 				if err != nil {
 					util.ReplyError(ctx, conn, err)
 					continue
 				}
-				if err := peer.Send(ctx, credentials); err != nil {
+				packet := CredentialsPacket{
+					Type:        "credentials",
+					Credentials: *credentials,
+				}
+				if err := peer.Send(ctx, packet); err != nil {
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
 			}

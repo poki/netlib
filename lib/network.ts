@@ -38,7 +38,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
     this.credentials = new Credentials(this.signaling)
 
     this.unloadListener = () => this.close()
-    window.addEventListener('unload', this.unloadListener)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unload', this.unloadListener)
+    }
   }
 
   create (): void {
@@ -76,7 +78,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
     this.signaling.close()
 
-    window.removeEventListener('unload', this.unloadListener)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('unload', this.unloadListener)
+    }
   }
 
   send (channel: string, peerID: string, data: string | Blob | ArrayBuffer | ArrayBufferView): void {

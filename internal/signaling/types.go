@@ -1,5 +1,7 @@
 package signaling
 
+import "github.com/poki/netlib/internal/cloudflare"
+
 type HelloPacket struct {
 	Type string `json:"type"`
 
@@ -58,12 +60,8 @@ type ForwardablePacket struct {
 }
 
 type CredentialsPacket struct {
+	cloudflare.Credentials
 	Type string `json:"type"`
-
-	URL        string `json:"url"`
-	Username   string `json:"username"`
-	Credential string `json:"credential"`
-	Lifetime   int    `json:"lifetime"`
 }
 
 type MissingRecipientError struct {

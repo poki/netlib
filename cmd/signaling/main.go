@@ -11,6 +11,8 @@ import (
 
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal"
+	"github.com/poki/netlib/internal/cloudflare"
+	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
@@ -32,7 +34,18 @@ func main() {
 		rand.Seed(time.Now().UnixNano())
 	}
 
-	mux := internal.Signaling()
+	store := stores.NewMemoryStore()
+
+	credentialsClient := cloudflare.NewCredentialsClient(
+		os.Getenv("CLOUDFLARE_ZONE"),
+		os.Getenv("CLOUDFLARE_APP_ID"),
+		os.Getenv("CLOUDFLARE_AUTH_USER"),
+		os.Getenv("CLOUDFLARE_AUTH_KEY"),
+		2*time.Hour,
+	)
+	go credentialsClient.Run(ctx)
+
+	mux := internal.Signaling(store, credentialsClient)
 
 	cors := cors.Default()
 	handler := logging.Middleware(cors.Handler(mux), logger)

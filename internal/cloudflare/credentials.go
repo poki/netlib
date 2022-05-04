@@ -49,6 +49,7 @@ func (c *CredentialsClient) Run(ctx context.Context) {
 	}
 
 	for ctx.Err() == nil {
+		logger.Info("refetching credentials")
 		creds, err := c.fetchCredentials(context.Background())
 		if err != nil {
 			logger.Error("failed to fetch credentials", zap.Error(err))

@@ -22,6 +22,26 @@ spec:
           value: production
         - name: VERSION
           value: "$COMMIT_SHA"
+        - name: CLOUDFLARE_ZONE
+          valueFrom:
+            secretKeyRef:
+              name: netlib
+              key: CLOUDFLARE_ZONE
+        - name: CLOUDFLARE_APP_ID
+          valueFrom:
+            secretKeyRef:
+              name: netlib
+              key: CLOUDFLARE_APP_ID
+        - name: CLOUDFLARE_AUTH_USER
+          valueFrom:
+            secretKeyRef:
+              name: netlib
+              key: CLOUDFLARE_AUTH_USER
+        - name: CLOUDFLARE_AUTH_KEY
+          valueFrom:
+            secretKeyRef:
+              name: netlib
+              key: CLOUDFLARE_AUTH_KEY
         startupProbe:
           httpGet:
             path: /ready

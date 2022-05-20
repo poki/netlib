@@ -45,7 +45,7 @@ func main() {
 	)
 	go credentialsClient.Run(ctx)
 
-	mux := internal.Signaling(store, credentialsClient)
+	mux := internal.Signaling(ctx, store, credentialsClient)
 
 	cors := cors.Default()
 	handler := logging.Middleware(cors.Handler(mux), logger)

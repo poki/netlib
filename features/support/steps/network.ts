@@ -146,3 +146,11 @@ When('{string} has not seen the {string} event', function (this: World, playerNa
     throw new Error(`${playerName} has recieved a ${eventName} event`)
   }
 })
+
+When('{string} disconnected from the signaling server', function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  ;(player.network as any).signaling.ws.close()
+})

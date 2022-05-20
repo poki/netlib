@@ -14,6 +14,7 @@ interface NetworkListeners {
   reconnecting: (peer: Peer) => void | Promise<void>
   reconnected: (peer: Peer) => void | Promise<void>
   disconnected: (peer: Peer) => void | Promise<void>
+  signalingreconnected: () => void | Promise<void>
   message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
   rtcerror: (e: Event) => void | Promise<void> // TODO: Figure out how to make this e type be RTCErrorEvent

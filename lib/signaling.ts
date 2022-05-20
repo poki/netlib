@@ -8,7 +8,10 @@ interface SignalingListeners {
 }
 
 export default class Signaling extends EventEmitter<SignalingListeners> {
-  private readonly ws: WebSocket
+  private readonly url: string
+  private ws: WebSocket
+  private reconnectAttempt: number = 0
+  private reconnecting: boolean = false
   receivedID?: string
 
   private readonly connections: Map<string, Peer>
@@ -18,29 +21,68 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
     super()
 
+    this.url = url
     this.connections = peers
     this.replayQueue = new Map()
 
-    this.ws = new WebSocket(url)
-    this.ws.addEventListener('open', () => {
+    this.ws = this.connect()
+  }
+
+  private connect (): WebSocket {
+    const ws = new WebSocket(this.url)
+    const onOpen = (): void => {
+      this.reconnectAttempt = 0
+      this.reconnecting = false
       this.send({
         type: 'hello',
-        game: this.network.gameID
+        game: this.network.gameID,
+        id: this.receivedID
       })
-      this.network._prefetchTURNCredentials()
-    })
-    this.ws.addEventListener('error', e => {
+    }
+    const onError = (e: Event): void => {
       this.network.emit('signalingerror', e)
       if (this.network.listenerCount('signalingerror') === 0) {
         console.error('signallingerror not handled:', e)
       }
-    })
-    this.ws.addEventListener('close', () => {
-      this.network.close('signaling websocket closed')
-    })
-    this.ws.addEventListener('message', ev => {
+      if (ws.readyState === WebSocket.CLOSED) {
+        this.reconnecting = false
+        this.reconnect()
+      }
+    }
+    const onMessage = (ev: MessageEvent): void => {
       this.handleSignalingMessage(ev.data).catch(_ => {})
-    })
+    }
+    const onClose = (): void => {
+      if (!this.network.closing) {
+        this.network.emit('signalingerror', new Error('signaling socket closed'))
+      }
+      ws.removeEventListener('open', onOpen)
+      ws.removeEventListener('error', onError)
+      ws.removeEventListener('message', onMessage)
+      ws.removeEventListener('close', onClose)
+      this.reconnect()
+    }
+    ws.addEventListener('open', onOpen)
+    ws.addEventListener('error', onError)
+    ws.addEventListener('message', onMessage)
+    ws.addEventListener('close', onClose)
+    return ws
+  }
+
+  private reconnect (): void {
+    if (this.reconnecting || this.network.closing) {
+      return
+    }
+    if (this.reconnectAttempt > 42) {
+      // TODO: Make custom event to tell the game we stopped retrying
+      this.network.emit('signalingerror', new Error('giving up on reconnecting to signaling server'))
+      return
+    }
+    this.reconnecting = true
+    setTimeout(() => {
+      this.ws = this.connect()
+    }, Math.random() * 100 * this.reconnectAttempt)
+    this.reconnectAttempt += 1
   }
 
   close (): void {
@@ -62,11 +104,17 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       this.network.log('signaling packet received:', packet.type)
       switch (packet.type) {
         case 'welcome':
+          if (this.receivedID !== undefined) {
+            this.network.log('signaling reconnected')
+            this.network.emit('signalingreconnected')
+            return
+          }
           if (packet.id === '') {
             throw new Error('missing id on received welcome packet')
           }
           this.receivedID = packet.id
           this.network.emit('ready')
+          this.network._prefetchTURNCredentials()
           break
 
         case 'joined':

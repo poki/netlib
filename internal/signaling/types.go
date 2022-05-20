@@ -5,8 +5,9 @@ import "github.com/poki/netlib/internal/cloudflare"
 type HelloPacket struct {
 	Type string `json:"type"`
 
-	Game string `json:"game"`
-	ID   string `json:"id"`
+	Game  string `json:"game"`
+	ID    string `json:"id"`
+	Lobby string `json:"lobby"`
 }
 
 type WelcomePacket struct {
@@ -38,7 +39,7 @@ type ConnectPacket struct {
 	Polite bool   `json:"polite"`
 }
 
-type DisconnectedPacket struct {
+type DisconnectPacket struct {
 	Type string `json:"type"`
 
 	ID     string `json:"id"`

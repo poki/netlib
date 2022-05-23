@@ -43,3 +43,13 @@ Feature: Players can create and connect a network of players
     Then "yellow" receives the network event "reconnecting" with the argument "[Peer: h5yzwyizlwao]"
     And "yellow" receives the network event "reconnected" with the argument "[Peer: h5yzwyizlwao]"
     And "yellow" receives the network event "message" with the arguments "[Peer: h5yzwyizlwao]", "reliable" and "Goodbye, world!"
+
+
+  Scenario: A player reconnects when a websocket has been disconnected
+    When "green" creates a network for game "de352868-ee35-474c-b703-510a37f911b2"
+    Then "green" receives the network event "ready"
+    And "green" has recieved the peer ID "h5yzwyizlwao"
+
+    When "green" disconnected from the signaling server
+    Then "green" receives the network event "signalingerror" with the argument "Error: signaling socket closed"
+    And "green" receives the network event "signalingreconnected"

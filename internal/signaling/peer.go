@@ -20,6 +20,8 @@ type Peer struct {
 	store Store
 	conn  *websocket.Conn
 
+	retrievedIDCalback func(context.Context, *Peer) bool
+
 	ID    string
 	Game  string
 	Lobby string
@@ -27,8 +29,8 @@ type Peer struct {
 
 func (p *Peer) Close() {
 	if p.ID != "" && p.Game != "" && p.Lobby != "" {
-		packet := DisconnectedPacket{
-			Type: "disconnected",
+		packet := DisconnectPacket{
+			Type: "disconnect",
 			ID:   p.ID,
 		}
 		data, err := json.Marshal(packet)
@@ -170,6 +172,25 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	} else {
 		p.ID = strconv.FormatInt(rand.Int63(), 36)
 		logger.Info("peer connected", zap.String("game", p.Game), zap.String("peer", p.ID))
+	}
+	hasReconnected := p.retrievedIDCalback(ctx, p)
+
+	if packet.Lobby != "" {
+		// TODO: Test if the p.ID is actually in the p.Lobby in the p.store.
+		if hasReconnected {
+			logger.Debug("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
+			p.Lobby = packet.Lobby
+			go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+		} else {
+			fakeJoinPacket := JoinPacket{
+				Type:  "join",
+				Lobby: p.Lobby,
+			}
+			err := p.HandleJoinPacket(ctx, fakeJoinPacket)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return p.Send(ctx, WelcomePacket{

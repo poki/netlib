@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"net/http"
 	"sync/atomic"
 
@@ -10,10 +11,10 @@ import (
 	"github.com/poki/netlib/internal/util"
 )
 
-func Signaling(store *stores.Memory, credentialsClient *cloudflare.CredentialsClient) http.Handler {
+func Signaling(ctx context.Context, store *stores.Memory, credentialsClient *cloudflare.CredentialsClient) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.Handle("/v0/signaling", signaling.Handler(store, credentialsClient))
+	mux.Handle("/v0/signaling", signaling.Handler(ctx, store, credentialsClient))
 
 	hasCredentials := uint32(0)
 	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {

@@ -24,11 +24,14 @@ type Store interface {
 	Publish(ctx context.Context, topic string, data []byte) error
 }
 
-func Handler(store Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
+func Handler(ctx context.Context, store Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
 	acceptOptions := &websocket.AcceptOptions{
 		// Allow any origin/game to connect.
 		InsecureSkipVerify: true,
 	}
+
+	manager := &TimeoutManager{}
+	go manager.Run(ctx)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -46,10 +49,12 @@ func Handler(store Store, cloudflare *cloudflare.CredentialsClient) http.Handler
 		peer := &Peer{
 			store: store,
 			conn:  conn,
+
+			retrievedIDCalback: manager.Reconnected,
 		}
-		defer peer.Close()
 		defer func() {
-			logger.Debug("peer closed", zap.String("id", peer.ID))
+			logger.Debug("peer websocket closed", zap.String("id", peer.ID))
+			manager.Disconnected(ctx, peer)
 		}()
 
 		for ctx.Err() == nil {

@@ -31,9 +31,9 @@ fi
 gcloud container clusters get-credentials --project="$PROJECT_ID" --zone="$CLOUDSDK_COMPUTE_ZONE" "$CLUSTER"
 
 echo "Applying secrets..."
-sops --decrypt "manifest/secrets.yaml" | kubectl apply -n "$NAMESPACE" --validate -f -
+sops --decrypt "manifest/secrets.yaml" | kubectl apply -n "$NAMESPACE" --validate strict -f -
 
 echo "Deploying..."
-kubectl kustomize "manifest" | envsubst | kubectl apply -n "$NAMESPACE" --validate -f -
+kubectl kustomize "manifest" | envsubst | kubectl apply -n "$NAMESPACE" --validate strict -f -
 
 echo "Done"

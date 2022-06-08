@@ -42,6 +42,11 @@ spec:
             secretKeyRef:
               name: netlib
               key: CLOUDFLARE_AUTH_KEY
+        - name: METRICS_URL
+          valueFrom:
+            secretKeyRef:
+              name: netlib
+              key: METRICS_URL
         startupProbe:
           httpGet:
             path: /ready

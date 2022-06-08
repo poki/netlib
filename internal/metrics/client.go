@@ -95,6 +95,11 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 		logger.Error("failed to marshal event", zap.Error(err))
 		return
 	}
+
+	// Use a new context, we want to record events of users that are already disconnected.
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(payload))
 	if err != nil {
 		logger.Error("failed to create metrics request", zap.Error(err))

@@ -1,6 +1,9 @@
 package signaling
 
-import "github.com/poki/netlib/internal/cloudflare"
+import (
+	"github.com/poki/netlib/internal/cloudflare"
+	"github.com/poki/netlib/internal/metrics"
+)
 
 type HelloPacket struct {
 	Type string `json:"type"`
@@ -62,6 +65,11 @@ type ForwardablePacket struct {
 
 type CredentialsPacket struct {
 	cloudflare.Credentials
+	Type string `json:"type"`
+}
+
+type EventPacket struct {
+	metrics.EventParams
 	Type string `json:"type"`
 }
 

@@ -23,6 +23,7 @@ export default class Peer {
   private lastMessageReceivedAt: number = 0
 
   private politenessTimeout?: ReturnType<typeof setTimeout>
+  private reportLatencyEventTimeout?: ReturnType<typeof setTimeout>
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: {[name: string]: RTCDataChannel}
 
@@ -123,6 +124,10 @@ export default class Peer {
           })
           this.opened = true
           this.network.emit('connected', this)
+          void this.signaling.event('rtc', 'connected', { target: this.id })
+          this.reportLatencyEventTimeout = setTimeout(() => {
+            void this.signaling.event('rtc', 'avg-latency-at-10s', { target: this.id, latency: `${this.latency.average}` })
+          }, 10000)
         }
       })
       chan.addEventListener('message', e => {
@@ -154,9 +159,13 @@ export default class Peer {
     if (this.checkStateInterval != null) {
       clearInterval(this.checkStateInterval)
     }
+    if (this.reportLatencyEventTimeout != null) {
+      clearTimeout(this.reportLatencyEventTimeout)
+    }
 
     if (this.opened) {
       this.network.emit('disconnected', this)
+      void this.signaling.event('rtc', 'disconnected', { target: this.id })
     }
   }
 
@@ -179,6 +188,7 @@ export default class Peer {
       this.reconnecting = true
       this.conn.restartIce()
       this.network.emit('reconnecting', this)
+      void this.signaling.event('rtc', 'attempt-reconnect', { target: this.id })
     } else if (this.reconnecting && connectionState === 'connected') {
       this.reconnecting = false
       this.network.emit('reconnected', this)

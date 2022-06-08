@@ -13,6 +13,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   private reconnectAttempt: number = 0
   private reconnecting: boolean = false
   receivedID?: string
+  currentLobby?: string
 
   private readonly connections: Map<string, Peer>
 
@@ -78,6 +79,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       this.network.emit('signalingerror', new Error('giving up on reconnecting to signaling server'))
       return
     }
+    void this.event('signaling', 'attempt-reconnect')
     this.reconnecting = true
     setTimeout(() => {
       this.ws = this.connect()
@@ -121,6 +123,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           if (packet.lobby === '') {
             throw new Error('missing lobby on received connect packet')
           }
+          this.currentLobby = packet.lobby
           this.network.emit('lobby', packet.lobby)
           break
 
@@ -157,5 +160,22 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     } catch (e) {
       this.network.emit('signalingerror', e)
     }
+  }
+
+  async event (category: string, action: string, data?: {[key: string]: string}): Promise<void> {
+    return await new Promise(resolve => {
+      setTimeout(() => {
+        this.send({
+          type: 'event',
+          game: this.network.gameID,
+          lobby: this.currentLobby,
+          peer: this.network.id,
+          category,
+          action,
+          data
+        })
+        resolve()
+      }, 0)
+    })
   }
 }

@@ -88,4 +88,16 @@ export interface CredentialsPacket extends Signaling {
   lifetime?: number
 }
 
-export type SignalingPacketTypes = HelloPacket | WelcomePacket | CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectPacket | DisconnectedPacket | CredentialsPacket
+export interface EventPacket extends Signaling {
+  type: 'event'
+
+  game: string
+  category: string
+  action: string
+  peer: string
+  lobby?: string
+
+  data?: {[key: string]: string}
+}
+
+export type SignalingPacketTypes = HelloPacket | WelcomePacket | CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectPacket | DisconnectedPacket | CredentialsPacket | EventPacket

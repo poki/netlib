@@ -8,6 +8,7 @@ import (
 
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal/cloudflare"
+	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 	"nhooyr.io/websocket"
@@ -81,6 +82,12 @@ func Handler(ctx context.Context, store Store, cloudflare *cloudflare.Credential
 				if err := peer.Send(ctx, packet); err != nil {
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
+			} else if typeOnly.Type == "event" {
+				params := metrics.EventParams{}
+				if err := json.Unmarshal(raw, &params); err != nil {
+					util.ErrorAndDisconnect(ctx, conn, err)
+				}
+				go metrics.RecordEvent(ctx, params)
 			}
 
 			if err := peer.HandlePacket(ctx, typeOnly.Type, raw); err != nil {

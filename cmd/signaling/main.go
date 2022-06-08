@@ -12,6 +12,7 @@ import (
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal"
 	"github.com/poki/netlib/internal/cloudflare"
+	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"github.com/rs/cors"
@@ -49,6 +50,11 @@ func main() {
 
 	cors := cors.Default()
 	handler := logging.Middleware(cors.Handler(mux), logger)
+
+	if metricsURL, ok := os.LookupEnv("METRICS_URL"); ok {
+		client := metrics.NewClient(metricsURL)
+		handler = metrics.Middleware(handler, client)
+	}
 
 	addr := util.Getenv("ADDR", ":8080")
 	server := &http.Server{

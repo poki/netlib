@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/koenbollen/logging"
+	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
@@ -63,6 +64,7 @@ func (p *Peer) RequestConnection(ctx context.Context, otherID string) error {
 		ID:     p.ID,
 		Polite: false,
 	}
+
 	err := wsjson.Write(ctx, p.conn, toMe)
 	if err != nil {
 		return err
@@ -77,6 +79,9 @@ func (p *Peer) RequestConnection(ctx context.Context, otherID string) error {
 	if err != nil {
 		return err
 	}
+
+	go metrics.Record(ctx, "rtc", "attempt", p.Game, p.ID, p.Lobby, "target", otherID)
+	go metrics.Record(ctx, "rtc", "attempt", p.Game, otherID, p.Lobby, "target", p.ID)
 
 	return nil
 }
@@ -125,7 +130,8 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "leave": // TODO: Handle.
+	case "leave":
+		go metrics.Record(ctx, "lobby", "leave", p.Game, p.ID, p.Lobby)
 	case "connected": // TODO: Handle, keep track of connected peers
 	case "disconnected": // TODO: Handle, idem
 
@@ -181,6 +187,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			logger.Debug("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
 			p.Lobby = packet.Lobby
 			go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
 		} else {
 			fakeJoinPacket := JoinPacket{
 				Type:  "join",
@@ -190,6 +197,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			if err != nil {
 				return err
 			}
+			go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 		}
 	}
 
@@ -223,6 +231,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	}
 
 	logger.Info("created lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby))
+	go metrics.Record(ctx, "lobby", "created", p.Game, p.ID, p.Lobby)
 
 	return p.Send(ctx, JoinedPacket{
 		Type:  "joined",
@@ -268,6 +277,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	}
 
 	logger.Info("joined lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby))
+	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
 	return nil
 }

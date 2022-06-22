@@ -4,6 +4,7 @@ import Latency from './latency'
 import { PeerConfiguration, SignalingPacketTypes } from './types'
 
 const LatencyRestartIceThreshold = 1000 // ms
+const ReconnectionWindow = 8000 // ms
 
 export default class Peer {
   public readonly conn: RTCPeerConnection
@@ -17,6 +18,7 @@ export default class Peer {
   private opened: boolean = false
   private closing: boolean = false
   private reconnecting: boolean = false
+  private abortReconnectionAt: number = 0
   private allowNextManualRestartIceAt: number = 0
 
   public latency: Latency = new Latency(this)
@@ -165,11 +167,16 @@ export default class Peer {
 
     if (this.opened) {
       this.network.emit('disconnected', this)
-      void this.signaling.event('rtc', 'disconnected', { target: this.id })
+      void this.signaling.event('rtc', 'disconnected', {
+        target: this.id,
+        reason: reason ?? '',
+        reconnecting: `${this.reconnecting}`,
+      })
     }
   }
 
   private checkState (): void {
+    const now = performance.now()
     const connectionState = this.conn.connectionState ?? this.conn.iceConnectionState
     if (this.closing) {
       return
@@ -186,17 +193,19 @@ export default class Peer {
     // console.log('state', this.id, this.conn.connectionState, this.conn.iceConnectionState, Object.values(this.channels).map(c => c.readyState))
     if (!this.reconnecting && (connectionState === 'disconnected' || connectionState === 'failed')) {
       this.reconnecting = true
-      this.conn.restartIce()
+      this.abortReconnectionAt = now + ReconnectionWindow
       this.network.emit('reconnecting', this)
       void this.signaling.event('rtc', 'attempt-reconnect', { target: this.id })
     } else if (this.reconnecting && connectionState === 'connected') {
       this.reconnecting = false
       this.network.emit('reconnected', this)
+      void this.signaling.event('rtc', 'attempt-reconnected', { target: this.id })
+    } else if (this.reconnecting && now > this.abortReconnectionAt) {
+      this.close('reconnection timed out')
     }
     if (!this.reconnecting && 'control' in this.channels) {
       const lastPing = this.lastMessageReceivedAt
       if (lastPing !== 0) {
-        const now = performance.now()
         const delta = now - lastPing
         if (delta > LatencyRestartIceThreshold && now > this.allowNextManualRestartIceAt) {
           this.allowNextManualRestartIceAt = now + 10000

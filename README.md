@@ -11,7 +11,7 @@ The Poki networking library
 - [x] Host the backend
 - [x] Handle websocket reconnect
 - [x] Collect Metrics
-- [ ] Give up on a connection (actually know when a connection has failed)
+- [x] Give up on a connection (actually know when a connection has failed)
 - [ ] Handling/events of lost players
 - [ ] Leave lobby and join a new one?
 - [ ] Write readme

@@ -53,3 +53,17 @@ Feature: Players can create and connect a network of players
     When "green" disconnected from the signaling server
     Then "green" receives the network event "signalingerror" with the argument "Error: signaling socket closed"
     And "green" receives the network event "signalingreconnected"
+
+
+  Scenario: Two player get disconnected
+    Given webrtc is intercepted by the testproxy
+
+    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "blue,yellow" are joined in a lobby
+
+    When the connection between "yellow" and "blue" is interrupted
+
+    Then "yellow" receives the network event "reconnecting" with the argument "[Peer: h5yzwyizlwao]"
+    And "yellow" receives the network event "disconnected" with the argument "[Peer: h5yzwyizlwao]"
+    And "blue" receives the network event "disconnected" with the argument "[Peer: 3t3cfgcqup9e]"

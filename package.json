@@ -4,6 +4,10 @@
   "license": "ISC",
   "source": "lib/index.ts",
   "main": "dist/netlib.js",
+  "files": [
+    "dist/netlib.js",
+    "dist/netlib.js.map"
+  ],
   "scripts": {
     "prepublish": "yarn build",
     "build": "parcel build",

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -12,12 +13,15 @@ import (
 
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal/util"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
 
 const timeout = 5 * time.Second
 const maxIdleConnsPerHost = 32
 const maxConnsPerHost = 32
+const maxRetries = 5
+const backoffRange = 1000 // milliseconds, picked randomly from a range times the number of retries
 
 type EventParams struct {
 	Game     string `json:"game"`
@@ -96,30 +100,44 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 		return
 	}
 
+	idempotency := xid.New().String()
+	logger = logger.With(zap.String("idempotency", idempotency))
+
 	// Use a new context, we want to record events of users that are already disconnected.
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(payload))
-	if err != nil {
-		logger.Error("failed to create metrics request", zap.Error(err))
-		return
-	}
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			time.Sleep(time.Duration(rand.Int63n(backoffRange)*int64(i)) * time.Millisecond)
+		}
 
-	if userAgent != "" {
-		req.Header.Set("User-Agent", userAgent)
-	}
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(payload))
+		if err != nil {
+			logger.Error("failed to create metrics request", zap.Error(err))
+			return
+		}
+		req.Header.Set("X-Idempotency-ID", idempotency)
+		if userAgent != "" {
+			req.Header.Set("User-Agent", userAgent)
+		}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		logger.Error("failed execute metrics request", zap.Error(err))
-		return
-	}
-	io.Copy(io.Discard, resp.Body) //nolint:errcheck
-	resp.Body.Close()              //nolint:errcheck
+		resp, err := c.client.Do(req)
+		if err != nil {
+			logger.Error("failed execute metrics request", zap.Error(err))
+			continue
+		}
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		resp.Body.Close()              //nolint:errcheck
 
-	if resp.StatusCode != http.StatusNoContent {
-		logger.Error("unexpected status code from metrics endpoint", zap.Int("status", resp.StatusCode))
+		if resp.StatusCode != http.StatusNoContent {
+			logger.Error("unexpected status code from metrics endpoint", zap.Int("status", resp.StatusCode))
+			if resp.StatusCode/100 == 5 {
+				continue
+			}
+			return
+		}
+
 		return
 	}
 }

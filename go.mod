@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/koenbollen/logging v0.0.0-20220324135921-659ffc24f153
 	github.com/rs/cors v1.8.0
+	github.com/rs/xid v1.4.0
 	go.uber.org/zap v1.21.0
 	nhooyr.io/websocket v1.8.7
 )

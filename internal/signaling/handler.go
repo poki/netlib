@@ -69,29 +69,32 @@ func Handler(ctx context.Context, store Store, cloudflare *cloudflare.Credential
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
 
-			if typeOnly.Type == "credentials" {
+			switch typeOnly.Type {
+			case "credentials":
 				credentials, err := cloudflare.GetCredentials(ctx)
 				if err != nil {
 					util.ReplyError(ctx, conn, err)
-					continue
+				} else {
+					packet := CredentialsPacket{
+						Type:        "credentials",
+						Credentials: *credentials,
+					}
+					if err := peer.Send(ctx, packet); err != nil {
+						util.ErrorAndDisconnect(ctx, conn, err)
+					}
 				}
-				packet := CredentialsPacket{
-					Type:        "credentials",
-					Credentials: *credentials,
-				}
-				if err := peer.Send(ctx, packet); err != nil {
-					util.ErrorAndDisconnect(ctx, conn, err)
-				}
-			} else if typeOnly.Type == "event" {
+
+			case "event":
 				params := metrics.EventParams{}
 				if err := json.Unmarshal(raw, &params); err != nil {
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
 				go metrics.RecordEvent(ctx, params)
-			}
 
-			if err := peer.HandlePacket(ctx, typeOnly.Type, raw); err != nil {
-				util.ErrorAndDisconnect(ctx, conn, err)
+			default:
+				if err := peer.HandlePacket(ctx, typeOnly.Type, raw); err != nil {
+					util.ErrorAndDisconnect(ctx, conn, err)
+				}
 			}
 		}
 	})

@@ -79,10 +79,6 @@ func (c *CredentialsClient) GetCredentials(ctx context.Context) (*Credentials, e
 }
 
 func (c *CredentialsClient) fetchCredentials(ctx context.Context) (*Credentials, error) {
-	start := time.Now()
-	defer func() {
-		fmt.Println("took", time.Since(start))
-	}()
 	url := "https://api.cloudflare.com/client/v4/zones/" + c.zone + "/webrtc-turn/credential/" + c.appID
 	body := strings.NewReader(fmt.Sprintf(`{"lifetime":%d}`, c.lifetime/time.Second))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)

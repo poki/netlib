@@ -124,7 +124,11 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 
 		resp, err := c.client.Do(req)
 		if err != nil {
-			logger.Error("failed execute metrics request", zap.Error(err))
+			if i < maxRetries-1 {
+				logger.Warn("failed execute metrics request, retrying", zap.Int("attempt", i), zap.Error(err))
+			} else {
+				logger.Error("failed execute metrics request", zap.Error(err))
+			}
 			continue
 		}
 		io.Copy(io.Discard, resp.Body) //nolint:errcheck

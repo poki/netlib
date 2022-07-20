@@ -170,7 +170,7 @@ export default class Peer {
       void this.signaling.event('rtc', 'disconnected', {
         target: this.id,
         reason: reason ?? '',
-        reconnecting: `${this.reconnecting}`,
+        reconnecting: this.reconnecting ? 'true' : 'false'
       })
     }
   }

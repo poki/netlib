@@ -3,6 +3,14 @@
 The Poki Networking Library is a peer-to-peer library for web games, using WebRTC datachannels to provide UDP connections between players directly. Like the Steam Networking Library, but for web.  
 Netlib tries to make WebRTC as simple to use as the WebSocket interface (for game development).
 
+
+## Project Status: alpha
+
+This library is still under heavy development and considered in alpha. The library API can and will change without warning and without bumping the major version. Make sure to get in touch if you want to go live with this netlib.
+
+
+## Library main advantages:
+
 - **peer-to-peer (p2p)**  
   Clients connected to each other using this netlib will be connected directly without a central server in between (unless using the fallback TURN server). This has three main advantages:
     1. No server costs, there is no server running the game.
@@ -11,11 +19,6 @@ Netlib tries to make WebRTC as simple to use as the WebSocket interface (for gam
 - **UDP**  
   Most web games rely on WebSockets or HTTP for communication which is always a TCP connection, but for realtime multiplayer games the UDP protocol is preferred. The main reason is:  
   When one packet is slow or dropped UDP doesn't pause new, already received, packets, this is great for things like position updates. The Poki netlib also supplies a reliable data channel useful for chat or npc spawn events.
-
-
-## Project Status: alpha
-
-This library is still under heavy development and considered in alpha. The library API can and will change without warning and without bumping the major version. Make sure to get in touch if you want to go live with this netlib.
 
 
 ## Setup

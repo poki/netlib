@@ -8,6 +8,7 @@ Netlib tries to make WebRTC as simple to use as the WebSocket interface (for gam
 
 This library is still under heavy development and considered in alpha. The library API can and will change without warning and without bumping the major version. Make sure to get in touch if you want to go live with this netlib.
 
+One missing feature that is next on the roadmap is lobby listing and discovery. Currently you can only connect peers by having players share a lobby code externally.
 
 ## Library main advantages:
 

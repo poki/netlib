@@ -1,6 +1,6 @@
 # The Poki Networking Library
 
-<img align="right" src=".github/logo.png" width=140>
+<img align="right" src="https://raw.githubusercontent.com/poki/netlib/main/.github/logo.png" width=140>
 The Poki Networking Library is a peer-to-peer library for web games, using WebRTC datachannels to provide UDP connections between players directly. Like the Steam Networking Library, but for web.  
 Netlib tries to make WebRTC as simple to use as the WebSocket interface (for game development).
 

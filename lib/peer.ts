@@ -1,5 +1,5 @@
 import Network from './network'
-import Signaling from './signaling'
+import Signaling, { SignalingError } from './signaling'
 import Latency from './latency'
 import { PeerConfiguration, SignalingPacketTypes } from './types'
 
@@ -79,9 +79,10 @@ export default class Peer {
               })
             }
           } catch (e) {
-            this.network.emit('signalingerror', e)
+            const error = new SignalingError('unknown-error', e as string)
+            this.network.emit('signalingerror', error)
             if (this.network.listenerCount('signalingerror') === 0) {
-              console.error('signallingerror not handled:', e)
+              console.error('signallingerror not handled:', error)
             }
           } finally {
             this.makingOffer = false
@@ -213,7 +214,6 @@ export default class Peer {
         }
       }
     }
-    // TODO: Actually this.close() at some point. 😅
   }
 
   private onError (e: Event): void {

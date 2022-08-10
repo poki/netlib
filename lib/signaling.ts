@@ -80,8 +80,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       return
     }
     if (this.reconnectAttempt > 42) {
-      // TODO: Make custom event to tell the game we stopped retrying
-      this.network.emit('signalingerror', new Error('giving up on reconnecting to signaling server'))
+      this.network.emit('failed')
+      this.network.emit('signalingerror', new SignalingError('socket-error', 'giving up on reconnecting to signaling server'))
       return
     }
     void this.event('signaling', 'attempt-reconnect')
@@ -97,7 +97,6 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   }
 
   send (packet: SignalingPacketTypes): void {
-    // Check if you send packet (eg. do you have peer id)
     if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
       this.network.log('sending signaling packet:', packet.type)
       const data = JSON.stringify(packet)

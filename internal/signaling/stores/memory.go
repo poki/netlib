@@ -121,6 +121,21 @@ func (m *Memory) GetLobby(ctx context.Context, game, lobby string) ([]string, er
 	return peerlist, nil
 }
 
+func (m *Memory) IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	key := game + lobby
+
+	peers, found := m.Lobbies[key]
+	if !found {
+		return false, ErrNotFound
+	}
+
+	_, found = peers[id]
+	return found, nil
+}
+
 func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(context.Context, []byte)) {
 	m.mutex.Lock()
 	if _, found := m.topics[topic]; !found {

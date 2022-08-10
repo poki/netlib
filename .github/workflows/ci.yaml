@@ -7,4 +7,4 @@ jobs:
     - uses: actions/checkout@v2
     - run: yarn
     - run: yarn lint
-    - run: yarn cucumber
+    - run: yarn cucumber --order random --retry 2 --retry-tag-filter "flakey"

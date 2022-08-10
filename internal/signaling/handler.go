@@ -19,6 +19,7 @@ const MaxConnectionTime = 1 * time.Hour
 type Store interface {
 	CreateLobby(ctx context.Context, game, lobby, id string) error
 	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
+	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
 	GetLobby(ctx context.Context, game, lobby string) ([]string, error)
 
@@ -52,7 +53,7 @@ func Handler(ctx context.Context, store Store, cloudflare *cloudflare.Credential
 			store: store,
 			conn:  conn,
 
-			retrievedIDCalback: manager.Reconnected,
+			retrievedIDCallback: manager.Reconnected,
 		}
 		defer func() {
 			logger.Debug("peer websocket closed", zap.String("id", peer.ID))

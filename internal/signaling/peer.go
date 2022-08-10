@@ -21,7 +21,7 @@ type Peer struct {
 	store Store
 	conn  *websocket.Conn
 
-	retrievedIDCalback func(context.Context, *Peer) bool
+	retrievedIDCallback func(context.Context, *Peer) bool
 
 	ID    string
 	Game  string
@@ -136,8 +136,8 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 
 	case "leave":
 		go metrics.Record(ctx, "lobby", "leave", p.Game, p.ID, p.Lobby)
-	case "connected": // TODO: Handle, keep track of connected peers
-	case "disconnected": // TODO: Handle, idem
+	case "connected": // TODO: Do we want to keep track of connections between peers?
+	case "disconnected": // TODO: Do we want to keep track of connections between peers?
 
 	case "candidate":
 		fallthrough
@@ -171,7 +171,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	if p.Game != "" {
 		return fmt.Errorf("already introduced %s for game %s", p.ID, p.Game)
 	}
-	if packet.Game == "" { // TODO: Validate uuid
+	if !util.IsUUID(packet.Game) {
 		return fmt.Errorf("no game id supplied")
 	}
 	p.Game = packet.Game
@@ -183,11 +183,14 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		p.ID = strconv.FormatInt(rand.Int63(), 36)
 		logger.Info("peer connected", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
-	hasReconnected := p.retrievedIDCalback(ctx, p)
+	hasReconnected := p.retrievedIDCallback(ctx, p)
 
 	if packet.Lobby != "" {
-		// TODO: Test if the p.ID is actually in the p.Lobby in the p.store.
-		if hasReconnected {
+		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, p.Lobby, p.ID)
+		if err != nil {
+			return err
+		}
+		if hasReconnected && inLobby {
 			logger.Debug("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
 			p.Lobby = packet.Lobby
 			go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
@@ -217,7 +220,6 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return fmt.Errorf("peer not connected")
 	}
 	if p.Lobby != "" {
-		// TODO: Maybe return an error to the client.
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
 	}
 	p.Lobby = strconv.FormatInt(rand.Int63(), 36)
@@ -249,7 +251,6 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return fmt.Errorf("peer not connected")
 	}
 	if p.Lobby != "" {
-		// TODO: Maybe return an error to the client.
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
 	}
 	if packet.Lobby == "" {

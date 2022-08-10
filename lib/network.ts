@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3'
 
 import { DefaultDataChannels, DefaultRTCConfiguration, DefaultSignalingURL } from '.'
 import { PeerConfiguration } from './types'
-import Signaling from './signaling'
+import Signaling, { SignalingError } from './signaling'
 import Peer from './peer'
 import Credentials from './credentials'
 
@@ -15,10 +15,11 @@ interface NetworkListeners {
   reconnected: (peer: Peer) => void | Promise<void>
   disconnected: (peer: Peer) => void | Promise<void>
   signalingreconnected: () => void | Promise<void>
+  failed: () => void | Promise<void>
   message: (peer: Peer, channel: string, data: string | Blob | ArrayBuffer | ArrayBufferView) => void | Promise<void>
   close: (reason?: string) => void | Promise<void>
   rtcerror: (e: Event) => void | Promise<void> // TODO: Figure out how to make this e type be RTCErrorEvent
-  signalingerror: (e: any) => void | Promise<void>
+  signalingerror: (e: SignalingError) => void | Promise<void>
 }
 
 export default class Network extends EventEmitter<NetworkListeners> {
@@ -45,14 +46,18 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   create (): void {
-    // TODO: Don't allow this when not ready
+    if (this._closing) {
+      return
+    }
     this.signaling.send({
       type: 'create'
     })
   }
 
   join (lobby: string): void {
-    // TODO: Don't allow this when not ready
+    if (this._closing || this.signaling.receivedID === undefined) {
+      return
+    }
     this.signaling.send({
       type: 'join',
       lobby
@@ -60,7 +65,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   close (reason?: string): void {
-    if (this._closing) {
+    if (this._closing || this.signaling.receivedID === undefined) {
       return
     }
     this._closing = true

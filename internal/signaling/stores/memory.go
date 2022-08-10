@@ -71,6 +71,37 @@ func (m *Memory) JoinLobby(ctx context.Context, game, lobby, id string) ([]strin
 	return peerlist, nil
 }
 
+func (m *Memory) LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	key := game + lobby
+
+	peers, found := m.Lobbies[key]
+	if !found {
+		return nil, nil
+	}
+
+	_, found = peers[id]
+	if !found {
+		return nil, nil
+	}
+
+	delete(peers, id)
+
+	if len(peers) == 0 {
+		delete(m.Lobbies, key)
+		return []string{}, nil
+	}
+
+	peerlist := []string{}
+	for id := range peers {
+		peerlist = append(peerlist, id)
+	}
+
+	return peerlist, nil
+}
+
 func (m *Memory) GetLobby(ctx context.Context, game, lobby string) ([]string, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

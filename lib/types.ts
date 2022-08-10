@@ -7,79 +7,81 @@ interface Base {
   type: string
 }
 
-interface Signaling extends Base {
+export interface ErrorPacket extends Base {
+  type: 'error'
+  error: string
 }
 
-export interface HelloPacket extends Signaling {
+export interface HelloPacket extends Base {
   type: 'hello'
   game: string
   id?: string
   lobby?: string
 }
 
-export interface WelcomePacket extends Signaling {
+export interface WelcomePacket extends Base {
   type: 'welcome'
   id: string
 }
 
-export interface CreatePacket extends Signaling {
+export interface CreatePacket extends Base {
   type: 'create'
 }
 
-export interface JoinPacket extends Signaling {
+export interface JoinPacket extends Base {
   type: 'join'
   lobby: string
 }
 
-export interface JoinedPacket extends Signaling {
+export interface JoinedPacket extends Base {
   type: 'joined'
   lobby: string
   id: string
 }
 
-export interface LeavePacket extends Signaling {
+export interface LeavePacket extends Base {
   type: 'leave'
   id: string
   reason: string
 }
 
-export interface ConnectPacket extends Signaling {
+export interface ConnectPacket extends Base {
   type: 'connect'
   id: string
   polite: boolean
 }
 
-export interface DisconnectPacket extends Signaling {
+export interface DisconnectPacket extends Base {
   type: 'disconnect'
   id: string
 }
 
-export interface ConnectedPacket extends Signaling {
+export interface ConnectedPacket extends Base {
   type: 'connected'
   id: string
 }
 
-export interface DisconnectedPacket extends Signaling {
+export interface DisconnectedPacket extends Base {
   type: 'disconnected'
   id: string
   reason: string
 }
 
-export interface CandidatePacket extends Signaling {
+export interface CandidatePacket extends Base {
   type: 'candidate'
   source: string
   recipient: string
   candidate: RTCIceCandidate | null
 }
 
-export interface DescriptionPacket extends Signaling {
+export interface DescriptionPacket extends Base {
   type: 'description'
   source: string
   recipient: string
   description: RTCSessionDescription
 }
 
-export interface CredentialsPacket extends Signaling {
+export interface CredentialsPacket extends Base {
   type: 'credentials'
 
   url?: string
@@ -88,7 +90,7 @@ export interface CredentialsPacket extends Signaling {
   lifetime?: number
 }
 
-export interface EventPacket extends Signaling {
+export interface EventPacket extends Base {
   type: 'event'
 
   game: string
@@ -100,4 +102,4 @@ export interface EventPacket extends Signaling {
   data?: {[key: string]: string}
 }
 
-export type SignalingPacketTypes = HelloPacket | WelcomePacket | CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectPacket | DisconnectedPacket | CredentialsPacket | EventPacket
+export type SignalingPacketTypes = ErrorPacket | HelloPacket | WelcomePacket | CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectPacket | DisconnectedPacket | CredentialsPacket | EventPacket

@@ -22,12 +22,8 @@ export class Player {
       })
     })
 
-    network.on('signalingerror', err => {
-      console.error(err)
-    })
-    network.on('rtcerror', err => {
-      console.error(err)
-    })
+    network.on('signalingerror', _ => {})
+    network.on('rtcerror', _ => {})
   }
 
   hasSeenEvent (eventName: string, ...matchArguments: any[]): boolean {

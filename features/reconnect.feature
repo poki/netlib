@@ -51,7 +51,7 @@ Feature: Players can create and connect a network of players
     And "green" has recieved the peer ID "h5yzwyizlwao"
 
     When "green" disconnected from the signaling server
-    Then "green" receives the network event "signalingerror" with the argument "Error: signaling socket closed"
+    Then "green" receives the network event "signalingerror" with the argument "[socket-error: signaling socket closed]"
     And "green" receives the network event "signalingreconnected"
 
 

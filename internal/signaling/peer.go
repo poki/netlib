@@ -38,9 +38,13 @@ func (p *Peer) Close() {
 		if err == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 			defer cancel()
-			peers, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
-			if err == nil {
-				for _, id := range peers {
+
+			others, err := p.store.LeaveLobby(ctx, p.Game, p.ID, p.Lobby)
+			if err != nil {
+				logging.GetLogger(ctx).Warn("failed to leave lobby", zap.Error(err))
+			}
+			for _, id := range others {
+				if id != p.ID {
 					_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
 				}
 			}

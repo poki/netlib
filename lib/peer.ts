@@ -80,10 +80,7 @@ export default class Peer {
             }
           } catch (e) {
             const error = new SignalingError('unknown-error', e as string)
-            this.network.emit('signalingerror', error)
-            if (this.network.listenerCount('signalingerror') === 0) {
-              console.error('signallingerror not handled:', error)
-            }
+            this.network._onSignalingError(error)
           } finally {
             this.makingOffer = false
           }
@@ -222,6 +219,7 @@ export default class Peer {
       console.error('rtcerror not handled:', e)
     }
     this.checkState()
+    void this.signaling.event('rtc', 'error', { target: this.id, error: JSON.stringify(e) })
   }
 
   async _onSignalingMessage (packet: SignalingPacketTypes): Promise<void> {

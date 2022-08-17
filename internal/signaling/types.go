@@ -1,6 +1,8 @@
 package signaling
 
 import (
+	"encoding/json"
+
 	"github.com/poki/netlib/internal/cloudflare"
 	"github.com/poki/netlib/internal/metrics"
 )
@@ -74,12 +76,23 @@ type EventPacket struct {
 }
 
 type MissingRecipientError struct {
-	Recipient string
-	Cause     error
+	Recipient string `json:"recipient"`
+	Cause     error  `json:"cause"`
+}
+
+func (e *MissingRecipientError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"recipient": e.Recipient,
+		"cause":     e.Cause.Error(),
+	})
 }
 
 func (e *MissingRecipientError) Error() string {
 	return "missing recipient: " + e.Recipient
+}
+
+func (e *MissingRecipientError) ErrorCode() string {
+	return "missing-recipient"
 }
 
 func (e *MissingRecipientError) Unwrap() error {

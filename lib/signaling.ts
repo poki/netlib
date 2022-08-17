@@ -42,10 +42,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
     const onError = (e: Event): void => {
       const error = new SignalingError('socket-error', 'unexpected websocket error', e)
-      this.network.emit('signalingerror', error)
-      if (this.network.listenerCount('signalingerror') === 0) {
-        console.error('signallingerror not handled:', error)
-      }
+      this.network._onSignalingError(error)
       if (ws.readyState === WebSocket.CLOSED) {
         this.reconnecting = false
         this.reconnect()
@@ -57,10 +54,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     const onClose = (): void => {
       if (!this.network.closing) {
         const error = new SignalingError('socket-error', 'signaling socket closed')
-        this.network.emit('signalingerror', error)
-        if (this.network.listenerCount('signalingerror') === 0) {
-          console.error('signallingerror not handled:', error)
-        }
+        this.network._onSignalingError(error)
       }
       ws.removeEventListener('open', onOpen)
       ws.removeEventListener('error', onError)
@@ -81,7 +75,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
     if (this.reconnectAttempt > 42) {
       this.network.emit('failed')
-      this.network.emit('signalingerror', new SignalingError('socket-error', 'giving up on reconnecting to signaling server'))
+      this.network._onSignalingError(new SignalingError('socket-error', 'giving up on reconnecting to signaling server'))
       return
     }
     void this.event('signaling', 'attempt-reconnect')
@@ -111,10 +105,14 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       switch (packet.type) {
         case 'error':
           {
-            const error = new SignalingError('server-error', packet.error)
-            this.network.emit('signalingerror', error)
-            if (this.network.listenerCount('signalingerror') === 0) {
-              console.error('signallingerror not handled:', error)
+            const error = new SignalingError('server-error', packet.message)
+            this.network._onSignalingError(error)
+            if (packet.code === 'missing-recipient' && packet.error?.recipient !== undefined) {
+              const id = packet.error?.recipient
+              if (this.connections.has(id)) {
+                this.network.log('cleaning up missing recipient', id)
+                this.connections.get(id)?.close('missing-recipient')
+              }
             }
           }
           break
@@ -173,7 +171,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       }
     } catch (e) {
       const error = new SignalingError('unknown-error', e as string)
-      this.network.emit('signalingerror', error)
+      this.network._onSignalingError(error)
     }
   }
 

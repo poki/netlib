@@ -9,7 +9,9 @@ interface Base {
 
 export interface ErrorPacket extends Base {
   type: 'error'
-  error: string
+  message: string
+  error?: any
+  code?: string
 }
 
 export interface HelloPacket extends Base {

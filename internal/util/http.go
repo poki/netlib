@@ -51,27 +51,23 @@ func ErrorAndDisconnect(ctx context.Context, conn *websocket.Conn, err error) {
 	if !IsPipeError(err) {
 		logger.Warn("error during connection", zap.Error(err))
 	}
-	payload := struct {
-		Type  string `json:"type"`
-		Error string `json:"error"`
-	}{
-		Type:  "error",
-		Error: err.Error(),
-	}
-	err = wsjson.Write(ctx, conn, &payload)
-	if err != nil && !IsPipeError(err) {
-		logger.Warn("uncaught server error", zap.Error(err))
-	}
+	ReplyError(ctx, conn, err)
 	panic(http.ErrAbortHandler)
 }
 
 func ReplyError(ctx context.Context, conn *websocket.Conn, err error) {
 	payload := struct {
-		Type  string `json:"type"`
-		Error string `json:"error"`
+		Type    string `json:"type"`
+		Message string `json:"message"`
+		Error   any    `json:"error,omitempty"`
+		Code    string `json:"code,omitempty"`
 	}{
-		Type:  "error",
-		Error: err.Error(),
+		Type:    "error",
+		Message: err.Error(),
+		Error:   err,
+	}
+	if cerr, ok := err.(interface{ ErrorCode() string }); ok {
+		payload.Code = cerr.ErrorCode()
 	}
 	err = wsjson.Write(ctx, conn, &payload)
 	if err != nil && !IsPipeError(err) {

@@ -124,6 +124,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     this.credentials.fillCredentials(this.rtcConfig).catch(() => {})
   }
 
+  _onSignalingError (e: SignalingError): void {
+    this.emit('signalingerror', e)
+    if (this.listenerCount('signalingerror') === 0) {
+      console.error('signallingerror not handled:', e)
+    }
+    void this.signaling.event('signaling', 'error', { error: JSON.stringify(e) })
+  }
+
   get id (): string {
     return this.signaling.receivedID ?? ''
   }

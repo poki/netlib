@@ -13,6 +13,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   private reconnectAttempt: number = 0
   private reconnecting: boolean = false
   receivedID?: string
+  receivedSecret?: string
   currentLobby?: string
 
   private readonly connections: Map<string, Peer>
@@ -37,7 +38,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       this.send({
         type: 'hello',
         game: this.network.gameID,
-        id: this.receivedID
+        id: this.receivedID,
+        secret: this.receivedSecret
       })
     }
     const onError = (e: Event): void => {
@@ -127,6 +129,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
             throw new Error('missing id on received welcome packet')
           }
           this.receivedID = packet.id
+          this.receivedSecret = packet.secret
           this.network.emit('ready')
           this.network._prefetchTURNCredentials()
           break

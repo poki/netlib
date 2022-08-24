@@ -35,17 +35,23 @@ export class Player {
       throw new Error(`Event type ${eventName} not tracked, add to allEvents in types.ts`)
     }
 
-    return await new Promise(resolve => {
+    return await new Promise((resolve, reject) => {
       const events = this.events.filter(e => matchEvent(e, eventName, ...matchArguments))
       if (events.length > 0) {
         resolve(events[0])
       } else {
+        const timeout = setTimeout(() => {
+          const sameEvents = this.events.filter(e => e.eventName === eventName)
+          const others = sameEvents.map(e => Array.from(e.eventPayload).map(a => `${a as string}`).join(',')).join(' + ')
+          reject(new Error(`Event not found, timed out, got: ${others}`))
+        }, 20000)
         this.network.on(eventName as any, function () {
           const e = {
             eventName: eventName,
             eventPayload: arguments
           }
           if (matchEvent(e, eventName, ...matchArguments)) {
+            clearTimeout(timeout)
             resolve(e)
           }
         })

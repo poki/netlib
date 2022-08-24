@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -23,9 +21,10 @@ type Peer struct {
 
 	retrievedIDCallback func(context.Context, *Peer) bool
 
-	ID    string
-	Game  string
-	Lobby string
+	ID     string
+	Secret string
+	Game   string
+	Lobby  string
 }
 
 func (p *Peer) Close() {
@@ -176,14 +175,21 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	}
 	p.Game = packet.Game
 
-	if packet.ID != "" { // TODO: Also send a secret and verify
+	clientIsReconnecting := false
+	if packet.ID != "" && packet.Secret != "" {
+		clientIsReconnecting = true
 		p.ID = packet.ID
-		logger.Info("peer reconnected", zap.String("game", p.Game), zap.String("peer", p.ID))
+		p.Secret = packet.Secret
+		logger.Info("peer reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	} else {
-		p.ID = strconv.FormatInt(rand.Int63(), 36)
-		logger.Info("peer connected", zap.String("game", p.Game), zap.String("peer", p.ID))
+		p.ID = util.GeneratePeerID(ctx)
+		p.Secret = util.GenerateSecret(ctx)
+		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
 	hasReconnected := p.retrievedIDCallback(ctx, p)
+	if clientIsReconnecting && !hasReconnected {
+		return fmt.Errorf("unable to reconnect")
+	}
 
 	if packet.Lobby != "" {
 		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, p.Lobby, p.ID)
@@ -209,8 +215,9 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	}
 
 	return p.Send(ctx, WelcomePacket{
-		Type: "welcome",
-		ID:   p.ID,
+		Type:   "welcome",
+		ID:     p.ID,
+		Secret: p.Secret,
 	})
 }
 
@@ -222,7 +229,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	if p.Lobby != "" {
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
 	}
-	p.Lobby = strconv.FormatInt(rand.Int63(), 36)
+	p.Lobby = util.GenerateLobbyCode(ctx)
 
 	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 

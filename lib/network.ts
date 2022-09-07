@@ -79,9 +79,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
       })
     }
 
-    for (const peer of this.peers.values()) {
-      peer.close(reason)
-    }
+    this.peers.forEach(peer => peer.close(reason))
     this.signaling.close()
 
     if (typeof window !== 'undefined') {
@@ -102,9 +100,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
     if (!(channel in this.dataChannels)) {
       throw new Error('unknown channel ' + channel)
     }
-    for (const peer of this.peers.values()) {
-      peer.send(channel, data)
-    }
+    this.peers.forEach(peer => peer.send(channel, data))
   }
 
   async _addPeer (id: string, polite: boolean): Promise<void> {

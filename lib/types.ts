@@ -18,12 +18,14 @@ export interface HelloPacket extends Base {
   type: 'hello'
   game: string
   id?: string
+  secret?: string
   lobby?: string
 }
 
 export interface WelcomePacket extends Base {
   type: 'welcome'
   id: string
+  secret: string
 }
 
 export interface CreatePacket extends Base {

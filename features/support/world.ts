@@ -59,7 +59,7 @@ BeforeAll((cb: Function) => {
   ['signaling', 'testproxy'].forEach(backend => {
     const proc = spawn('go', ['build', '-o', `/tmp/netlib-cucumber-${backend}`, `cmd/${backend}/main.go`], {
       windowsHide: true,
-      stdio: 'pipe'
+      stdio: 'inherit'
     })
     proc.on('close', () => {
       if (proc.exitCode !== 0) {

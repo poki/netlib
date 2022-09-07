@@ -10,15 +10,17 @@ import (
 type HelloPacket struct {
 	Type string `json:"type"`
 
-	Game  string `json:"game"`
-	ID    string `json:"id"`
-	Lobby string `json:"lobby"`
+	Game   string `json:"game"`
+	ID     string `json:"id"`
+	Secret string `json:"secret"`
+	Lobby  string `json:"lobby"`
 }
 
 type WelcomePacket struct {
 	Type string `json:"type"`
 
-	ID string `json:"id"`
+	ID     string `json:"id"`
+	Secret string `json:"secret"`
 }
 
 type CreatePacket struct {

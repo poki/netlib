@@ -47,7 +47,7 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 		t := tp.time
 		if now.Sub(t) > i.DisconnectThreshold {
 			logger.Debug("peer timed out closing peer", zap.String("id", p.ID))
-			delete(i.peers, p.ID)
+			delete(i.peers, p.ID+p.Secret)
 			go p.Close()
 		}
 	}
@@ -64,7 +64,7 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	}
 
 	logger.Debug("peer marked as disconnected", zap.String("id", p.ID))
-	i.peers[p.ID] = timedPeer{
+	i.peers[p.ID+p.Secret] = timedPeer{
 		peer: p,
 		time: util.Now(ctx),
 	}
@@ -81,7 +81,8 @@ func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) bool {
 	}
 
 	logger.Debug("peer marked as reconnected", zap.String("id", p.ID))
-	_, seen := i.peers[p.ID]
-	delete(i.peers, p.ID)
+	key := p.ID + p.Secret
+	_, seen := i.peers[key]
+	delete(i.peers, key)
 	return seen
 }

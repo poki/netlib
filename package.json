@@ -1,6 +1,6 @@
 {
   "name": "@poki/netlib",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "ISC",
   "source": "lib/index.ts",
   "main": "dist/netlib.js",

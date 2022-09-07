@@ -9,7 +9,7 @@
     "dist/netlib.js.map"
   ],
   "scripts": {
-    "prepublish": "yarn build",
+    "prepare ": "yarn build",
     "build": "parcel build",
     "lint": "ts-standard",
     "cucumber": "./node_modules/@cucumber/cucumber/bin/cucumber-js --require 'features/support/**/*.ts' --require-module ts-node/register --publish-quiet --format @cucumber/pretty-formatter --order random --retry 2 --retry-tag-filter flakey",

@@ -93,7 +93,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   }
 
   send (packet: SignalingPacketTypes): void {
-    if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws.readyState === WebSocket.OPEN) {
       this.network.log('sending signaling packet:', packet.type)
       const data = JSON.stringify(packet)
       this.ws.send(data)

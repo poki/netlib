@@ -3,9 +3,41 @@ export interface PeerConfiguration extends RTCConfiguration {
   testproxyURL?: string
 }
 
+export interface LobbySettings {
+  maxPlayers: number
+  password?: string
+  public: boolean
+  customData: {[key: string]: any}
+}
+
+export interface LobbyListEntry extends LobbySettings{
+  code: string
+  playerCount: number
+}
+
 interface Base {
   type: string
+  rid?: string
 }
+
+export type SignalingPacketTypes =
+| CandidatePacket
+| ConnectedPacket
+| ConnectPacket
+| CreatePacket
+| CredentialsPacket
+| DescriptionPacket
+| DisconnectedPacket
+| DisconnectPacket
+| ErrorPacket
+| EventPacket
+| HelloPacket
+| JoinedPacket
+| JoinPacket
+| LeavePacket
+| ListPacket
+| LobbiesPacket
+| WelcomePacket
 
 export interface ErrorPacket extends Base {
   type: 'error'
@@ -28,8 +60,19 @@ export interface WelcomePacket extends Base {
   secret: string
 }
 
+export interface ListPacket extends Base {
+  type: 'list'
+  filter?: string
+}
+
+export interface LobbiesPacket extends Base {
+  type: 'lobbies'
+  lobbies: LobbyListEntry[]
+}
+
 export interface CreatePacket extends Base {
   type: 'create'
+  settings?: LobbySettings
 }
 
 export interface JoinPacket extends Base {
@@ -105,5 +148,3 @@ export interface EventPacket extends Base {
 
   data?: {[key: string]: string}
 }
-
-export type SignalingPacketTypes = ErrorPacket | HelloPacket | WelcomePacket | CreatePacket | JoinPacket | JoinedPacket | LeavePacket | ConnectPacket | CandidatePacket | DescriptionPacket | ConnectedPacket | DisconnectPacket | DisconnectedPacket | CredentialsPacket | EventPacket

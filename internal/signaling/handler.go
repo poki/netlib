@@ -9,6 +9,7 @@ import (
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal/cloudflare"
 	"github.com/poki/netlib/internal/metrics"
+	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 	"nhooyr.io/websocket"
@@ -22,6 +23,7 @@ type Store interface {
 	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
 	GetLobby(ctx context.Context, game, lobby string) ([]string, error)
+	ListLobbies(ctx context.Context, game, filter string) ([]stores.Lobby, error)
 
 	Subscribe(ctx context.Context, topic string, callback func(context.Context, []byte))
 	Publish(ctx context.Context, topic string, data []byte) error

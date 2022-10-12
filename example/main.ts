@@ -16,12 +16,6 @@ const log = (text: string): void => {
 
 n.on('ready', () => {
   log('network ready')
-  const code = prompt('Lobby code? (empty to create a new one)')
-  if (code == null || code === '') {
-    n.create()
-  } else {
-    n.join(code)
-  }
 
   n.on('message', (peer, channel, data) => {
     if (channel === 'reliable') {
@@ -35,6 +29,51 @@ n.on('ready', () => {
       inp.value = ''
     }
   })
+
+  document.querySelector('a[data-action="create"]')?.addEventListener('click', () => {
+    if (n.currentLobby === undefined) {
+      void n.create()
+    }
+  })
+
+  document.querySelector('a[data-action="join"]')?.addEventListener('click', () => {
+    if (n.currentLobby === undefined) {
+      const code = prompt('Lobby code? (empty to create a new one)')
+      if (code != null && code !== '') {
+        void n.join(code)
+      }
+    }
+  })
+
+  const queryLobbies = (): void => {
+    console.log('querying lobbies...')
+    void n.list().then(lobbies => {
+      console.log('queried lobbies:', lobbies)
+      const el = document.getElementById('lobbies')
+      if (el !== null) {
+        el.innerHTML = ''
+        if (lobbies.length === 0) {
+          const li = document.createElement('li')
+          li.innerHTML = '<i>no lobbies</i>'
+          el.appendChild(li)
+        } else {
+          lobbies.forEach(lobby => {
+            const li = document.createElement('li')
+            li.id = lobby.code
+            li.innerHTML = `<a href="javascript:void(0)" class="code">${lobby.code}</a> - <span class="players">${lobby.playerCount}</span> players`
+            el.appendChild(li)
+            if (n.currentLobby === undefined) {
+              li.querySelector('a.code')?.addEventListener('click', () => {
+                void n.join(lobby.code)
+              })
+            }
+          })
+        }
+      }
+    })
+  }
+  queryLobbies()
+  setInterval(queryLobbies, 5000)
 })
 
 n.on('lobby', code => {

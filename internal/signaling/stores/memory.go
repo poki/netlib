@@ -2,11 +2,12 @@ package stores
 
 import (
 	"context"
+	"strings"
 	"sync"
 )
 
 type Memory struct {
-	Lobbies map[string]map[string]struct{}
+	Lobbies map[string]*Lobby
 
 	mutex  *sync.Mutex
 	topics map[string]map[chan []byte]struct{}
@@ -14,125 +15,149 @@ type Memory struct {
 
 func NewMemoryStore() *Memory {
 	m := &Memory{}
-	m.Lobbies = make(map[string]map[string]struct{})
+	m.Lobbies = make(map[string]*Lobby)
 	m.mutex = &sync.Mutex{}
 	m.topics = make(map[string]map[chan []byte]struct{})
 	return m
 }
 
-func (m *Memory) CreateLobby(ctx context.Context, game, lobby, id string) error {
+func (m *Memory) CreateLobby(ctx context.Context, game, lobbyCode, id string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	key := game + lobby
+	key := game + lobbyCode
 	_, found := m.Lobbies[key]
 	if found {
 		return ErrLobbyExists
 	}
 
-	m.Lobbies[key] = make(map[string]struct{})
+	m.Lobbies[key] = &Lobby{
+		Code:   lobbyCode,
+		Public: true,
+		peers:  make(map[string]struct{}),
+	}
 
 	return nil
 }
 
-func (m *Memory) JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error) {
+func (m *Memory) JoinLobby(ctx context.Context, game, lobbyCode, id string) ([]string, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	key := game + lobby
+	key := game + lobbyCode
 
-	peers, found := m.Lobbies[key]
+	lobby, found := m.Lobbies[key]
 	if !found {
 		return nil, ErrNotFound
 	}
 
-	_, found = peers[id]
+	_, found = lobby.peers[id]
 	if found {
 		return nil, ErrAlreadyInLobby
 	}
 
 	peerlist := []string{}
-	for id := range peers {
+	for id := range lobby.peers {
 		peerlist = append(peerlist, id)
 	}
 
-	m.Lobbies[key][id] = struct{}{}
+	lobby.peers[id] = struct{}{}
 
 	go func() {
 		<-ctx.Done()
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		delete(m.Lobbies[key], id)
-		if len(m.Lobbies[key]) == 0 {
-			delete(m.Lobbies, key)
+		if lobby, ok := m.Lobbies[key]; ok {
+			delete(lobby.peers, id)
+			if len(lobby.peers) == 0 {
+				delete(m.Lobbies, key)
+			}
 		}
 	}()
 
 	return peerlist, nil
 }
 
-func (m *Memory) LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error) {
+func (m *Memory) LeaveLobby(ctx context.Context, game, lobbyCode, id string) ([]string, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	key := game + lobby
+	key := game + lobbyCode
 
-	peers, found := m.Lobbies[key]
+	lobby, found := m.Lobbies[key]
 	if !found {
 		return nil, nil
 	}
 
-	_, found = peers[id]
+	_, found = lobby.peers[id]
 	if !found {
 		return nil, nil
 	}
 
-	delete(peers, id)
+	delete(lobby.peers, id)
 
-	if len(peers) == 0 {
+	if len(lobby.peers) == 0 {
 		delete(m.Lobbies, key)
 		return []string{}, nil
 	}
 
 	peerlist := []string{}
-	for id := range peers {
+	for id := range lobby.peers {
 		peerlist = append(peerlist, id)
 	}
 
 	return peerlist, nil
 }
 
-func (m *Memory) GetLobby(ctx context.Context, game, lobby string) ([]string, error) {
+func (m *Memory) GetLobby(ctx context.Context, game, lobbyCode string) ([]string, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	key := game + lobby
+	key := game + lobbyCode
 
-	peers, found := m.Lobbies[key]
+	lobby, found := m.Lobbies[key]
 	if !found {
 		return nil, ErrNotFound
 	}
 
 	peerlist := []string{}
-	for id := range peers {
+	for id := range lobby.peers {
 		peerlist = append(peerlist, id)
 	}
 
 	return peerlist, nil
 }
 
-func (m *Memory) IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error) {
+func (m *Memory) ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	key := game + lobby
+	lobbies := []Lobby{}
+	for key, lobby := range m.Lobbies {
+		if !strings.HasPrefix(key, game) || !lobby.Public {
+			continue
+		}
 
-	peers, found := m.Lobbies[key]
+		// TODO: Filter lobby on given filter
+
+		lobbies = append(lobbies, lobby.Build())
+	}
+
+	return lobbies, nil
+}
+
+func (m *Memory) IsPeerInLobby(ctx context.Context, game, lobbyCode, id string) (bool, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	key := game + lobbyCode
+
+	lobby, found := m.Lobbies[key]
 	if !found {
 		return false, ErrNotFound
 	}
 
-	_, found = peers[id]
+	_, found = lobby.peers[id]
 	return found, nil
 }
 

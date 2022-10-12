@@ -5,6 +5,7 @@ import (
 
 	"github.com/poki/netlib/internal/cloudflare"
 	"github.com/poki/netlib/internal/metrics"
+	"github.com/poki/netlib/internal/signaling/stores"
 )
 
 type HelloPacket struct {
@@ -23,18 +24,40 @@ type WelcomePacket struct {
 	Secret string `json:"secret"`
 }
 
+type ListPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+
+	Filter string `json:"filter"`
+}
+
+type LobbiesPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+
+	Lobbies []stores.Lobby `json:"lobbies"`
+}
+
 type CreatePacket struct {
-	Type string `json:"type"`
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+
+	Public     bool           `json:"public"`
+	Password   string         `json:"password"`
+	MaxPlayers int            `json:"maxPlayers"`
+	CustomData map[string]any `json:"customData"`
 }
 
 type JoinPacket struct {
-	Type string `json:"type"`
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
 
 	Lobby string `json:"lobby"`
 }
 
 type JoinedPacket struct {
-	Type string `json:"type"`
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
 
 	Lobby string `json:"lobby"`
 }

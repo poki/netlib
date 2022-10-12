@@ -113,6 +113,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "list":
+		packet := ListPacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleListPacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	case "create":
 		packet := CreatePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
@@ -221,6 +231,23 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	})
 }
 
+func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
+	logger := logging.GetLogger(ctx)
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	logger.Debug("listing lobbies", zap.String("game", p.Game), zap.String("peer", p.ID))
+	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter)
+	if err != nil {
+		return err
+	}
+	return p.Send(ctx, LobbiesPacket{
+		RequestID: packet.RequestID,
+		Type:      "lobbies",
+		Lobbies:   lobbies,
+	})
+}
+
 func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) error {
 	logger := logging.GetLogger(ctx)
 	if p.ID == "" {
@@ -247,8 +274,9 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	go metrics.Record(ctx, "lobby", "created", p.Game, p.ID, p.Lobby)
 
 	return p.Send(ctx, JoinedPacket{
-		Type:  "joined",
-		Lobby: p.Lobby,
+		RequestID: packet.RequestID,
+		Type:      "joined",
+		Lobby:     p.Lobby,
 	})
 }
 
@@ -274,8 +302,9 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	}
 
 	err = p.Send(ctx, JoinedPacket{
-		Type:  "joined",
-		Lobby: p.Lobby,
+		RequestID: packet.RequestID,
+		Type:      "joined",
+		Lobby:     p.Lobby,
 	})
 	if err != nil {
 		return err

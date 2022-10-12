@@ -20,6 +20,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 
   private readonly replayQueue: Map<string, SignalingPacketTypes[]>
 
+  private readonly requests: Map<string, RequestHandler> = new Map()
+
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
     super()
 
@@ -47,6 +49,10 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       this.network._onSignalingError(error)
       if (ws.readyState === WebSocket.CLOSED) {
         this.reconnecting = false
+        ws.removeEventListener('open', onOpen)
+        ws.removeEventListener('error', onError)
+        ws.removeEventListener('message', onMessage)
+        ws.removeEventListener('close', onClose)
         this.reconnect()
       }
     }
@@ -75,6 +81,10 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     if (this.reconnecting || this.network.closing) {
       return
     }
+
+    this.requests.forEach((r) => r.reject(new SignalingError('socket-error', 'signaling socket closed')))
+    this.requests.clear()
+
     if (this.reconnectAttempt > 42) {
       this.network.emit('failed')
       this.network._onSignalingError(new SignalingError('socket-error', 'giving up on reconnecting to signaling server'))
@@ -92,6 +102,20 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     this.ws.close()
   }
 
+  async request (packet: SignalingPacketTypes): Promise<SignalingPacketTypes> {
+    return await new Promise<SignalingPacketTypes>((resolve, reject) => {
+      if (this.ws.readyState !== WebSocket.OPEN) {
+        reject(new SignalingError('socket-error', 'signaling socket not open'))
+      }
+      const rid = Math.random().toString(36).slice(2)
+      packet.rid = rid
+      this.network.log('requesting signaling packet:', packet.type)
+      const data = JSON.stringify(packet)
+      this.ws.send(data)
+      this.requests.set(rid, { resolve, reject })
+    })
+  }
+
   send (packet: SignalingPacketTypes): void {
     if (this.ws.readyState === WebSocket.OPEN) {
       this.network.log('sending signaling packet:', packet.type)
@@ -104,6 +128,17 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     try {
       const packet = JSON.parse(data) as SignalingPacketTypes
       this.network.log('signaling packet received:', packet.type)
+      if (packet.rid !== undefined) {
+        const request = this.requests.get(packet.rid)
+        if (request != null) {
+          this.requests.delete(packet.rid)
+          if (packet.type === 'error') {
+            request.reject(new SignalingError('server-error', packet.message))
+          } else {
+            request.resolve(packet)
+          }
+        }
+      }
       switch (packet.type) {
         case 'error':
           {
@@ -194,6 +229,11 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       }, 0)
     })
   }
+}
+
+interface RequestHandler {
+  resolve: (data: SignalingPacketTypes) => void
+  reject: (reason?: any) => void
 }
 
 export class SignalingError {

@@ -1,4 +1,5 @@
 import { Network } from '../../lib'
+import { LobbyListEntry } from '../../lib/types'
 
 interface RecordedEvent {
   eventName: string
@@ -8,6 +9,7 @@ interface RecordedEvent {
 const allEvents = ['close', 'ready', 'lobby', 'connected', 'disconnected', 'reconnecting', 'reconnected', 'message', 'signalingerror', 'signalingreconnected']
 
 export class Player {
+  public lastReceivedLobbies: LobbyListEntry[] = []
   public events: RecordedEvent[] = []
 
   constructor (public name: string, public network: Network) {

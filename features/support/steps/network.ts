@@ -1,4 +1,5 @@
-import { After, Given, Then, When } from '@cucumber/cucumber'
+import { After, DataTable, Given, Then, When } from '@cucumber/cucumber'
+import assert from 'assert'
 import { World } from '../world'
 
 After(async function (this: World) {
@@ -28,7 +29,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
 
   await first.waitForEvent('ready')
 
-  first.network.create()
+  void first.network.create()
   const lobbyEvent = await first.waitForEvent('lobby')
   const lobbyCode = lobbyEvent.eventPayload[0] as string
 
@@ -39,7 +40,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
       return new Error(`player ${playerName} not found`)
     }
     await player.waitForEvent('ready')
-    player.network.join(lobbyCode)
+    void player.network.join(lobbyCode)
     await player.waitForEvent('lobby')
   }
 
@@ -64,7 +65,7 @@ When('{string} creates a lobby', function (this: World, playerName: string) {
   if (player == null) {
     return 'no such player'
   }
-  player.network.create()
+  void player.network.create()
 })
 
 When('{string} connects to the lobby {string}', function (this: World, playerName: string, lobbyCode: string) {
@@ -72,7 +73,7 @@ When('{string} connects to the lobby {string}', function (this: World, playerNam
   if (player == null) {
     return 'no such player'
   }
-  player.network.join(lobbyCode)
+  void player.network.join(lobbyCode)
 })
 
 When('{string} boardcasts {string} over the reliable channel', function (this: World, playerName: string, message: string) {
@@ -89,6 +90,15 @@ When('{string} disconnects', async function (this: World, playerName: string) {
     return 'no such player'
   }
   player.network.close()
+})
+
+When('{string} requests all lobbies', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  const lobbies = await player.network.list()
+  player.lastReceivedLobbies = lobbies
 })
 
 Then('{string} receives the network event {string}', async function (this: World, playerName: string, eventName: string) {
@@ -134,6 +144,38 @@ Then('{string} has recieved the peer ID {string}', async function (this: World, 
   }
   if (player.network.id !== exepctedID) {
     throw new Error(`expected peer ID ${exepctedID} but got ${player.network.id}`)
+  }
+})
+
+Then('{string} should receive {int} lobbies', function (this: World, playerName: string, expectedLobbyCount: number) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  return player.lastReceivedLobbies?.length === expectedLobbyCount
+})
+
+Then('{string} should have received only these lobbies', function (this: World, playerName: string, expectedLobbies: DataTable) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  expectedLobbies.hashes().forEach((row: {code: string}) => {
+    const correctCodeLobby = player.lastReceivedLobbies.filter(lobby => lobby.code === row.code)
+    if (correctCodeLobby.length !== 1) {
+      throw new Error(`expected to find one lobby with code ${row.code} but found ${correctCodeLobby.length}`)
+    }
+    const lobby = correctCodeLobby[0] as any
+    Object.keys(lobby).forEach(key => {
+      if (!Object.prototype.hasOwnProperty.call(row, key)) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete lobby[key]
+      }
+    })
+    assert.notStrictEqual(lobby, row)
+  })
+  if (player.lastReceivedLobbies.length !== expectedLobbies.hashes().length) {
+    throw new Error(`expected ${expectedLobbies.hashes().length} lobbies but got ${player.lastReceivedLobbies.length}`)
   }
 })
 

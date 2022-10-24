@@ -61,7 +61,7 @@ func (c *CredentialsClient) Run(ctx context.Context) {
 		c.mutex.Unlock()
 
 		select {
-		case <-time.NewTimer(c.lifetime / 2).C:
+		case <-time.After(c.lifetime / 2):
 			continue
 		case <-ctx.Done():
 			return

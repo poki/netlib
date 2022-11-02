@@ -256,16 +256,32 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	if p.Lobby != "" {
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
 	}
-	p.Lobby = util.GenerateLobbyCode(ctx)
+
+	attempts := 20
+	for ; attempts > 0; attempts-- {
+		switch packet.CodeFormat {
+		case "short":
+			p.Lobby = util.GenerateShortLobbyCode(ctx)
+		default:
+			p.Lobby = util.GenerateLobbyCode(ctx)
+		}
+
+		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID)
+		if err != nil {
+			if err == stores.ErrLobbyExists {
+				continue
+			}
+			return err
+		}
+		break
+	}
+	if attempts <= 0 {
+		return fmt.Errorf("unable to create lobby, too many attempts to find a unique code")
+	}
 
 	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
-	err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID)
-	if err != nil {
-		return err
-	}
-
-	_, err = p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
+	_, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
 	if err != nil {
 		return err
 	}

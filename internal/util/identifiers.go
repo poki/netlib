@@ -39,3 +39,9 @@ func GenerateSecret(ctx context.Context) string {
 func GenerateLobbyCode(ctx context.Context) string {
 	return strconv.FormatInt(rand.Int63(), 36)
 }
+
+func GenerateShortLobbyCode(ctx context.Context) string {
+	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
+	alphabet := []string{"A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "M", "N", "P", "R", "S", "T", "V", "W", "X", "Y", "Z"}
+	return numbers[rand.Intn(len(numbers))] + numbers[rand.Intn(len(numbers))] + alphabet[rand.Intn(len(alphabet))] + alphabet[rand.Intn(len(alphabet))]
+}

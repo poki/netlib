@@ -4,10 +4,12 @@ export interface PeerConfiguration extends RTCConfiguration {
 }
 
 export interface LobbySettings {
-  maxPlayers: number
+  codeFormat?: 'default' | 'short'
+  codeLength?: number
+  maxPlayers?: number
   password?: string
-  public: boolean
-  customData: {[key: string]: any}
+  public?: boolean
+  customData?: {[key: string]: any}
 }
 
 export interface LobbyListEntry extends LobbySettings{

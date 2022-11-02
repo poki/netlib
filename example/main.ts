@@ -32,7 +32,7 @@ n.on('ready', () => {
 
   document.querySelector('a[data-action="create"]')?.addEventListener('click', () => {
     if (n.currentLobby === undefined) {
-      void n.create()
+      void n.create({ codeFormat: 'short' })
     }
   })
 

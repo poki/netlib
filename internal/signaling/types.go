@@ -42,6 +42,7 @@ type CreatePacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 
+	CodeFormat string         `json:"codeFormat"`
 	Public     bool           `json:"public"`
 	Password   string         `json:"password"`
 	MaxPlayers int            `json:"maxPlayers"`

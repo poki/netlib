@@ -68,6 +68,15 @@ When('{string} creates a lobby', function (this: World, playerName: string) {
   void player.network.create()
 })
 
+When('{string} creates a lobby with these settings:', function (this: World, playerName: string, settingsBlob: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  const settings = JSON.parse(settingsBlob)
+  void player.network.create(settings)
+})
+
 When('{string} connects to the lobby {string}', function (this: World, playerName: string, lobbyCode: string) {
   const player = this.players.get(playerName)
   if (player == null) {

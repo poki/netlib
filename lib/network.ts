@@ -65,7 +65,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
     const reply = await this.signaling.request({
       type: 'create',
-      settings
+      ...settings
     })
     if (reply.type === 'joined') {
       return reply.lobby

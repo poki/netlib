@@ -16,6 +16,17 @@ Feature: Players can create and connect a network of players
     And "green" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
 
+  Scenario: A player can create a lobby with a short code
+    Given "green" is connected and ready for game "b6f7fc97-8545-4ffd-b714-7cf339048556"
+    When "green" creates a lobby with these settings:
+      """
+      {
+        "codeFormat": "short"
+      }
+      """
+    And "green" receives the network event "lobby" with the argument "34SB"
+
+
   Scenario: Connect two players to a lobby
     Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"

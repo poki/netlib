@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -72,7 +73,7 @@ func ReplyError(ctx context.Context, conn *websocket.Conn, err error) {
 	err = wsjson.Write(ctx, conn, &payload)
 	if err != nil && !IsPipeError(err) {
 		logger := logging.GetLogger(ctx)
-		logger.Warn("uncaught server error", zap.Error(err))
+		logger.Warn("uncaught server error", zap.Error(err), zap.Stack("stack"))
 	}
 }
 
@@ -98,6 +99,12 @@ func IsPipeError(err error) bool {
 		return IsPipeError(v.Err)
 	default:
 		if errors.Is(err, context.Canceled) {
+			return true
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return true
+		}
+		if errors.Is(err, io.EOF) {
 			return true
 		}
 		closeErr := websocket.CloseError{}

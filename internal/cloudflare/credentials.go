@@ -49,16 +49,24 @@ func (c *CredentialsClient) Run(ctx context.Context) {
 	}
 
 	for ctx.Err() == nil {
+		start := time.Now()
 		logger.Info("refetching credentials")
-		creds, err := c.fetchCredentials(context.Background())
+		fetchctx, fetchcancel := context.WithTimeout(ctx, 2*time.Minute)
+		creds, err := c.fetchCredentials(fetchctx)
+		fetchcancel()
 		if err != nil {
-			logger.Error("failed to fetch credentials", zap.Error(err))
+			logger.Error("failed to fetch credentials", zap.Error(err),
+				zap.Duration("duration", time.Since(start)))
 			time.Sleep(1 * time.Minute)
 			continue
 		}
+		logger.Info("fetched credentials", zap.Duration("duration", time.Since(start)))
+
 		c.mutex.Lock()
 		c.cached = creds
 		c.mutex.Unlock()
+
+		logger.Info("credentials cache set")
 
 		select {
 		case <-time.After(c.lifetime / 2):

@@ -20,7 +20,7 @@ spec:
   domains:
   - netlib.poki.io
 ---
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: netlib
@@ -34,9 +34,13 @@ spec:
   - host: netlib.poki.io
     http:
       paths:
-      - backend:
-          serviceName: netlib-signaling
-          servicePort: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: netlib-signaling
+            port:
+              number: 8080
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig

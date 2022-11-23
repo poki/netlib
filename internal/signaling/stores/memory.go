@@ -21,6 +21,12 @@ func NewMemoryStore() *Memory {
 	return m
 }
 
+func (m *Memory) DebugTotalLobbyCount() int {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return len(m.Lobbies)
+}
+
 func (m *Memory) CreateLobby(ctx context.Context, game, lobbyCode, id string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -141,6 +147,10 @@ func (m *Memory) ListLobbies(ctx context.Context, game, filter string) ([]Lobby,
 		// TODO: Filter lobby on given filter
 
 		lobbies = append(lobbies, lobby.Build())
+
+		if len(lobbies) >= 50 {
+			break
+		}
 	}
 
 	return lobbies, nil

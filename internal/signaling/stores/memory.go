@@ -183,7 +183,6 @@ func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(cont
 	go func() {
 		defer func() {
 			m.mutex.Lock()
-			close(channel)
 			if channels, found := m.topics[topic]; found {
 				delete(channels, channel)
 				if len(channels) == 0 {
@@ -191,6 +190,8 @@ func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(cont
 				}
 			}
 			m.mutex.Unlock()
+
+			close(channel)
 		}()
 
 		for ctx.Err() == nil {
@@ -204,21 +205,42 @@ func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(cont
 }
 
 func (m *Memory) Publish(ctx context.Context, topic string, data []byte) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	if m.topics == nil {
-		return ErrNoSuchTopic
-	}
-	channels, found := m.topics[topic]
-	if !found {
-		return ErrNoSuchTopic
+	// Use a closure here to be able to defer m.mutex.Unlock() without
+	// having the channel sending code below blocking the mutex.
+	channels, err := func() (map[chan []byte]struct{}, error) {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+
+		if m.topics == nil {
+			return nil, ErrNoSuchTopic
+		}
+		channels, found := m.topics[topic]
+		if !found {
+			return nil, ErrNoSuchTopic
+		}
+		return channels, nil
+	}()
+	if err != nil {
+		return err
 	}
 
 	for channel := range channels {
-		select {
-		case channel <- data:
-		case <-ctx.Done():
-			return ctx.Err()
+		err := func() error {
+			// The send on channel can panic as the channel can be closed after we
+			// got it from the topics. We just recover from the panic and ignore it as
+			// the receiving party has disconnected already.
+			_ = recover()
+
+			select {
+			case channel <- data:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			return nil
+		}()
+		if err != nil {
+			return err
 		}
 	}
 	return nil

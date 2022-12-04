@@ -90,11 +90,14 @@ func (p *Peer) RequestConnection(ctx context.Context, otherID string) error {
 }
 
 func (p *Peer) ForwardMessage(ctx context.Context, raw []byte) {
-	logger := logging.GetLogger(ctx)
-	err := p.conn.Write(ctx, websocket.MessageText, raw)
-	if err != nil && !util.IsPipeError(err) {
-		logger.Warn("failed to forward message", zap.Error(err))
-	}
+	// Don't block our receive loop
+	go func() {
+		logger := logging.GetLogger(ctx)
+		err := p.conn.Write(ctx, websocket.MessageText, raw)
+		if err != nil && !util.IsPipeError(err) {
+			logger.Warn("failed to forward message", zap.Error(err))
+		}
+	}()
 }
 
 func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
@@ -209,7 +212,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		if hasReconnected && inLobby {
 			logger.Debug("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
 			p.Lobby = packet.Lobby
-			go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+			p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
 		} else {
 			fakeJoinPacket := JoinPacket{
@@ -279,7 +282,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return fmt.Errorf("unable to create lobby, too many attempts to find a unique code")
 	}
 
-	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	_, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
 	if err != nil {
@@ -310,7 +313,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 
 	p.Lobby = packet.Lobby
 
-	go p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	others, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
 	if err != nil {

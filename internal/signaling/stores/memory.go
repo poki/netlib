@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Memory struct {
@@ -19,12 +20,6 @@ func NewMemoryStore() *Memory {
 	m.mutex = &sync.Mutex{}
 	m.topics = make(map[string]map[chan []byte]struct{})
 	return m
-}
-
-func (m *Memory) DebugTotalLobbyCount() int {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	return len(m.Lobbies)
 }
 
 func (m *Memory) CreateLobby(ctx context.Context, game, lobbyCode, id string) error {
@@ -191,7 +186,17 @@ func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(cont
 			}
 			m.mutex.Unlock()
 
-			close(channel)
+			// Flush the channel.
+			// Since the channel isn't in m.topics[topic] anymore
+			// this shouldn't take more than a second.
+			timeout := time.After(time.Second)
+			for {
+				select {
+				case <-channel:
+				case <-timeout:
+					return
+				}
+			}
 		}()
 
 		for ctx.Err() == nil {
@@ -205,43 +210,33 @@ func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(cont
 }
 
 func (m *Memory) Publish(ctx context.Context, topic string, data []byte) error {
-	// Use a closure here to be able to defer m.mutex.Unlock() without
-	// having the channel sending code below blocking the mutex.
-	channels, err := func() (map[chan []byte]struct{}, error) {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-
-		if m.topics == nil {
-			return nil, ErrNoSuchTopic
-		}
-		channels, found := m.topics[topic]
-		if !found {
-			return nil, ErrNoSuchTopic
-		}
-		return channels, nil
-	}()
+	channels, err := m.getChannels(topic)
 	if err != nil {
 		return err
 	}
 
 	for channel := range channels {
-		err := func() error {
-			// The send on channel can panic as the channel can be closed after we
-			// got it from the topics. We just recover from the panic and ignore it as
-			// the receiving party has disconnected already.
-			_ = recover()
-
-			select {
-			case channel <- data:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-
-			return nil
-		}()
-		if err != nil {
-			return err
+		select {
+		case channel <- data:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 	return nil
+}
+
+func (m *Memory) getChannels(topic string) (map[chan []byte]struct{}, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.topics == nil {
+		return nil, ErrNoSuchTopic
+	}
+
+	channels, found := m.topics[topic]
+	if !found {
+		return nil, ErrNoSuchTopic
+	}
+
+	return channels, nil
 }

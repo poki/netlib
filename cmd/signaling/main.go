@@ -36,12 +36,6 @@ func main() {
 	}
 
 	store := stores.NewMemoryStore()
-	go func() {
-		for range time.NewTicker(1 * time.Minute).C {
-			count := store.DebugTotalLobbyCount()
-			logger.Info("store length", zap.Int("count", count))
-		}
-	}()
 
 	credentialsClient := cloudflare.NewCredentialsClient(
 		os.Getenv("CLOUDFLARE_ZONE"),

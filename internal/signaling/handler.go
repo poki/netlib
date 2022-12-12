@@ -25,6 +25,7 @@ type Store interface {
 	GetLobby(ctx context.Context, game, lobby string) ([]string, error)
 	ListLobbies(ctx context.Context, game, filter string) ([]stores.Lobby, error)
 
+	// Subscribe subscribes to topic. callback should never block!
 	Subscribe(ctx context.Context, topic string, callback func(context.Context, []byte))
 	Publish(ctx context.Context, topic string, data []byte) error
 }

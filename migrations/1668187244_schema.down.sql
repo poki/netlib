@@ -1,0 +1,7 @@
+BEGIN;
+
+DROP TABLE "lobbies";
+
+DROP EXTENSION IF EXISTS "uuid-ossp";
+
+COMMIT;

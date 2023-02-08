@@ -1,11 +1,28 @@
 package stores
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var ErrAlreadyInLobby = errors.New("peer already in lobby")
 var ErrLobbyExists = errors.New("lobby already exists")
 var ErrNotFound = errors.New("lobby not found")
 var ErrNoSuchTopic = errors.New("no such topic")
+
+type SubscriptionCallback func(context.Context, []byte)
+
+type Store interface {
+	CreateLobby(ctx context.Context, game, lobby, id string) error
+	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
+	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
+	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
+	GetLobby(ctx context.Context, game, lobby string) ([]string, error)
+	ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error)
+
+	Subscribe(ctx context.Context, topic string, callback SubscriptionCallback)
+	Publish(ctx context.Context, topic string, data []byte) error
+}
 
 type Lobby struct {
 	Code        string `json:"code"`

@@ -166,7 +166,7 @@ func (m *Memory) IsPeerInLobby(ctx context.Context, game, lobbyCode, id string) 
 	return found, nil
 }
 
-func (m *Memory) Subscribe(ctx context.Context, topic string, callback func(context.Context, []byte)) {
+func (m *Memory) Subscribe(ctx context.Context, topic string, callback SubscriptionCallback) {
 	m.mutex.Lock()
 	if _, found := m.topics[topic]; !found {
 		m.topics[topic] = make(map[chan []byte]struct{})

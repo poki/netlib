@@ -29,13 +29,16 @@ func main() {
 	defer logger.Info("fin")
 	ctx = logging.WithLogger(ctx, logger)
 
+	store, flushed, err := stores.FromEnv(ctx)
+	if err != nil {
+		logger.Panic("failed setup store", zap.Error(err))
+	}
+
 	if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "test" {
 		rand.Seed(0)
 	} else {
 		rand.Seed(time.Now().UnixNano())
 	}
-
-	store := stores.NewMemoryStore()
 
 	credentialsClient := cloudflare.NewCredentialsClient(
 		os.Getenv("CLOUDFLARE_ZONE"),
@@ -74,6 +77,9 @@ func main() {
 	logger.Info("listening", zap.String("addr", addr))
 
 	<-ctx.Done()
+	if flushed != nil {
+		<-flushed
+	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

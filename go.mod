@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	github.com/gin-gonic/gin v1.7.0 // indirect
+	github.com/gin-gonic/gin v1.7.7 // indirect
 	github.com/klauspost/compress v1.10.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect

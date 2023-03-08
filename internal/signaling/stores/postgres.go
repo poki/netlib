@@ -196,8 +196,6 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 		return nil, err
 	}
 
-	// TODO: block on context and cleanup if it's cancelled
-
 	return peerlist, nil
 }
 

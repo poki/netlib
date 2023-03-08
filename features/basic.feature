@@ -56,7 +56,6 @@ Feature: Players can create and connect a network of players
     And "green" receives the network event "message" with the arguments "[Peer: ka9qy8em4vxr]", "reliable" and "Hello, world!"
 
 
-  @flakey
   Scenario: A player leaves a lobby
     Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"

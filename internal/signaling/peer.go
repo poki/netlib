@@ -38,13 +38,14 @@ func (p *Peer) Close() {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 			defer cancel()
 
-			others, err := p.store.LeaveLobby(ctx, p.Game, p.ID, p.Lobby)
+			others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
 			if err != nil {
 				logging.GetLogger(ctx).Warn("failed to leave lobby", zap.Error(err))
-			}
-			for _, id := range others {
-				if id != p.ID {
-					_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+			} else {
+				for _, id := range others {
+					if id != p.ID {
+						_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+					}
 				}
 			}
 		}
@@ -147,6 +148,25 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 
 	case "leave":
 		go metrics.Record(ctx, "lobby", "leave", p.Game, p.ID, p.Lobby)
+
+		others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
+		if err != nil {
+			return fmt.Errorf("unable to leave lobby: %w", err)
+		}
+		packet := DisconnectPacket{
+			Type: "disconnect",
+			ID:   p.ID,
+		}
+		data, err := json.Marshal(packet)
+		if err == nil {
+			for _, id := range others {
+				if id != p.ID {
+					_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+				}
+			}
+		}
+		p.Lobby = ""
+
 	case "connected": // TODO: Do we want to keep track of connections between peers?
 	case "disconnected": // TODO: Do we want to keep track of connections between peers?
 

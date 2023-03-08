@@ -85,5 +85,5 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		}
 		return store, flushed, nil
 	}
-	return NewMemoryStore(), nil, nil
+	return nil, nil, fmt.Errorf("no database configured expost DATABASE_URL or DOCKER_HOST to run locally")
 }

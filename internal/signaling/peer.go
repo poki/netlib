@@ -27,7 +27,8 @@ type Peer struct {
 	Lobby  string
 }
 
-func (p *Peer) Close() {
+func (p *Peer) Close(ctx context.Context) {
+	logger := logging.GetLogger(ctx)
 	if p.ID != "" && p.Game != "" && p.Lobby != "" {
 		packet := DisconnectPacket{
 			Type: "disconnect",
@@ -35,16 +36,19 @@ func (p *Peer) Close() {
 		}
 		data, err := json.Marshal(packet)
 		if err == nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 			defer cancel()
 
 			others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
 			if err != nil {
-				logging.GetLogger(ctx).Warn("failed to leave lobby", zap.Error(err))
+				logger.Warn("failed to leave lobby", zap.Error(err))
 			} else {
 				for _, id := range others {
 					if id != p.ID {
-						_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+						err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+						if err != nil {
+							logger.Error("failed to publish disconnect packet", zap.Error(err))
+						}
 					}
 				}
 			}
@@ -161,7 +165,10 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 		if err == nil {
 			for _, id := range others {
 				if id != p.ID {
-					_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+					err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+					if err != nil {
+						logger.Error("failed to publish disconnect packet", zap.Error(err))
+					}
 				}
 			}
 		}

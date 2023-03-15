@@ -119,7 +119,7 @@ func (s *PostgresStore) Subscribe(ctx context.Context, topic string, callback Su
 }
 
 func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) error {
-	if len(topic) > 64 {
+	if len(topic) > 76 {
 		return fmt.Errorf("topic too long")
 	}
 	if strings.ContainsRune(topic, ':') {

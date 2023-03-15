@@ -17,20 +17,7 @@ import (
 
 const MaxConnectionTime = 1 * time.Hour
 
-type Store interface {
-	CreateLobby(ctx context.Context, game, lobby, id string) error
-	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
-	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
-	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
-	GetLobby(ctx context.Context, game, lobby string) ([]string, error)
-	ListLobbies(ctx context.Context, game, filter string) ([]stores.Lobby, error)
-
-	// Subscribe subscribes to topic. callback should never block!
-	Subscribe(ctx context.Context, topic string, callback func(context.Context, []byte))
-	Publish(ctx context.Context, topic string, data []byte) error
-}
-
-func Handler(ctx context.Context, store Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
+func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
 	acceptOptions := &websocket.AcceptOptions{
 		// Allow any origin/game to connect.
 		InsecureSkipVerify: true,

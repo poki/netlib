@@ -16,7 +16,7 @@ import (
 )
 
 type Peer struct {
-	store Store
+	store stores.Store
 	conn  *websocket.Conn
 
 	retrievedIDCallback func(context.Context, *Peer) bool
@@ -27,7 +27,8 @@ type Peer struct {
 	Lobby  string
 }
 
-func (p *Peer) Close() {
+func (p *Peer) Close(ctx context.Context) {
+	logger := logging.GetLogger(ctx)
 	if p.ID != "" && p.Game != "" && p.Lobby != "" {
 		packet := DisconnectPacket{
 			Type: "disconnect",
@@ -35,16 +36,20 @@ func (p *Peer) Close() {
 		}
 		data, err := json.Marshal(packet)
 		if err == nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 			defer cancel()
 
-			others, err := p.store.LeaveLobby(ctx, p.Game, p.ID, p.Lobby)
+			others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
 			if err != nil {
-				logging.GetLogger(ctx).Warn("failed to leave lobby", zap.Error(err))
-			}
-			for _, id := range others {
-				if id != p.ID {
-					_ = p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+				logger.Warn("failed to leave lobby", zap.Error(err))
+			} else {
+				for _, id := range others {
+					if id != p.ID {
+						err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+						if err != nil {
+							logger.Error("failed to publish disconnect packet", zap.Error(err))
+						}
+					}
 				}
 			}
 		}
@@ -90,14 +95,13 @@ func (p *Peer) RequestConnection(ctx context.Context, otherID string) error {
 }
 
 func (p *Peer) ForwardMessage(ctx context.Context, raw []byte) {
-	// Don't block our receive loop
-	go func() {
-		logger := logging.GetLogger(ctx)
-		err := p.conn.Write(ctx, websocket.MessageText, raw)
-		if err != nil && !util.IsPipeError(err) {
-			logger.Warn("failed to forward message", zap.Error(err))
-		}
-	}()
+	logger := logging.GetLogger(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+	err := p.conn.Write(ctx, websocket.MessageText, raw)
+	if err != nil && !util.IsPipeError(err) {
+		logger.Warn("failed to forward message", zap.Error(err))
+	}
 }
 
 func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
@@ -148,6 +152,28 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 
 	case "leave":
 		go metrics.Record(ctx, "lobby", "leave", p.Game, p.ID, p.Lobby)
+
+		others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
+		if err != nil {
+			return fmt.Errorf("unable to leave lobby: %w", err)
+		}
+		packet := DisconnectPacket{
+			Type: "disconnect",
+			ID:   p.ID,
+		}
+		data, err := json.Marshal(packet)
+		if err == nil {
+			for _, id := range others {
+				if id != p.ID {
+					err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+					if err != nil {
+						logger.Error("failed to publish disconnect packet", zap.Error(err))
+					}
+				}
+			}
+		}
+		p.Lobby = ""
+
 	case "connected": // TODO: Do we want to keep track of connections between peers?
 	case "disconnected": // TODO: Do we want to keep track of connections between peers?
 
@@ -284,6 +310,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 
 	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
+	// TODO: Move joining of lobby in the CreateLobby
 	_, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
 	if err != nil {
 		return err
@@ -336,7 +363,11 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		}
 	}
 
-	logger.Info("joined lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby))
+	logger.Info("joined lobby",
+		zap.String("game", p.Game),
+		zap.String("lobby", p.Lobby),
+		zap.String("peer", p.ID),
+		zap.Strings("others", others))
 	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
 	return nil

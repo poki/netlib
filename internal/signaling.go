@@ -11,7 +11,7 @@ import (
 	"github.com/poki/netlib/internal/util"
 )
 
-func Signaling(ctx context.Context, store *stores.Memory, credentialsClient *cloudflare.CredentialsClient) http.Handler {
+func Signaling(ctx context.Context, store stores.Store, credentialsClient *cloudflare.CredentialsClient) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("/v0/signaling", signaling.Handler(ctx, store, credentialsClient))

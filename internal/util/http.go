@@ -24,7 +24,7 @@ type errorResponse struct {
 }
 
 func ErrorAndAbort(w http.ResponseWriter, r *http.Request, status int, key string, errs ...error) {
-	if status/100 == 500 && len(errs) != 0 {
+	if status/100 == 5 && len(errs) != 0 {
 		logger := logging.GetLogger(r.Context())
 		logger.Error("uncaught server error", zap.Errors("errors", errs))
 	}

@@ -48,7 +48,7 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 		if now.Sub(t) > i.DisconnectThreshold {
 			logger.Debug("peer timed out closing peer", zap.String("id", p.ID))
 			delete(i.peers, p.ID+p.Secret)
-			go p.Close()
+			go p.Close(ctx)
 		}
 	}
 }

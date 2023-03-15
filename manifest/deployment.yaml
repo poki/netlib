@@ -22,6 +22,11 @@ spec:
           value: production
         - name: VERSION
           value: "$COMMIT_SHA"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: netlib
+              key: DATABASE_URL
         - name: CLOUDFLARE_ZONE
           valueFrom:
             secretKeyRef:

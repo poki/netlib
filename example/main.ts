@@ -52,7 +52,7 @@ n.on('ready', () => {
       const el = document.getElementById('lobbies')
       if (el !== null) {
         el.innerHTML = ''
-        if (!lobbies || lobbies.length === 0) {
+        if (lobbies === null || lobbies.length === 0) {
           const li = document.createElement('li')
           li.innerHTML = '<i>no lobbies</i>'
           el.appendChild(li)

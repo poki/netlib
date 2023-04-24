@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -18,11 +19,6 @@ import (
 const MaxConnectionTime = 1 * time.Hour
 
 func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
-	acceptOptions := &websocket.AcceptOptions{
-		// Allow any origin/game to connect.
-		InsecureSkipVerify: true,
-	}
-
 	manager := &TimeoutManager{}
 	go manager.Run(ctx)
 
@@ -33,6 +29,17 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 		ctx, cancel := context.WithTimeout(ctx, MaxConnectionTime)
 		defer cancel()
+
+		userAgentLower := strings.ToLower(r.Header.Get("User-Agent"))
+		isSafari := strings.Contains(userAgentLower, "safari") && !strings.Contains(userAgentLower, "chrome") && !strings.Contains(userAgentLower, "android")
+		acceptOptions := &websocket.AcceptOptions{
+			// Allow any origin/game to connect.
+			InsecureSkipVerify: true,
+		}
+
+		if isSafari {
+			acceptOptions.CompressionMode = websocket.CompressionDisabled
+		}
 
 		conn, err := websocket.Accept(w, r, acceptOptions)
 		if err != nil {

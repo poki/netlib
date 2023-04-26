@@ -1,5 +1,4 @@
-# golang-1.18-alpine
-FROM golang@sha256:fcb74726937b96b4cc5dc489dad1f528922ba55604d37ceb01c98333bcca014f AS builder
+FROM golang:1.20.3-alpine@sha256:48c87cd759e3342fcbc4241533337141e7d8457ec33ab9660abe0a4346c30b60 AS builder
 
 WORKDIR /netlib
 

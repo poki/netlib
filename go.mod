@@ -1,9 +1,9 @@
 module github.com/poki/netlib
 
-go 1.19
+go 1.20
 
 require (
-	github.com/golang-migrate/migrate/v4 v4.15.2
+	github.com/golang-migrate/migrate/v4 v4.15.3-0.20230405045701-b94ed1a710af
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/koenbollen/logging v0.0.0-20220708091257-595331572446
 	github.com/ory/dockertest/v3 v3.10.0
@@ -12,9 +12,6 @@ require (
 	go.uber.org/zap v1.24.0
 	nhooyr.io/websocket v1.8.7
 )
-
-// https://github.com/golang-migrate/migrate/pull/848
-replace github.com/golang-migrate/migrate/v4 => github.com/treuherz/migrate/v4 v4.15.3-0.20221101180753-402b5ef7867b
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect

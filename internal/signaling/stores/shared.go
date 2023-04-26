@@ -22,6 +22,10 @@ type Store interface {
 
 	Subscribe(ctx context.Context, topic string, callback SubscriptionCallback)
 	Publish(ctx context.Context, topic string, data []byte) error
+
+	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error
+	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, error)
+	ClaimNextTimedOutPeer(ctx context.Context, callback func(peerID string, lobbies []string) error) (bool, error)
 }
 
 type Lobby struct {

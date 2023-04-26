@@ -13,6 +13,7 @@ import (
 type timedPeer struct {
 	peer *Peer
 	time time.Time
+	game string
 }
 
 type TimeoutManager struct {
@@ -24,7 +25,6 @@ type TimeoutManager struct {
 }
 
 func (i *TimeoutManager) Run(ctx context.Context) {
-
 	if i.DisconnectThreshold == 0 {
 		i.DisconnectThreshold = time.Minute
 	}
@@ -67,6 +67,7 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	i.peers[p.ID+p.Secret] = timedPeer{
 		peer: p,
 		time: util.Now(ctx),
+		game: p.Game,
 	}
 }
 
@@ -82,7 +83,12 @@ func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) bool {
 
 	logger.Debug("peer marked as reconnected", zap.String("id", p.ID))
 	key := p.ID + p.Secret
-	_, seen := i.peers[key]
+	oldPeer, seen := i.peers[key]
 	delete(i.peers, key)
+
+	if oldPeer.game != p.Game {
+		return false
+	}
+
 	return seen
 }

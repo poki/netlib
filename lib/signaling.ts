@@ -77,10 +77,12 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     return ws
   }
 
-  private reconnect (): void {
+  public reconnect (): void {
     if (this.reconnecting || this.network.closing) {
       return
     }
+
+    this.close()
 
     this.requests.forEach((r) => r.reject(new SignalingError('socket-error', 'signaling socket closed')))
     this.requests.clear()

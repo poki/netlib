@@ -214,6 +214,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	}
 	p.Game = packet.Game
 
+	hasReconnected := false
 	clientIsReconnecting := false
 	if packet.ID != "" && packet.Secret != "" {
 		clientIsReconnecting = true
@@ -225,9 +226,11 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		p.Secret = util.GenerateSecret(ctx)
 		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
-	hasReconnected := p.retrievedIDCallback(ctx, p)
-	if clientIsReconnecting && !hasReconnected {
-		return fmt.Errorf("unable to reconnect")
+	if clientIsReconnecting {
+		hasReconnected = p.retrievedIDCallback(ctx, p)
+		if !hasReconnected {
+			return fmt.Errorf("unable to reconnect")
+		}
 	}
 
 	if packet.Lobby != "" {

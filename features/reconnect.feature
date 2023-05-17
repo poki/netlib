@@ -67,3 +67,31 @@ Feature: Players can create and connect a network of players
     Then "yellow" receives the network event "reconnecting" with the argument "[Peer: h5yzwyizlwao]"
     And "yellow" receives the network event "disconnected" with the argument "[Peer: h5yzwyizlwao]"
     And "blue" receives the network event "disconnected" with the argument "[Peer: 3t3cfgcqup9e]"
+
+
+  Scenario: Reconnect with the signaling server
+    When "green" creates a network for game "302ce251-5d37-4274-ab44-31e1eb0c376a"
+    Then "green" receives the network event "ready"
+    And "green" has recieved the peer ID "h5yzwyizlwao"
+
+    When "green" creates a lobby
+
+    Then "green" receives the network event "ready" // LEFT HERE, this is the first ready, not a second ready reconnect not working in test
+    And "green" has recieved the peer ID "h5yzwyizlwao"
+
+
+  Scenario: Reconnect with the signaling server
+    Given "green" is connected and ready for game "325a2754-1a6f-4578-b768-196463271229"
+    And "blue" is connected and ready for game "325a2754-1a6f-4578-b768-196463271229"
+
+    When "green" creates a lobby
+    Then "green" receives the network event "lobby" with the argument "prb67ouj837u"
+
+    When the websocket of "green" is reconnected
+    Then "green" receives the network event "ready"
+    And "green" has recieved the peer ID "h5yzwyizlwao"
+
+    When "blue" connects to the lobby "prb67ouj837u"
+    Then "green" receives the network event "connected" with the argument "[Peer: 3t3cfgcqup9e]"
+    And "blue" receives the network event "connected" with the argument "[Peer: h5yzwyizlwao]"
+

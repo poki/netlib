@@ -45,6 +45,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
   }
 
+  testit (): void {
+    this.signaling.reconnect()
+  }
+
   async list (filter?: string): Promise<LobbyListEntry[]> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return []

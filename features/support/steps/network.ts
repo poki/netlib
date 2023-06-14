@@ -27,8 +27,6 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
     throw new Error(`player ${playerNames[0]} not found`)
   }
 
-  await first.waitForEvent('ready')
-
   void first.network.create()
   const lobbyEvent = await first.waitForEvent('lobby')
   const lobbyCode = lobbyEvent.eventPayload[0] as string
@@ -39,7 +37,6 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
     if (player == null) {
       return new Error(`player ${playerName} not found`)
     }
-    await player.waitForEvent('ready')
     void player.network.join(lobbyCode)
     await player.waitForEvent('lobby')
   }
@@ -126,7 +123,7 @@ Then('{string} receives the network event {string} with the argument {string}', 
   if (player == null) {
     throw new Error('no such player')
   }
-  const event = await player.waitForEvent(eventName, expectedArgument)
+  const event = await player.waitForEvent(eventName, [expectedArgument])
   if (event == null) {
     throw new Error(`no event ${eventName}(${expectedArgument}) received`)
   }
@@ -137,7 +134,7 @@ Then('{string} receives the network event {string} with the arguments {string}, 
   if (player == null) {
     throw new Error('no such player')
   }
-  const event = await player.waitForEvent(eventName, expectedArgument0, expectedArgument1, expectedArgument2)
+  const event = await player.waitForEvent(eventName, [expectedArgument0, expectedArgument1, expectedArgument2])
   if (event == null) {
     throw new Error(`no event ${eventName}(${expectedArgument0}, ${expectedArgument1}, ${expectedArgument2}) received`)
   }
@@ -149,7 +146,7 @@ Then('{string} has recieved the peer ID {string}', async function (this: World, 
     throw new Error('no such player')
   }
   if (player.network.id === '') {
-    await player.waitForEvent('ready')
+    await player.waitForEvent('ready', [], false)
   }
   if (player.network.id !== exepctedID) {
     throw new Error(`expected peer ID ${exepctedID} but got ${player.network.id}`)
@@ -193,7 +190,7 @@ When('{string} has not seen the {string} event', function (this: World, playerNa
   if (player == null) {
     throw new Error('no such player')
   }
-  if (player.hasSeenEvent(eventName)) {
+  if (player.findEvent(eventName) !== undefined) {
     throw new Error(`${playerName} has recieved a ${eventName} event`)
   }
 })

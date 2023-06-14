@@ -16,6 +16,10 @@ export default class Credentials {
   async fillCredentials (config: PeerConfiguration): Promise<RTCConfiguration> {
     const cloned = JSON.parse(JSON.stringify(config)) as PeerConfiguration
 
+    if (process.env.NODE_ENV === 'test') {
+      return cloned
+    }
+
     if (config.testproxyURL !== undefined) {
       return cloned
     }
@@ -30,18 +34,23 @@ export default class Credentials {
           resolve(this.cachedCredentials)
           return
         }
-        this.signaling.once('credentials', credentials => {
+        void this.signaling.request({
+          type: 'credentials'
+        }).then(credentials => {
           if (credentials.type === 'credentials') {
             this.cachedCredentials = credentials
             this.cachedCredentialsExpireAt = performance.now() + (((credentials.lifetime ?? 0) - 60) * 1000)
             resolve(credentials)
           }
-        })
-        this.signaling.send({
-          type: 'credentials'
+        }).catch(() => {
+          resolve({ type: 'credentials' })
+          this.cachedCredentials = { type: 'credentials' }
+          this.cachedCredentialsExpireAt = performance.now() + FetchTimeout
         })
         setTimeout(() => {
           resolve({ type: 'credentials' })
+          this.cachedCredentials = { type: 'credentials' }
+          this.cachedCredentialsExpireAt = performance.now() + FetchTimeout
         }, FetchTimeout)
       })
     }

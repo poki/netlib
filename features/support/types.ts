@@ -11,6 +11,7 @@ const allEvents = ['close', 'ready', 'lobby', 'connected', 'disconnected', 'reco
 export class Player {
   public lastReceivedLobbies: LobbyListEntry[] = []
   public events: RecordedEvent[] = []
+  public scanIndex = 0
 
   constructor (public name: string, public network: Network) {
     allEvents.forEach(eventName => {
@@ -28,41 +29,57 @@ export class Player {
     network.on('rtcerror', _ => {})
   }
 
-  hasSeenEvent (eventName: string, ...matchArguments: any[]): boolean {
-    return this.events.some(e => matchEvent(e, eventName, ...matchArguments))
+  findEvent (eventName: string, matchArguments: any[] = []): RecordedEvent | undefined {
+    return this.events.find(e => matchEvent(e, eventName, matchArguments))
   }
 
-  async waitForEvent (eventName: string, ...matchArguments: any[]): Promise<RecordedEvent> {
+  async waitForEvent (eventName: string, matchArguments: any[] = [], consume: boolean = true): Promise<RecordedEvent> {
     if (!allEvents.includes(eventName)) {
       throw new Error(`Event type ${eventName} not tracked, add to allEvents in types.ts`)
     }
 
+    const find = (): RecordedEvent | null => {
+      const ix = this.events.slice(this.scanIndex).findIndex(e => matchEvent(e, eventName, matchArguments))
+      if (ix >= 0) {
+        const event = this.events[this.scanIndex + ix]
+        if (consume) {
+          this.scanIndex += ix + 1
+        }
+        return event
+      }
+      return null
+    }
+
     return await new Promise((resolve, reject) => {
-      const events = this.events.filter(e => matchEvent(e, eventName, ...matchArguments))
-      if (events.length > 0) {
-        resolve(events[0])
+      const event = find()
+      if (event !== null) {
+        resolve(event)
       } else {
+        let interval: NodeJS.Timeout | null = null
         const timeout = setTimeout(() => {
-          const sameEvents = this.events.filter(e => e.eventName === eventName)
+          const sameEvents = this.events.slice(this.scanIndex).filter(e => e.eventName === eventName)
           const others = sameEvents.map(e => Array.from(e.eventPayload).map(a => `${a as string}`).join(',')).join(' + ')
+          if (interval !== null) {
+            clearInterval(interval)
+          }
           reject(new Error(`Event not found, timed out, got: ${others}`))
         }, 20000)
-        this.network.on(eventName as any, function () {
-          const e = {
-            eventName: eventName,
-            eventPayload: arguments
-          }
-          if (matchEvent(e, eventName, ...matchArguments)) {
+        interval = setInterval(() => {
+          const event = find()
+          if (event !== null) {
+            if (interval !== null) {
+              clearInterval(interval)
+            }
             clearTimeout(timeout)
-            resolve(e)
+            resolve(event)
           }
-        })
+        }, 100)
       }
     })
   }
 }
 
-function matchEvent (e: RecordedEvent, eventName: string, ...matchArguments: any[]): boolean {
+function matchEvent (e: RecordedEvent, eventName: string, matchArguments: any[] = []): boolean {
   if (e.eventName !== eventName) {
     return false
   }

@@ -18,7 +18,6 @@ export class Player {
       const events = this.events
       this.network.on(eventName as any, function () {
         // console.log(name, `(${network.id})`, 'received event', eventName, `${arguments[0] as string}`, arguments[1], arguments[2])
-        // fs.writeFileSync(`/Users/koen/${name}.log`, `received event ${eventName}(${arguments[0] as string}, ...)\n`)
         events.push({
           eventName: eventName,
           eventPayload: arguments

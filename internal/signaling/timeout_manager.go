@@ -10,12 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type timedPeer struct {
-	peer *Peer
-	time time.Time
-	game string
-}
-
 type TimeoutManager struct {
 	DisconnectThreshold time.Duration
 

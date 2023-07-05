@@ -45,10 +45,6 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
   }
 
-  testit (): void {
-    this.signaling.reconnect()
-  }
-
   async list (filter?: string): Promise<LobbyListEntry[]> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return []
@@ -149,6 +145,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
       console.error('signallingerror not handled:', e)
     }
     void this.signaling.event('signaling', 'error', { error: JSON.stringify(e) })
+  }
+
+  _forceReconnectSignaling (): void {
+    this.signaling.close()
   }
 
   get id (): string {

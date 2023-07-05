@@ -2,11 +2,11 @@ package signaling
 
 import (
 	"context"
-	"sync"
+	"encoding/json"
 	"time"
 
 	"github.com/koenbollen/logging"
-	"github.com/poki/netlib/internal/util"
+	"github.com/poki/netlib/internal/signaling/stores"
 	"go.uber.org/zap"
 )
 
@@ -17,11 +17,9 @@ type timedPeer struct {
 }
 
 type TimeoutManager struct {
-	sync.Mutex
-
 	DisconnectThreshold time.Duration
 
-	peers map[string]timedPeer
+	Store stores.Store
 }
 
 func (i *TimeoutManager) Run(ctx context.Context) {
@@ -38,17 +36,40 @@ func (i *TimeoutManager) Run(ctx context.Context) {
 func (i *TimeoutManager) RunOnce(ctx context.Context) {
 	logger := logging.GetLogger(ctx)
 
-	i.Lock()
-	defer i.Unlock()
+	for ctx.Err() == nil {
+		hasNext, err := i.Store.ClaimNextTimedOutPeer(ctx, i.DisconnectThreshold, func(peerID, gameID string, lobbies []string) error {
+			logger.Debug("peer timed out closing peer", zap.String("id", peerID))
 
-	now := util.Now(ctx)
-	for _, tp := range i.peers {
-		p := tp.peer
-		t := tp.time
-		if now.Sub(t) > i.DisconnectThreshold {
-			logger.Debug("peer timed out closing peer", zap.String("id", p.ID))
-			delete(i.peers, p.ID+p.Secret)
-			go p.Close(ctx)
+			for _, lobby := range lobbies {
+				packet := DisconnectPacket{
+					Type: "disconnect",
+					ID:   peerID,
+				}
+				data, _ := json.Marshal(packet)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+				defer cancel()
+
+				others, err := i.Store.LeaveLobby(ctx, gameID, lobby, peerID)
+				if err != nil {
+					logger.Warn("failed to leave lobby", zap.Error(err))
+					return err
+				}
+				for _, id := range others {
+					if id != peerID {
+						err := i.Store.Publish(ctx, gameID+lobby+id, data)
+						if err != nil {
+							logger.Error("failed to publish disconnect packet", zap.Error(err))
+						}
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			logger.Error("failed to claim next timed out peer", zap.Error(err))
+		}
+		if !hasNext {
+			break
 		}
 	}
 }
@@ -56,39 +77,16 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	logger := logging.GetLogger(ctx)
 
-	i.Lock()
-	defer i.Unlock()
-
-	if i.peers == nil {
-		i.peers = make(map[string]timedPeer)
-	}
-
 	logger.Debug("peer marked as disconnected", zap.String("id", p.ID))
-	i.peers[p.ID+p.Secret] = timedPeer{
-		peer: p,
-		time: util.Now(ctx),
-		game: p.Game,
+	err := i.Store.TimeoutPeer(ctx, p.ID, p.Secret, p.Game, []string{p.Lobby})
+	if err != nil {
+		logger.Error("failed to record timeout peer", zap.Error(err))
 	}
 }
 
-func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) bool {
+func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) (bool, error) {
 	logger := logging.GetLogger(ctx)
 
-	i.Lock()
-	defer i.Unlock()
-
-	if i.peers == nil {
-		return false
-	}
-
 	logger.Debug("peer marked as reconnected", zap.String("id", p.ID))
-	key := p.ID + p.Secret
-	oldPeer, seen := i.peers[key]
-	delete(i.peers, key)
-
-	if oldPeer.game != p.Game {
-		return false
-	}
-
-	return seen
+	return i.Store.ReconnectPeer(ctx, p.ID, p.Secret, p.Game)
 }

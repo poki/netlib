@@ -283,16 +283,6 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 	return lobbies, nil
 }
 
-// CREATE TABLE "timeouts" (
-//   "peer" VARCHAR(20) NOT NULL PRIMARY KEY,
-//   "secret" VARCHAR(24) NOT NULL,
-//   "game" uuid NOT NULL,
-//   "lobbies" VARCHAR(20)[] NOT NULL,
-//   "last_seen" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-//   "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-//   "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-// );
-
 func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error {
 	now := util.Now(ctx)
 	_, err := s.DB.Exec(ctx, `
@@ -328,7 +318,7 @@ func (s *PostgresStore) ReconnectPeer(ctx context.Context, peerID, secret, gameI
 	return true, nil
 }
 
-func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID string, lobbies []string) error) (more bool, err error) {
+func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (more bool, err error) {
 	now := util.Now(ctx)
 
 	tx, err := s.DB.Begin(ctx)
@@ -338,19 +328,20 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
 	var peerID string
+	var gameID string
 	var lobbies []string
 	err = tx.QueryRow(ctx, `
 		DELETE FROM timeouts
 		WHERE last_seen < $1
-		RETURNING peer, lobbies
-	`, now.Add(-threshold)).Scan(&peerID, &lobbies)
+		RETURNING peer, game, lobbies
+	`, now.Add(-threshold)).Scan(&peerID, &gameID, &lobbies)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, tx.Commit(ctx)
 		}
 		return false, err
 	}
-	err = callback(peerID, lobbies)
+	err = callback(peerID, gameID, lobbies)
 	if err != nil {
 		return false, err
 	}

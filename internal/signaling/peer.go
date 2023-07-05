@@ -19,7 +19,7 @@ type Peer struct {
 	store stores.Store
 	conn  *websocket.Conn
 
-	retrievedIDCallback func(context.Context, *Peer) bool
+	retrievedIDCallback func(context.Context, *Peer) (bool, error)
 
 	ID     string
 	Secret string
@@ -227,14 +227,18 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
 	if clientIsReconnecting {
-		hasReconnected = p.retrievedIDCallback(ctx, p)
+		var err error
+		hasReconnected, err = p.retrievedIDCallback(ctx, p)
+		if err != nil {
+			return fmt.Errorf("unable to reconnect: %w", err)
+		}
 		if !hasReconnected {
 			return fmt.Errorf("unable to reconnect")
 		}
 	}
 
 	if packet.Lobby != "" {
-		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, p.Lobby, p.ID)
+		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, packet.Lobby, p.ID)
 		if err != nil {
 			return err
 		}
@@ -246,7 +250,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		} else {
 			fakeJoinPacket := JoinPacket{
 				Type:  "join",
-				Lobby: p.Lobby,
+				Lobby: packet.Lobby,
 			}
 			err := p.HandleJoinPacket(ctx, fakeJoinPacket)
 			if err != nil {

@@ -41,7 +41,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         type: 'hello',
         game: this.network.gameID,
         id: this.receivedID,
-        secret: this.receivedSecret
+        secret: this.receivedSecret,
+        lobby: this.currentLobby
       })
     }
     const onError = (e: Event): void => {
@@ -77,7 +78,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     return ws
   }
 
-  public reconnect (): void {
+  private reconnect (): void {
     if (this.reconnecting || this.network.closing) {
       return
     }

@@ -208,5 +208,5 @@ When('the websocket of {string} is reconnected', function (this: World, playerNa
   if (player == null) {
     return 'no such player'
   }
-  player.network.testit()
+  player.network._forceReconnectSignaling()
 })

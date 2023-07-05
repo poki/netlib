@@ -74,9 +74,9 @@ Feature: Players can create and connect a network of players
     Then "green" receives the network event "ready"
     And "green" has recieved the peer ID "h5yzwyizlwao"
 
-    When "green" creates a lobby
+    When the websocket of "green" is reconnected
 
-    Then "green" receives the network event "ready" // LEFT HERE, this is the first ready, not a second ready reconnect not working in test
+    Then "green" receives the network event "signalingreconnected"
     And "green" has recieved the peer ID "h5yzwyizlwao"
 
 
@@ -88,7 +88,7 @@ Feature: Players can create and connect a network of players
     Then "green" receives the network event "lobby" with the argument "prb67ouj837u"
 
     When the websocket of "green" is reconnected
-    Then "green" receives the network event "ready"
+    Then "green" receives the network event "signalingreconnected"
     And "green" has recieved the peer ID "h5yzwyizlwao"
 
     When "blue" connects to the lobby "prb67ouj837u"

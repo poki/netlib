@@ -41,7 +41,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         type: 'hello',
         game: this.network.gameID,
         id: this.receivedID,
-        secret: this.receivedSecret
+        secret: this.receivedSecret,
+        lobby: this.currentLobby
       })
     }
     const onError = (e: Event): void => {
@@ -81,6 +82,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     if (this.reconnecting || this.network.closing) {
       return
     }
+
+    this.close()
 
     this.requests.forEach((r) => r.reject(new SignalingError('socket-error', 'signaling socket closed')))
     this.requests.clear()

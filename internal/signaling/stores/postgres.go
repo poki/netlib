@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
+	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 )
 
@@ -158,7 +160,7 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(context.Background()) //nolint:errcheck
 
 	var peerlist []string
 	err = tx.QueryRow(ctx, `
@@ -279,4 +281,70 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 	}
 
 	return lobbies, nil
+}
+
+func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error {
+	now := util.Now(ctx)
+	_, err := s.DB.Exec(ctx, `
+		INSERT INTO timeouts (peer, secret, game, lobbies, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $5)
+		ON CONFLICT (peer) DO UPDATE
+		SET
+			secret = $2,
+			game = $3,
+			lobbies = $4,
+			last_seen = $5,
+			updated_at = $5
+	`, peerID, secret, gameID, lobbies, now)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PostgresStore) ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, error) {
+	res, err := s.DB.Exec(ctx, `
+		DELETE FROM timeouts
+		WHERE peer = $1
+		AND secret = $2
+		AND game = $3
+	`, peerID, secret, gameID)
+	if err != nil {
+		return false, err
+	}
+	if res.RowsAffected() == 0 {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (more bool, err error) {
+	now := util.Now(ctx)
+
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(context.Background()) //nolint:errcheck
+
+	var peerID string
+	var gameID string
+	var lobbies []string
+	err = tx.QueryRow(ctx, `
+		DELETE FROM timeouts
+		WHERE last_seen < $1
+		RETURNING peer, game, lobbies
+	`, now.Add(-threshold)).Scan(&peerID, &gameID, &lobbies)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, tx.Commit(ctx)
+		}
+		return false, err
+	}
+	err = callback(peerID, gameID, lobbies)
+	if err != nil {
+		return false, err
+	}
+
+	return true, tx.Commit(ctx)
 }

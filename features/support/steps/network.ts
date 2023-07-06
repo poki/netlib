@@ -202,3 +202,11 @@ When('{string} disconnected from the signaling server', function (this: World, p
   }
   ;(player.network as any).signaling.ws.close()
 })
+
+When('the websocket of {string} is reconnected', function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  player.network._forceReconnectSignaling()
+})

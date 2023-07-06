@@ -147,6 +147,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
     void this.signaling.event('signaling', 'error', { error: JSON.stringify(e) })
   }
 
+  _forceReconnectSignaling (): void {
+    this.signaling.close()
+  }
+
   get id (): string {
     return this.signaling.receivedID ?? ''
   }

@@ -19,7 +19,9 @@ import (
 const MaxConnectionTime = 1 * time.Hour
 
 func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
-	manager := &TimeoutManager{}
+	manager := &TimeoutManager{
+		Store: store,
+	}
 	go manager.Run(ctx)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +56,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		}
 		defer func() {
 			logger.Debug("peer websocket closed", zap.String("id", peer.ID))
+			conn.Close(websocket.StatusInternalError, "unexpceted closure")
 			manager.Disconnected(ctx, peer)
 		}()
 

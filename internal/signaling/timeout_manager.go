@@ -35,26 +35,8 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 			logger.Debug("peer timed out closing peer", zap.String("id", peerID))
 
 			for _, lobby := range lobbies {
-				packet := DisconnectPacket{
-					Type: "disconnect",
-					ID:   peerID,
-				}
-				data, _ := json.Marshal(packet)
-				ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-				defer cancel()
-
-				others, err := i.Store.LeaveLobby(ctx, gameID, lobby, peerID)
-				if err != nil {
-					logger.Warn("failed to leave lobby", zap.Error(err))
+				if err := i.disconnectPeerInLobby(ctx, peerID, gameID, lobby, logger); err != nil {
 					return err
-				}
-				for _, id := range others {
-					if id != peerID {
-						err := i.Store.Publish(ctx, gameID+lobby+id, data)
-						if err != nil {
-							logger.Error("failed to publish disconnect packet", zap.Error(err))
-						}
-					}
 				}
 			}
 			return nil
@@ -66,6 +48,32 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 			break
 		}
 	}
+}
+
+func (i *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID string, gameID string, lobby string, logger *zap.Logger) error {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	packet := DisconnectPacket{
+		Type: "disconnect",
+		ID:   peerID,
+	}
+	data, _ := json.Marshal(packet)
+
+	others, err := i.Store.LeaveLobby(ctx, gameID, lobby, peerID)
+	if err != nil {
+		logger.Warn("failed to leave lobby", zap.Error(err))
+		return err
+	}
+	for _, id := range others {
+		if id != peerID {
+			err := i.Store.Publish(ctx, gameID+lobby+id, data)
+			if err != nil {
+				logger.Error("failed to publish disconnect packet", zap.Error(err))
+			}
+		}
+	}
+	return nil
 }
 
 func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {

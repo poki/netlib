@@ -31,6 +31,9 @@ export default class Peer {
 
   private readonly testSessionWrapper?: (desc: RTCSessionDescription, config: PeerConfiguration, selfID: string, otherID: string) => Promise<void>
 
+  /**
+   * @internal
+   */
   constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, public readonly config: PeerConfiguration, private readonly polite: boolean) {
     this.channels = {}
     this.network.log('creating peer')
@@ -222,6 +225,9 @@ export default class Peer {
     void this.signaling.event('rtc', 'error', { target: this.id, error: JSON.stringify(e) })
   }
 
+  /**
+   * @internal
+   */
   async _onSignalingMessage (packet: SignalingPacketTypes): Promise<void> {
     switch (packet.type) {
       case 'candidate':

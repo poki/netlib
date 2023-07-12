@@ -1,5 +1,8 @@
 
 export interface PeerConfiguration extends RTCConfiguration {
+  /**
+   * @internal
+   */
   testproxyURL?: string
 }
 

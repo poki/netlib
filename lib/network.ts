@@ -122,6 +122,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
     this.peers.forEach(peer => peer.send(channel, data))
   }
 
+  /**
+   * @internal
+   */
   async _addPeer (id: string, polite: boolean): Promise<void> {
     const config = await this.credentials.fillCredentials(this.rtcConfig)
 
@@ -131,14 +134,23 @@ export default class Network extends EventEmitter<NetworkListeners> {
     this.peers.set(id, peer)
   }
 
+  /**
+   * @internal
+   */
   _removePeer (peer: Peer): boolean {
     return this.peers.delete(peer.id)
   }
 
+  /**
+   * @internal
+   */
   _prefetchTURNCredentials (): void {
     this.credentials.fillCredentials(this.rtcConfig).catch(() => {})
   }
 
+  /**
+   * @internal
+   */
   _onSignalingError (e: SignalingError): void {
     this.emit('signalingerror', e)
     if (this.listenerCount('signalingerror') === 0) {
@@ -147,6 +159,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
     void this.signaling.event('signaling', 'error', { error: JSON.stringify(e) })
   }
 
+  /**
+   * @internal
+   */
   _forceReconnectSignaling (): void {
     this.signaling.close()
   }

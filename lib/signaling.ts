@@ -240,7 +240,12 @@ interface RequestHandler {
 }
 
 export class SignalingError {
-  constructor (public type: 'unknown-error' | 'socket-error' | 'server-error', public message: string, public event?: Event) {}
+  /**
+   * @internal
+   */
+  constructor (public type: 'unknown-error' | 'socket-error' | 'server-error', public message: string, public event?: Event) {
+  }
+
   public toString (): string {
     return `[${this.type}: ${this.message}]`
   }

@@ -225,7 +225,7 @@ func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID 
 		AND game = $3
 		RETURNING peers
 	`, peerID, lobbyCode, game).Scan(&peerlist)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 	return peerlist, nil

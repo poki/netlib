@@ -1,7 +1,7 @@
 # google/cloud-sdk:378.0.0-alpine
 FROM google/cloud-sdk@sha256:eb796485dda671767ba1f8516f47099ea585c798c634f80da780a1c378b6af19
-RUN apk add --no-cache ca-certificates curl openssl git openssh-client bash gettext \
-    && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing kubectl
+RUN apk add --no-cache ca-certificates curl openssl git openssh-client bash gettext
+RUN curl -sL "https://dl.k8s.io/release/v1.27.3/bin/linux/amd64/kubectl" -o /usr/bin/kubectl && chmod +x /usr/bin/kubectl
 RUN gcloud components install gke-gcloud-auth-plugin
 ENV USE_GKE_GCLOUD_AUTH_PLUGIN=True
 RUN curl -sL https://github.com/mozilla/sops/releases/download/v3.6.1/sops-v3.6.1.linux -o /usr/bin/sops && chmod +x /usr/bin/sops

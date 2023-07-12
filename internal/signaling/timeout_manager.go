@@ -79,6 +79,10 @@ func (i *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID strin
 func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	logger := logging.GetLogger(ctx)
 
+	if p.ID == "" {
+		return
+	}
+
 	logger.Debug("peer marked as disconnected", zap.String("id", p.ID))
 	err := i.Store.TimeoutPeer(ctx, p.ID, p.Secret, p.Game, []string{p.Lobby})
 	if err != nil {

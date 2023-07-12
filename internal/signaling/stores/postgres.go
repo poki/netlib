@@ -337,7 +337,10 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 	`, now.Add(-threshold)).Scan(&peerID, &gameID, &lobbies)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, tx.Commit(ctx)
+			if err := tx.Commit(ctx); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return false, err
+			}
+			return false, nil
 		}
 		return false, err
 	}

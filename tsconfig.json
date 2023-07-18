@@ -30,7 +30,8 @@
       "./types"
     ],
     "types": [
-      "node"
+      "node",
+      "wrtc",
     ]
   },
   "exclude": [

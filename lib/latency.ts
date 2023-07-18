@@ -16,6 +16,9 @@ export default class Latency {
   public max: number = 0
   public min: number = 0
 
+  /**
+   * @internal
+   */
   constructor (private readonly peer: Peer, private readonly control?: RTCDataChannel) {
     if (control !== undefined) {
       this.ping()

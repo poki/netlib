@@ -4,6 +4,7 @@
   "license": "ISC",
   "source": "lib/index.ts",
   "main": "dist/netlib.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist/netlib.js",
     "dist/netlib.js.map"
@@ -21,7 +22,8 @@
   "devDependencies": {
     "@cucumber/cucumber": "7.0.0",
     "@cucumber/pretty-formatter": "1.0.0-alpha.0",
-    "@types/node": "^14.x.x",
+    "@parcel/packager-ts": "2.8.3",
+    "@parcel/transformer-typescript-types": "2.8.3",
     "@types/node-fetch": "2",
     "@types/ws": "^7.4.7",
     "node-fetch": "2",

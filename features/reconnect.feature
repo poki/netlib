@@ -95,3 +95,22 @@ Feature: Players can create and connect a network of players
     Then "green" receives the network event "connected" with the argument "[Peer: 3t3cfgcqup9e]"
     And "blue" receives the network event "connected" with the argument "[Peer: h5yzwyizlwao]"
 
+
+  Scenario: A disconnected player is removed from the lobby
+    Given "green" is connected and ready for game "325a2754-1a6f-4578-b768-196463271229"
+    And "blue" creates a network for game "325a2754-1a6f-4578-b768-196463271229"
+
+    When "green" creates a lobby
+    Then "green" receives the network event "lobby" with the argument "prb67ouj837u"
+
+    When the websocket of "green" is reconnected
+    Then "green" receives the network event "signalingreconnected"
+    And "green" has recieved the peer ID "19yrzmetd2bn7"
+
+    When "green" disconnects
+    And timeout disconnect threshold passes
+
+    When "blue" requests all lobbies
+    Then "blue" should have received only these lobbies
+      | code         | playerCount |
+      | prb67ouj837u | 0           |

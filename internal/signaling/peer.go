@@ -29,6 +29,7 @@ type Peer struct {
 
 func (p *Peer) Close(ctx context.Context) {
 	logger := logging.GetLogger(ctx)
+	logger.Info("closing peer", zap.String("peer", p.ID))
 	if p.ID != "" && p.Game != "" && p.Lobby != "" {
 		packet := DisconnectPacket{
 			Type: "disconnect",
@@ -152,6 +153,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 
 	case "leave":
 		go metrics.Record(ctx, "lobby", "leave", p.Game, p.ID, p.Lobby)
+		logger.Info("leaving lobby", zap.String("lobby", p.Lobby))
 
 		others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
 		if err != nil {
@@ -220,7 +222,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		clientIsReconnecting = true
 		p.ID = packet.ID
 		p.Secret = packet.Secret
-		logger.Info("peer reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID))
+		logger.Info("peer reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby_in_packet", packet.Lobby))
 	} else {
 		p.ID = util.GeneratePeerID(ctx)
 		p.Secret = util.GenerateSecret(ctx)
@@ -243,7 +245,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			return err
 		}
 		if hasReconnected && inLobby {
-			logger.Debug("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
+			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
 			p.Lobby = packet.Lobby
 			p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
@@ -323,7 +325,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return err
 	}
 
-	logger.Info("created lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby))
+	logger.Info("created lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby), zap.String("peer", p.ID))
 	go metrics.Record(ctx, "lobby", "created", p.Game, p.ID, p.Lobby)
 
 	return p.Send(ctx, JoinedPacket{

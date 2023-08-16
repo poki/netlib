@@ -55,7 +55,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			retrievedIDCallback: manager.Reconnected,
 		}
 		defer func() {
-			logger.Debug("peer websocket closed", zap.String("id", peer.ID))
+			logger.Info("peer websocket closed", zap.String("peer", peer.ID))
 			conn.Close(websocket.StatusInternalError, "unexpceted closure")
 
 			// At this point ctx has already been cancelled, so we create a new one to use for the disconnect.

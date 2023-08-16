@@ -3,6 +3,7 @@ package signaling
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -21,8 +22,14 @@ func (i *TimeoutManager) Run(ctx context.Context) {
 		i.DisconnectThreshold = time.Minute
 	}
 
+	interval := time.Second
+	if os.Getenv("ENV") == "test" {
+		i.DisconnectThreshold = 500 * time.Millisecond
+		interval = 100 * time.Millisecond
+	}
+
 	for ctx.Err() == nil {
-		time.Sleep(time.Second)
+		time.Sleep(interval)
 		i.RunOnce(ctx)
 	}
 }
@@ -32,7 +39,7 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 
 	for ctx.Err() == nil {
 		hasNext, err := i.Store.ClaimNextTimedOutPeer(ctx, i.DisconnectThreshold, func(peerID, gameID string, lobbies []string) error {
-			logger.Debug("peer timed out closing peer", zap.String("id", peerID))
+			logger.Info("peer timed out closing peer", zap.String("id", peerID))
 
 			for _, lobby := range lobbies {
 				if err := i.disconnectPeerInLobby(ctx, peerID, gameID, lobby, logger); err != nil {

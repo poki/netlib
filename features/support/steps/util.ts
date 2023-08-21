@@ -5,10 +5,6 @@ When('I sleep for {int} second', async function (this: World, seconds: number) {
   await new Promise(resolve => setTimeout(resolve, seconds * 1000))
 })
 
-When('timeout disconnect threshold passes', async function (this: World) {
-  await new Promise(resolve => setTimeout(resolve, 1000))
-})
-
 let time: number = 0
 When(/I (start|stop) measuring time/, function (this: World, act: string) {
   if (act === 'start') {

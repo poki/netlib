@@ -334,6 +334,7 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 		DELETE FROM timeouts
 		WHERE last_seen < $1
 		RETURNING peer, game, lobbies
+		LIMIT 1
 	`, now.Add(-threshold)).Scan(&peerID, &gameID, &lobbies)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

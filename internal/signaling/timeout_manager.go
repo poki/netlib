@@ -3,7 +3,6 @@ package signaling
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -22,14 +21,8 @@ func (i *TimeoutManager) Run(ctx context.Context) {
 		i.DisconnectThreshold = time.Minute
 	}
 
-	interval := time.Second
-	if os.Getenv("ENV") == "test" {
-		i.DisconnectThreshold = 500 * time.Millisecond
-		interval = 100 * time.Millisecond
-	}
-
 	for ctx.Err() == nil {
-		time.Sleep(interval)
+		time.Sleep(time.Second)
 		i.RunOnce(ctx)
 	}
 }

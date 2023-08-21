@@ -331,10 +331,17 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 	var gameID string
 	var lobbies []string
 	err = tx.QueryRow(ctx, `
+		WITH d AS (
+			SELECT peer, game, lobbies
+			FROM timeouts
+			WHERE last_seen < $1
+			LIMIT 1
+		)
 		DELETE FROM timeouts
-		WHERE last_seen < $1
-		RETURNING peer, game, lobbies
-		LIMIT 1
+		USING d
+		WHERE timeouts.peer = d.peer
+		AND timeouts.game = d.game
+		RETURNING d.peer, d.game, d.lobbies
 	`, now.Add(-threshold)).Scan(&peerID, &gameID, &lobbies)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -32,7 +32,7 @@ func (i *TimeoutManager) RunOnce(ctx context.Context) {
 
 	for ctx.Err() == nil {
 		hasNext, err := i.Store.ClaimNextTimedOutPeer(ctx, i.DisconnectThreshold, func(peerID, gameID string, lobbies []string) error {
-			logger.Debug("peer timed out closing peer", zap.String("id", peerID))
+			logger.Info("peer timed out closing peer", zap.String("id", peerID))
 
 			for _, lobby := range lobbies {
 				if err := i.disconnectPeerInLobby(ctx, peerID, gameID, lobby, logger); err != nil {

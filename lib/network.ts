@@ -92,7 +92,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
     if (this.id !== '') {
       this.signaling.send({
-        type: 'leave',
+        type: 'close',
         id: this.id,
         reason: reason ?? 'normal closure'
       })

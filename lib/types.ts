@@ -27,6 +27,7 @@ interface Base {
 
 export type SignalingPacketTypes =
 | CandidatePacket
+| ClosePacket
 | ConnectedPacket
 | ConnectPacket
 | CreatePacket
@@ -39,7 +40,6 @@ export type SignalingPacketTypes =
 | HelloPacket
 | JoinedPacket
 | JoinPacket
-| LeavePacket
 | ListPacket
 | LobbiesPacket
 | WelcomePacket
@@ -91,8 +91,8 @@ export interface JoinedPacket extends Base {
   id: string
 }
 
-export interface LeavePacket extends Base {
-  type: 'leave'
+export interface ClosePacket extends Base {
+  type: 'close'
   id: string
   reason: string
 }

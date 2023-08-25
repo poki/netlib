@@ -58,10 +58,12 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			logger.Info("peer websocket closed", zap.String("peer", peer.ID))
 			conn.Close(websocket.StatusInternalError, "unexpceted closure")
 
-			// At this point ctx has already been cancelled, so we create a new one to use for the disconnect.
-			nctx, cancel := context.WithTimeout(logging.WithLogger(context.Background(), logger), time.Second*10)
-			defer cancel()
-			manager.Disconnected(nctx, peer)
+			if !peer.closedPacketReceived {
+				// At this point ctx has already been cancelled, so we create a new one to use for the disconnect.
+				nctx, cancel := context.WithTimeout(logging.WithLogger(context.Background(), logger), time.Second*10)
+				defer cancel()
+				manager.Disconnected(nctx, peer)
+			}
 		}()
 
 		for ctx.Err() == nil {
@@ -73,6 +75,11 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			typeOnly := struct{ Type string }{}
 			if err := json.Unmarshal(raw, &typeOnly); err != nil {
 				util.ErrorAndDisconnect(ctx, conn, err)
+			}
+
+			if peer.closedPacketReceived {
+				logger.Warn("received packet after close", zap.String("peer", peer.ID), zap.String("type", typeOnly.Type))
+				continue
 			}
 
 			switch typeOnly.Type {

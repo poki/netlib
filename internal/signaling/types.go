@@ -77,7 +77,7 @@ type DisconnectPacket struct {
 	Reason string `json:"reason"`
 }
 
-type LeavePacket struct {
+type ClosePacket struct {
 	Type string `json:"type"`
 
 	ID     string `json:"id"`

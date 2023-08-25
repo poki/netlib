@@ -19,6 +19,8 @@ type Peer struct {
 	store stores.Store
 	conn  *websocket.Conn
 
+	closedPacketReceived bool
+
 	retrievedIDCallback func(context.Context, *Peer) (bool, error)
 
 	ID     string
@@ -121,6 +123,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "close":
+		packet := ClosePacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleClosePacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	case "list":
 		packet := ListPacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
@@ -151,30 +163,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "leave":
-		go metrics.Record(ctx, "lobby", "leave", p.Game, p.ID, p.Lobby)
-		logger.Info("leaving lobby", zap.String("lobby", p.Lobby))
-
-		others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
-		if err != nil {
-			return fmt.Errorf("unable to leave lobby: %w", err)
-		}
-		packet := DisconnectPacket{
-			Type: "disconnect",
-			ID:   p.ID,
-		}
-		data, err := json.Marshal(packet)
-		if err == nil {
-			for _, id := range others {
-				if id != p.ID {
-					err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
-					if err != nil {
-						logger.Error("failed to publish disconnect packet", zap.Error(err))
-					}
-				}
-			}
-		}
-		p.Lobby = ""
+	// case "leave":
 
 	case "connected": // TODO: Do we want to keep track of connections between peers?
 	case "disconnected": // TODO: Do we want to keep track of connections between peers?
@@ -267,6 +256,45 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		ID:     p.ID,
 		Secret: p.Secret,
 	})
+}
+
+func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error {
+	logger := logging.GetLogger(ctx)
+	go metrics.Record(ctx, "client", "close", p.Game, p.ID, p.Lobby)
+
+	p.closedPacketReceived = true
+
+	logger.Info("client closed",
+		zap.String("game", p.Game),
+		zap.String("peer", p.ID),
+		zap.String("lobby", p.Lobby),
+		zap.String("reason", packet.Reason),
+	)
+
+	if p.Lobby != "" {
+		others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
+		if err != nil {
+			return fmt.Errorf("unable to leave lobby: %w", err)
+		}
+		packet := DisconnectPacket{
+			Type: "disconnect",
+			ID:   p.ID,
+		}
+		data, err := json.Marshal(packet)
+		if err == nil {
+			for _, id := range others {
+				if id != p.ID {
+					err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
+					if err != nil {
+						logger.Error("failed to publish disconnect packet", zap.Error(err))
+					}
+				}
+			}
+		}
+		p.Lobby = ""
+	}
+
+	return nil
 }
 
 func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {

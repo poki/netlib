@@ -123,6 +123,8 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "leave": // legacy, backwards compatibility
+		fallthrough
 	case "close":
 		packet := ClosePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {

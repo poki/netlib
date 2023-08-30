@@ -141,6 +141,16 @@ func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) 
 }
 
 func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string) error {
+	if len(lobbyCode) > 20 {
+		logger := logging.GetLogger(ctx)
+		logger.Warn("lobby code too long", zap.String("lobbyCode", lobbyCode))
+		return ErrInvalidLobbyCode
+	}
+	if len(peerID) > 20 {
+		logger := logging.GetLogger(ctx)
+		logger.Warn("peer id too long", zap.String("peerID", peerID))
+		return ErrInvalidPeerID
+	}
 	res, err := s.DB.Exec(ctx, `
 		INSERT INTO lobbies (code, game, public)
 		VALUES ($1, $2, true)
@@ -156,6 +166,11 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 }
 
 func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
+	if len(peerID) > 20 {
+		logger := logging.GetLogger(ctx)
+		logger.Warn("peer id too long", zap.String("peerID", peerID))
+		return nil, ErrInvalidPeerID
+	}
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -284,6 +299,13 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 }
 
 func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error {
+
+	if len(peerID) > 20 {
+		logger := logging.GetLogger(ctx)
+		logger.Warn("peer id too long", zap.String("peerID", peerID))
+		return ErrInvalidPeerID
+	}
+
 	now := util.Now(ctx)
 	_, err := s.DB.Exec(ctx, `
 		INSERT INTO timeouts (peer, secret, game, lobbies, created_at, updated_at)

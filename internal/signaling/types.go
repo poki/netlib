@@ -8,6 +8,10 @@ import (
 	"github.com/poki/netlib/internal/signaling/stores"
 )
 
+type PingPacket struct {
+	Type string `json:"type"`
+}
+
 type HelloPacket struct {
 	Type string `json:"type"`
 

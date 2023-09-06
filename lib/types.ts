@@ -42,7 +42,12 @@ export type SignalingPacketTypes =
 | JoinPacket
 | ListPacket
 | LobbiesPacket
+| PingPacket
 | WelcomePacket
+
+export interface PingPacket extends Base {
+  type: 'ping'
+}
 
 export interface ErrorPacket extends Base {
   type: 'error'

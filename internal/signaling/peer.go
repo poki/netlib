@@ -376,6 +376,9 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	if packet.Lobby == "" {
 		return fmt.Errorf("no lobby code supplied")
 	}
+	if len(packet.Lobby) > 20 {
+		return fmt.Errorf("lobby code too long")
+	}
 
 	p.Lobby = packet.Lobby
 

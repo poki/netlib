@@ -376,15 +376,17 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	if packet.Lobby == "" {
 		return fmt.Errorf("no lobby code supplied")
 	}
+	if len(packet.Lobby) > 20 {
+		return fmt.Errorf("lobby code too long")
+	}
 
-	p.Lobby = packet.Lobby
-
-	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
-
-	others, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
+	others, err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID)
 	if err != nil {
 		return err
 	}
+
+	p.Lobby = packet.Lobby
+	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	err = p.Send(ctx, JoinedPacket{
 		RequestID: packet.RequestID,

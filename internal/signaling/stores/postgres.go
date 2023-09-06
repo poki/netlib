@@ -299,11 +299,17 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 }
 
 func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error {
-
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
 		return ErrInvalidPeerID
+	}
+	for _, lobby := range lobbies {
+		if len(lobby) > 20 {
+			logger := logging.GetLogger(ctx)
+			logger.Warn("lobby code too long", zap.String("lobbyCode", lobby))
+			return ErrInvalidLobbyCode
+		}
 	}
 
 	now := util.Now(ctx)

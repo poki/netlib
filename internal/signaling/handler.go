@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -18,13 +19,14 @@ import (
 
 const MaxConnectionTime = 1 * time.Hour
 
-func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) http.HandlerFunc {
+func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) (*sync.WaitGroup, http.HandlerFunc) {
 	manager := &TimeoutManager{
 		Store: store,
 	}
 	go manager.Run(ctx)
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	wg := &sync.WaitGroup{}
+	return wg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		logger := logging.GetLogger(ctx)
 		logger.Debug("upgrading connection")
@@ -47,6 +49,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		if err != nil {
 			util.ErrorAndAbort(w, r, http.StatusBadRequest, "", err)
 		}
+
+		wg.Add(1)
+		defer wg.Done()
 
 		peer := &Peer{
 			store: store,

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -49,7 +50,7 @@ func main() {
 	)
 	go credentialsClient.Run(ctx)
 
-	mux := internal.Signaling(ctx, store, credentialsClient)
+	mux, cleanup := internal.Signaling(ctx, store, credentialsClient)
 
 	cors := cors.Default()
 	handler := logging.Middleware(cors.Handler(mux), logger)
@@ -64,6 +65,10 @@ func main() {
 		Addr:    addr,
 		Handler: handler,
 
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
+
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  650 * time.Second,
@@ -77,13 +82,16 @@ func main() {
 	logger.Info("listening", zap.String("addr", addr))
 
 	<-ctx.Done()
-	if flushed != nil {
-		<-flushed
+	logger.Info("shutting down")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Fatal("failed to shutdown server", zap.Error(err))
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Fatal("failed to shutdown server", zap.Error(err))
+	cleanup()
+	if flushed != nil {
+		<-flushed
 	}
 }

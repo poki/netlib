@@ -11,10 +11,15 @@ import (
 	"github.com/poki/netlib/internal/util"
 )
 
-func Signaling(ctx context.Context, store stores.Store, credentialsClient *cloudflare.CredentialsClient) http.Handler {
+func Signaling(ctx context.Context, store stores.Store, credentialsClient *cloudflare.CredentialsClient) (http.Handler, func()) {
 	mux := http.NewServeMux()
 
-	mux.Handle("/v0/signaling", signaling.Handler(ctx, store, credentialsClient))
+	openConnections, signaling := signaling.Handler(ctx, store, credentialsClient)
+
+	cleanup := func() {
+		openConnections.Wait()
+	}
+	mux.Handle("/v0/signaling", signaling)
 
 	hasCredentials := uint32(0)
 	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
@@ -43,5 +48,5 @@ func Signaling(ctx context.Context, store stores.Store, credentialsClient *cloud
 	mux.HandleFunc("/health", healthCheck)
 	mux.HandleFunc("/", healthCheck)
 
-	return mux
+	return mux, cleanup
 }

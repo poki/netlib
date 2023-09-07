@@ -209,6 +209,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         case 'credentials':
           this.emit('credentials', packet)
           break
+        case 'ping':
+          break
       }
     } catch (e) {
       const error = new SignalingError('unknown-error', e as string)

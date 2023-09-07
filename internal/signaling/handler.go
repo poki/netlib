@@ -71,6 +71,21 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 		}()
 
+		go func() { // Sending ping packet every 30 to check if the tcp connection is still alive.
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil {
+						util.ErrorAndDisconnect(ctx, conn, err)
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
 		for ctx.Err() == nil {
 			var raw []byte
 			if _, raw, err = conn.Read(ctx); err != nil {
@@ -108,6 +123,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
 				go metrics.RecordEvent(ctx, params)
+
+			case "pong":
+				// ignore, ping/pong is just for the tcp keepalive.
 
 			default:
 				if err := peer.HandlePacket(ctx, typeOnly.Type, raw); err != nil {

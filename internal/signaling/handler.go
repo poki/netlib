@@ -77,8 +77,8 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			for {
 				select {
 				case <-ticker.C:
-					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil {
-						util.ErrorAndDisconnect(ctx, conn, err)
+					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil && !util.IsPipeError(err) {
+						logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
 					}
 				case <-ctx.Done():
 					return

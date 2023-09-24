@@ -1,14 +1,14 @@
-import * as netlib from './index';
+import * as netlib from './index'
 
-let target: any =
-  "undefined" != typeof globalThis
+const target: any =
+  typeof globalThis !== 'undefined'
     ? globalThis
-    : "undefined" != typeof self
+    : typeof self !== 'undefined'
       ? self
-      : "undefined" != typeof window
+      : typeof window !== 'undefined'
         ? window
-        : "undefined" != typeof global
+        : typeof global !== 'undefined'
           ? global
-          : {};
+          : {}
 
-target["netlib"] = netlib;
+target.netlib = netlib

@@ -4,8 +4,10 @@
   "license": "ISC",
   "source": "lib/index.ts",
   "main": "dist/netlib.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/netlib.d.ts",
   "files": [
+    "dist/netlib.d.ts",
+    "dist/netlib.d.ts.map",
     "dist/netlib.js",
     "dist/netlib.js.map"
   ],

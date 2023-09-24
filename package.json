@@ -5,9 +5,19 @@
   "source": "lib/index.ts",
   "main": "dist/netlib.js",
   "types": "dist/index.d.ts",
+  "legacy": "dist/legacy.js",
+  "targets": {
+    "legacy": {
+      "context": "browser",
+      "outputFormat": "global",
+      "engines": {
+        "browsers": "supports es6-module"
+      },
+      "scopeHoist": false
+    }
+  },
   "files": [
-    "dist/netlib.js",
-    "dist/netlib.js.map"
+    "dist/*"
   ],
   "scripts": {
     "prepare": "yarn build",

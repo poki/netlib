@@ -6,14 +6,24 @@
   "main": "dist/netlib.js",
   "types": "dist/index.d.ts",
   "legacy": "dist/legacy.js",
+  "sideEffects": [
+    "lib/legacy.ts"
+  ],
   "targets": {
+    "types": {
+      "source": "lib/index.ts"
+    },
+    "main": {
+      "source": "lib/index.ts"
+    },
     "legacy": {
+      "source": "lib/legacy.ts",
       "context": "browser",
       "outputFormat": "global",
       "engines": {
         "browsers": "supports es6-module"
       },
-      "scopeHoist": false
+      "includeNodeModules": true
     }
   },
   "files": [

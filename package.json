@@ -5,9 +5,29 @@
   "source": "lib/index.ts",
   "main": "dist/netlib.js",
   "types": "dist/index.d.ts",
+  "legacy": "dist/legacy.js",
+  "sideEffects": [
+    "lib/legacy.ts"
+  ],
+  "targets": {
+    "types": {
+      "source": "lib/index.ts"
+    },
+    "main": {
+      "source": "lib/index.ts"
+    },
+    "legacy": {
+      "source": "lib/legacy.ts",
+      "context": "browser",
+      "outputFormat": "global",
+      "engines": {
+        "browsers": "supports es6-module"
+      },
+      "includeNodeModules": true
+    }
+  },
   "files": [
-    "dist/netlib.js",
-    "dist/netlib.js.map"
+    "dist/*"
   ],
   "scripts": {
     "prepare": "yarn build",

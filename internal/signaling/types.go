@@ -18,7 +18,6 @@ type HelloPacket struct {
 	Game   string `json:"game"`
 	ID     string `json:"id"`
 	Secret string `json:"secret"`
-	Lobby  string `json:"lobby"`
 }
 
 type WelcomePacket struct {

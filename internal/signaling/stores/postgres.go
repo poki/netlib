@@ -330,20 +330,25 @@ func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID 
 	return nil
 }
 
-func (s *PostgresStore) ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, error) {
-	res, err := s.DB.Exec(ctx, `
+func (s *PostgresStore) ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
+	var lobbies []string
+	err := s.DB.QueryRow(ctx, `
 		DELETE FROM timeouts
 		WHERE peer = $1
 		AND secret = $2
 		AND game = $3
-	`, peerID, secret, gameID)
+		RETURNING lobbies
+	`, peerID, secret, gameID).Scan(&lobbies)
 	if err != nil {
-		return false, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil, nil
+		}
+		return false, nil, err
 	}
-	if res.RowsAffected() == 0 {
-		return false, nil
+	if len(lobbies) == 0 {
+		lobbies = nil
 	}
-	return true, nil
+	return true, lobbies, nil
 }
 
 func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (more bool, err error) {

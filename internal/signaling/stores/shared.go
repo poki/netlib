@@ -27,7 +27,7 @@ type Store interface {
 	Publish(ctx context.Context, topic string, data []byte) error
 
 	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error
-	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, error)
+	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
 	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (bool, error)
 }
 

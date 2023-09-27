@@ -21,7 +21,7 @@ type Peer struct {
 
 	closedPacketReceived bool
 
-	retrievedIDCallback func(context.Context, *Peer) (bool, error)
+	retrievedIDCallback func(context.Context, *Peer) (bool, []string, error)
 
 	ID     string
 	Secret string
@@ -209,11 +209,12 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 
 	hasReconnected := false
 	clientIsReconnecting := false
+	var reconnectingLobbies []string
 	if packet.ID != "" && packet.Secret != "" {
 		clientIsReconnecting = true
 		p.ID = packet.ID
 		p.Secret = packet.Secret
-		logger.Info("peer reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby_in_packet", packet.Lobby))
+		logger.Info("peer reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	} else {
 		p.ID = util.GeneratePeerID(ctx)
 		p.Secret = util.GenerateSecret(ctx)
@@ -221,7 +222,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	}
 	if clientIsReconnecting {
 		var err error
-		hasReconnected, err = p.retrievedIDCallback(ctx, p)
+		hasReconnected, reconnectingLobbies, err = p.retrievedIDCallback(ctx, p)
 		if err != nil {
 			return fmt.Errorf("unable to reconnect: %w", err)
 		}
@@ -230,20 +231,21 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		}
 	}
 
-	if packet.Lobby != "" {
-		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, packet.Lobby, p.ID)
+	if hasReconnected && len(reconnectingLobbies) > 0 && reconnectingLobbies[0] != "" {
+		lobby := reconnectingLobbies[0]
+		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, lobby, p.ID)
 		if err != nil {
 			return err
 		}
-		if hasReconnected && inLobby {
+		if inLobby {
 			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
-			p.Lobby = packet.Lobby
+			p.Lobby = lobby
 			p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
 		} else {
 			fakeJoinPacket := JoinPacket{
 				Type:  "join",
-				Lobby: packet.Lobby,
+				Lobby: lobby,
 			}
 			err := p.HandleJoinPacket(ctx, fakeJoinPacket)
 			if err != nil {

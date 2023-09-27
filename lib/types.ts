@@ -61,7 +61,6 @@ export interface HelloPacket extends Base {
   game: string
   id?: string
   secret?: string
-  lobby?: string
 }
 
 export interface WelcomePacket extends Base {

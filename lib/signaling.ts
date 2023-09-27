@@ -41,8 +41,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         type: 'hello',
         game: this.network.gameID,
         id: this.receivedID,
-        secret: this.receivedSecret,
-        lobby: this.currentLobby
+        secret: this.receivedSecret
       })
     }
     const onError = (e: Event): void => {

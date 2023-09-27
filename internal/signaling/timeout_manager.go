@@ -83,14 +83,18 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 		return
 	}
 
-	logger.Debug("peer marked as disconnected", zap.String("id", p.ID))
-	err := i.Store.TimeoutPeer(ctx, p.ID, p.Secret, p.Game, []string{p.Lobby})
+	logger.Debug("peer marked as disconnected", zap.String("id", p.ID), zap.String("lobby", p.Lobby))
+	lobbies := []string{}
+	if p.Lobby != "" {
+		lobbies = []string{p.Lobby}
+	}
+	err := i.Store.TimeoutPeer(ctx, p.ID, p.Secret, p.Game, lobbies)
 	if err != nil {
 		logger.Error("failed to record timeout peer", zap.Error(err))
 	}
 }
 
-func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) (bool, error) {
+func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) (bool, []string, error) {
 	logger := logging.GetLogger(ctx)
 
 	logger.Debug("peer marked as reconnected", zap.String("id", p.ID))

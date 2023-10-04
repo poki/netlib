@@ -29,6 +29,8 @@ type Store interface {
 	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error
 	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, error)
 	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (bool, error)
+
+	CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error
 }
 
 type Lobby struct {

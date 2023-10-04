@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,11 +18,31 @@ import (
 
 const MaxConnectionTime = 1 * time.Hour
 
+const LobbyCleanInterval = 30 * time.Minute
+const LobbyCleanThreshold = 24 * time.Hour
+
 func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) (*sync.WaitGroup, http.HandlerFunc) {
 	manager := &TimeoutManager{
 		Store: store,
 	}
 	go manager.Run(ctx)
+
+	go func() {
+		logger := logging.GetLogger(ctx)
+		ticker := time.NewTicker(LobbyCleanInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				logger.Info("cleaning empty lobbies")
+				if err := store.CleanEmptyLobbies(ctx, time.Now().Add(-LobbyCleanThreshold)); err != nil {
+					logger.Error("failed to clean empty lobbies", zap.Error(err))
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	wg := &sync.WaitGroup{}
 	return wg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -34,17 +53,10 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		ctx, cancel := context.WithTimeout(ctx, MaxConnectionTime)
 		defer cancel()
 
-		userAgentLower := strings.ToLower(r.Header.Get("User-Agent"))
-		isSafari := strings.Contains(userAgentLower, "safari") && !strings.Contains(userAgentLower, "chrome") && !strings.Contains(userAgentLower, "android")
 		acceptOptions := &websocket.AcceptOptions{
-			// Allow any origin/game to connect.
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // Allow any origin/game to connect.
+			CompressionMode:    websocket.CompressionDisabled,
 		}
-
-		if isSafari {
-			acceptOptions.CompressionMode = websocket.CompressionDisabled
-		}
-
 		conn, err := websocket.Accept(w, r, acceptOptions)
 		if err != nil {
 			util.ErrorAndAbort(w, r, http.StatusBadRequest, "", err)

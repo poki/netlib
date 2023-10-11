@@ -151,11 +151,12 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
 		return ErrInvalidPeerID
 	}
+	now := util.Now(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, public)
-		VALUES ($1, $2, true)
+		INSERT INTO lobbies (code, game, public, created_at, updated_at)
+		VALUES ($1, $2, true, $3, $3)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game)
+	`, lobbyCode, game, now)
 	if err != nil {
 		return err
 	}
@@ -171,6 +172,9 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
 		return nil, ErrInvalidPeerID
 	}
+
+	now := util.Now(ctx)
+
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -200,10 +204,12 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 
 	_, err = tx.Exec(ctx, `
 		UPDATE lobbies
-		SET peers = array_append(peers, $1)
-		WHERE code = $2
-		AND game = $3
-	`, peerID, lobbyCode, game)
+		SET
+			peers = array_append(peers, $1),
+			updated_at = $2
+		WHERE code = $3
+		AND game = $4
+	`, peerID, now, lobbyCode, game)
 	if err != nil {
 		return nil, err
 	}
@@ -232,14 +238,18 @@ func (s *PostgresStore) IsPeerInLobby(ctx context.Context, game, lobbyCode, peer
 }
 
 func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
+	now := util.Now(ctx)
+
 	var peerlist []string
 	err := s.DB.QueryRow(ctx, `
 		UPDATE lobbies
-		SET peers = array_remove(peers, $1)
-		WHERE code = $2
-		AND game = $3
+		SET
+			peers = array_remove(peers, $1),
+			updated_at = $2
+		WHERE code = $3
+		AND game = $4
 		RETURNING peers
-	`, peerID, lobbyCode, game).Scan(&peerlist)
+	`, peerID, now, lobbyCode, game).Scan(&peerlist)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
@@ -391,4 +401,13 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 	}
 
 	return true, tx.Commit(ctx)
+}
+
+func (s *PostgresStore) CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error {
+	_, err := s.DB.Exec(ctx, `
+		DELETE FROM lobbies
+		WHERE updated_at < $1
+		AND peers = '{}'
+	`, olderThan)
+	return err
 }

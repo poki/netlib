@@ -4,7 +4,7 @@ import { unlinkSync } from 'fs'
 
 import fetch from 'node-fetch'
 import ws from 'ws'
-import wrtc from 'wrtc'
+import wrtc from '@roamhq/wrtc'
 
 import { Player } from './types'
 

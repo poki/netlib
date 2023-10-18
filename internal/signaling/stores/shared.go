@@ -16,7 +16,7 @@ var ErrInvalidPeerID = errors.New("invalid peer id")
 type SubscriptionCallback func(context.Context, []byte)
 
 type Store interface {
-	CreateLobby(ctx context.Context, game, lobby, id string) error
+	CreateLobby(ctx context.Context, game, lobby, id string, public bool) error
 	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
 	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)

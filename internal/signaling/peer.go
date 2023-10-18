@@ -336,7 +336,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 			p.Lobby = util.GenerateLobbyCode(ctx)
 		}
 
-		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID)
+		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, packet.Public)
 		if err != nil {
 			if err == stores.ErrLobbyExists {
 				continue

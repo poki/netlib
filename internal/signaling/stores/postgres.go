@@ -279,7 +279,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 
 	var lobbies []Lobby
 	rows, err := s.DB.Query(ctx, `
-		SELECT code, peers, meta
+		SELECT code, peers, public, meta
 		FROM lobbies
 		WHERE game = $1
 		AND public = true
@@ -294,7 +294,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 	for rows.Next() {
 		var lobby Lobby
 		var peers []string
-		err = rows.Scan(&lobby.Code, &peers, &lobby.CustomData)
+		err = rows.Scan(&lobby.Code, &peers, &lobby.Public, &lobby.CustomData)
 		if err != nil {
 			return nil, err
 		}

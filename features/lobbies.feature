@@ -55,8 +55,8 @@ Feature: Lobby Discovery
 
     When "green" requests all lobbies
     Then "green" should have received only these lobbies
-      | code         | playerCount |
-      | dhgp75mn2bll | 1           |
+      | code         | playerCount | public |
+      | dhgp75mn2bll | 1           | true   |
 
 
 

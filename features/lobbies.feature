@@ -20,13 +20,43 @@ Feature: Lobby Discovery
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
-    When "blue" creates a lobby
+    When "blue" creates a lobby with these settings:
+      """
+      {
+        "public": true
+      }
+      """
     And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
 
     When "green" requests all lobbies
     Then "green" should have received only these lobbies
       | code         | playerCount |
       | prb67ouj837u | 1           |
+
+  Scenario: Only list public lobbies
+    Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "yellow" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+
+    When "blue" creates a lobby with these settings:
+      """
+      {
+        "public": true
+      }
+      """
+    And "blue" receives the network event "lobby" with the argument "dhgp75mn2bll"
+    And "yellow" creates a lobby with these settings:
+      """
+      {
+        "public": false
+      }
+      """
+    And "yellow" receives the network event "lobby" with the argument "1qva9vyurwbbl"
+
+    When "green" requests all lobbies
+    Then "green" should have received only these lobbies
+      | code         | playerCount | public |
+      | dhgp75mn2bll | 1           | true   |
 
 
 

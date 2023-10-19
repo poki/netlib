@@ -1,5 +1,4 @@
 import { After, DataTable, Given, Then, When } from '@cucumber/cucumber'
-import assert from 'assert'
 import { World } from '../world'
 
 After(async function (this: World) {
@@ -178,7 +177,12 @@ Then('{string} should have received only these lobbies', function (this: World, 
         delete lobby[key]
       }
     })
-    assert.notStrictEqual(lobby, row)
+    const want = row as any
+    Object.keys(row).forEach(key => {
+      if (`${lobby[key] as string}` !== `${want[key] as string}`) {
+        throw new Error(`expected ${key} to be ${want[key] as string} but got ${lobby[key] as string}`)
+      }
+    })
   })
   if (player.lastReceivedLobbies.length !== expectedLobbies.hashes().length) {
     throw new Error(`expected ${expectedLobbies.hashes().length} lobbies but got ${player.lastReceivedLobbies.length}`)

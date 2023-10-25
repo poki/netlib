@@ -94,9 +94,9 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	}
 }
 
-func (i *TimeoutManager) Reconnected(ctx context.Context, p *Peer) (bool, []string, error) {
+func (i *TimeoutManager) Reconnected(ctx context.Context, id, secret, game string) (bool, []string, error) {
 	logger := logging.GetLogger(ctx)
 
-	logger.Debug("peer marked as reconnected", zap.String("id", p.ID))
-	return i.Store.ReconnectPeer(ctx, p.ID, p.Secret, p.Game)
+	logger.Debug("peer marked as reconnected", zap.String("id", id))
+	return i.Store.ReconnectPeer(ctx, id, secret, game)
 }

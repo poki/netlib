@@ -21,7 +21,7 @@ type Peer struct {
 
 	closedPacketReceived bool
 
-	retrievedIDCallback func(context.Context, *Peer) (bool, []string, error)
+	retrievedIDCallback func(context.Context, string, string, string) (bool, []string, error)
 
 	ID     string
 	Secret string
@@ -205,30 +205,27 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	if !util.IsUUID(packet.Game) {
 		return fmt.Errorf("no game id supplied")
 	}
-	p.Game = packet.Game
 
 	hasReconnected := false
-	clientIsReconnecting := false
 	var reconnectingLobbies []string
 	if packet.ID != "" && packet.Secret != "" {
-		clientIsReconnecting = true
-		p.ID = packet.ID
-		p.Secret = packet.Secret
-		logger.Info("peer reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID))
-	} else {
-		p.ID = util.GeneratePeerID(ctx)
-		p.Secret = util.GenerateSecret(ctx)
-		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
-	}
-	if clientIsReconnecting {
+		logger.Info("peer reconnecting", zap.String("game", packet.Game), zap.String("peer", packet.ID))
 		var err error
-		hasReconnected, reconnectingLobbies, err = p.retrievedIDCallback(ctx, p)
+		hasReconnected, reconnectingLobbies, err = p.retrievedIDCallback(ctx, packet.ID, packet.Secret, packet.Game)
 		if err != nil {
 			return fmt.Errorf("unable to reconnect: %w", err)
 		}
 		if !hasReconnected {
 			return fmt.Errorf("unable to reconnect")
 		}
+		p.Game = packet.Game
+		p.ID = packet.ID
+		p.Secret = packet.Secret
+	} else {
+		p.Game = packet.Game
+		p.ID = util.GeneratePeerID(ctx)
+		p.Secret = util.GenerateSecret(ctx)
+		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
 
 	if hasReconnected && len(reconnectingLobbies) > 0 && reconnectingLobbies[0] != "" {

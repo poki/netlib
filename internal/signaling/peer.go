@@ -311,6 +311,9 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 	if err != nil {
 		return err
 	}
+	if lobbies == nil {
+		lobbies = []stores.Lobby{}
+	}
 	return p.Send(ctx, LobbiesPacket{
 		RequestID: packet.RequestID,
 		Type:      "lobbies",

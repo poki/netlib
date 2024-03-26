@@ -1,0 +1,7 @@
+creation_rules:
+- encrypted_regex: ^data$
+  gcp_kms: projects/poki-core/locations/global/keyRings/sops/cryptoKeys/mothership
+  # Erik Dubbelboer, Casper van Wezel
+  pgp: >-
+    A88D9578C2CBC1D29F33B03650EBFD5EDAB6324F,
+    85F01C37959ACAE487AD24BCA72A9A05A3DEABEC

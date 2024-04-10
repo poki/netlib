@@ -120,9 +120,16 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				if err != nil {
 					util.ReplyError(ctx, conn, err)
 				} else {
+					requestPacket := CredentialsPacket{}
+					if err := json.Unmarshal(raw, &requestPacket); err != nil {
+						util.ReplyError(ctx, conn, err)
+						continue
+					}
+
 					packet := CredentialsPacket{
 						Type:        "credentials",
 						Credentials: *credentials,
+						RequestID:   requestPacket.RequestID,
 					}
 					if err := peer.Send(ctx, packet); err != nil {
 						util.ErrorAndDisconnect(ctx, conn, err)

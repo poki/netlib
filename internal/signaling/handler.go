@@ -104,17 +104,20 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
 
-			typeOnly := struct{ Type string }{}
-			if err := json.Unmarshal(raw, &typeOnly); err != nil {
+			base := struct {
+				Type      string `json:"type"`
+				RequestID string `json:"rid"`
+			}{}
+			if err := json.Unmarshal(raw, &base); err != nil {
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
 
 			if peer.closedPacketReceived {
-				logger.Warn("received packet after close", zap.String("peer", peer.ID), zap.String("type", typeOnly.Type))
+				logger.Warn("received packet after close", zap.String("peer", peer.ID), zap.String("type", base.Type))
 				continue
 			}
 
-			switch typeOnly.Type {
+			switch base.Type {
 			case "credentials":
 				credentials, err := cloudflare.GetCredentials(ctx)
 				if err != nil {
@@ -123,6 +126,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					packet := CredentialsPacket{
 						Type:        "credentials",
 						Credentials: *credentials,
+						RequestID:   base.RequestID,
 					}
 					if err := peer.Send(ctx, packet); err != nil {
 						util.ErrorAndDisconnect(ctx, conn, err)
@@ -140,7 +144,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				// ignore, ping/pong is just for the tcp keepalive.
 
 			default:
-				if err := peer.HandlePacket(ctx, typeOnly.Type, raw); err != nil {
+				if err := peer.HandlePacket(ctx, base.Type, raw); err != nil {
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
 			}

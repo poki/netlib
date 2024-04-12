@@ -96,7 +96,8 @@ type ForwardablePacket struct {
 
 type CredentialsPacket struct {
 	cloudflare.Credentials
-	Type string `json:"type"`
+	Type      string `json:"type"`
+	RequestID string `json:"rid,omitempty"`
 }
 
 type EventPacket struct {

@@ -42,6 +42,9 @@ type Lobby struct {
 	Password   string         `json:"password"`
 	CustomData map[string]any `json:"customData"`
 
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+
 	peers map[string]struct{}
 }
 

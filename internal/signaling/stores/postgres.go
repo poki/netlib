@@ -12,14 +12,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
+	"github.com/poki/mongodb-filter-to-postgres/filter"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 )
-
-type notificationPayload struct {
-	Topic string `json:"t"`
-	Data  []byte `json:"d"`
-}
 
 type PostgresStore struct {
 	DB *pgxpool.Pool
@@ -27,12 +23,17 @@ type PostgresStore struct {
 	mutex             sync.Mutex
 	callbacks         map[string]map[uint64]SubscriptionCallback
 	nextCallbackIndex uint64
+	filterConverter   *filter.Converter
 }
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	s := &PostgresStore{
 		DB:        db,
 		callbacks: make(map[string]map[uint64]SubscriptionCallback),
+		filterConverter: filter.NewConverter(
+			filter.WithNestedJSONB("meta", "code", "playerCount", "createdAt", "updatedAt"),
+			filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
+		),
 	}
 	go s.run(ctx)
 	return s, nil
@@ -274,18 +275,38 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) ([
 }
 
 func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error) {
+	// TODO: Remove this.
+	if filter == "" {
+		filter = "{}"
+	}
 
-	// TODO: Filters
+	where, values, err := s.filterConverter.Convert([]byte(filter), 2)
+	if err != nil {
+		logger := logging.GetLogger(ctx)
+		logger.Warn("failed to convert filter", zap.String("filter", filter), zap.Error(err))
+		return nil, fmt.Errorf("invalid filter: %w", err)
+	}
 
 	var lobbies []Lobby
 	rows, err := s.DB.Query(ctx, `
-		SELECT code, peers, public, meta
+		WITH lobbies AS (
+			SELECT
+				code,
+				ARRAY_LENGTH(peers, 1) AS "playerCount",
+				public,
+				meta,
+				created_at AS "createdAt",
+				updated_at AS "updatedAt"
+			FROM lobbies
+			WHERE game = $1
+			AND public = true
+		)
+		SELECT *
 		FROM lobbies
-		WHERE game = $1
-		AND public = true
-		ORDER BY created_at DESC
+		WHERE `+where+`
+		ORDER BY "createdAt" DESC
 		LIMIT 50
-	`, game)
+	`, append([]any{game}, values...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -293,12 +314,10 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 
 	for rows.Next() {
 		var lobby Lobby
-		var peers []string
-		err = rows.Scan(&lobby.Code, &peers, &lobby.Public, &lobby.CustomData)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
-		lobby.PlayerCount = len(peers)
 		lobbies = append(lobbies, lobby)
 	}
 	if err = rows.Err(); err != nil {

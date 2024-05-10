@@ -5,13 +5,19 @@ import { World } from '../world'
 Given('the {string} backend is running', async function (this: World, backend: string) {
   return await new Promise(resolve => {
     const port = 10000 + Math.ceil(Math.random() * 1000)
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ADDR: `127.0.0.1:${port}`,
+      ENV: 'test'
+    }
+
+    if (this.databaseURL === undefined) {
+      env.DATABASE_URL = this.databaseURL
+    }
+
     const prc = spawn(`/tmp/netlib-cucumber-${backend}`, [], {
       windowsHide: true,
-      env: {
-        ...process.env,
-        ADDR: `127.0.0.1:${port}`,
-        ENV: 'test'
-      }
+      env
     })
     prc.stderr.setEncoding('utf8')
     prc.stderr.on('data', (data: string) => {
@@ -19,7 +25,9 @@ Given('the {string} backend is running', async function (this: World, backend: s
       lines.forEach(line => {
         try {
           const entry = JSON.parse(line)
-          if (entry.message === 'listening') {
+          if (entry.message === 'using database') {
+            this.databaseURL = entry.url
+          } else if (entry.message === 'listening') {
             resolve(undefined)
           }
         } catch (_) {

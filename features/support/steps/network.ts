@@ -52,6 +52,52 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
   }
 })
 
+Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
+  if (this.testproxyURL === undefined) {
+    throw new Error('testproxy not active')
+  }
+
+  const columns: string[] = []
+  const values: string[] = []
+
+  lobbies.hashes().forEach(row => {
+    const v: string[] = []
+
+    Object.keys(row).forEach(key => {
+      const value = row[key] as string
+      if (key === 'playerCount') {
+        if (!columns.includes('peers')) {
+          columns.push('peers')
+        }
+
+        const n = parseInt(value, 10)
+        const peers: string[] = []
+
+        for (let i = 0; i < n; i++) {
+          peers.push(`'peer${i}'`)
+        }
+
+        v.push(`ARRAY [${peers.join(', ')}]`)
+      } else {
+        if (!columns.includes(key)) {
+          columns.push(key)
+        }
+
+        v.push(`'${value}'`)
+      }
+    })
+
+    values.push(`(${v.join(', ')})`)
+  })
+
+  console.log('INSERT INTO lobbies (' + columns.join(', ') + ') VALUES ' + values.join(', '))
+
+  await fetch(`${this.testproxyURL}/sql`, {
+    method: 'POST',
+    body: 'INSERT INTO lobbies (' + columns.join(', ') + ') VALUES ' + values.join(', ')
+  })
+})
+
 When('{string} creates a network for game {string}', function (this: World, playerName: string, gameID: string) {
   this.createPlayer(playerName, gameID)
 })
@@ -103,6 +149,15 @@ When('{string} requests all lobbies', async function (this: World, playerName: s
     return 'no such player'
   }
   const lobbies = await player.network.list()
+  player.lastReceivedLobbies = lobbies
+})
+
+When('{string} requests lobbies with this filter:', async function (this: World, playerName: string, filter: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    return 'no such player'
+  }
+  const lobbies = await player.network.list(filter)
   player.lastReceivedLobbies = lobbies
 })
 
@@ -160,7 +215,7 @@ Then('{string} should receive {int} lobbies', function (this: World, playerName:
   return player.lastReceivedLobbies?.length === expectedLobbyCount
 })
 
-Then('{string} should have received only these lobbies', function (this: World, playerName: string, expectedLobbies: DataTable) {
+Then('{string} should have received only these lobbies:', function (this: World, playerName: string, expectedLobbies: DataTable) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')

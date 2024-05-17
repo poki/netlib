@@ -32,6 +32,7 @@ export class World extends CucumberWorld {
   public signalingURL?: string
   public testproxyURL?: string
   public useTestProxy: boolean = false
+  public databaseURL?: string
 
   public players: Map<string, Player> = new Map<string, Player>()
 

@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
@@ -22,6 +25,15 @@ func main() {
 	logger.Info("init")
 	defer logger.Info("fin")
 	ctx = logging.WithLogger(ctx, logger)
+
+	db, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		logger.Fatal("failed to connect", zap.Error(err))
+	}
+
+	if err := db.Ping(ctx); err != nil {
+		logger.Fatal("failed to ping db", zap.Error(err), zap.String("url", os.Getenv("DATABASE_URL")))
+	}
 
 	connections := make(map[string]net.Conn)
 	interrupts := make(map[string]bool)
@@ -83,6 +95,18 @@ func main() {
 		if ok {
 			conn.Close()
 			delete(connections, id)
+		}
+	})
+	http.HandleFunc("/sql", func(w http.ResponseWriter, r *http.Request) {
+		sql, err := io.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
+		}
+
+		// This process is only ran during tests.
+		_, err = db.Exec(ctx, string(sql))
+		if err != nil {
+			panic(err)
 		}
 	})
 

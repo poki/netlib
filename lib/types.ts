@@ -18,6 +18,8 @@ export interface LobbySettings {
 export interface LobbyListEntry extends LobbySettings{
   code: string
   playerCount: number
+  createdAt: string
+  updatedAt: string
 }
 
 interface Base {

@@ -7,12 +7,16 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/koenbollen/logging"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/poki/netlib/migrations"
+	"go.uber.org/zap"
 )
 
 func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
+	logger := logging.GetLogger(ctx)
+
 	if url, ok := os.LookupEnv("DATABASE_URL"); ok {
 		db, err := pgxpool.New(ctx, url)
 		if err != nil {
@@ -53,13 +57,16 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		flushed := make(chan struct{})
 		go func() {
 			<-ctx.Done()
-			pool.Purge(resource)
+			pool.Purge(resource) // nolint:errcheck
 			close(flushed)
 		}()
 		if err := resource.Expire(120); err != nil {
 			return nil, nil, err
 		}
 		databaseUrl := fmt.Sprintf("postgres://test:test@%s/test?sslmode=disable", resource.GetHostPort("5432/tcp"))
+
+		// This log message is used by the test suite to pass the database URL to the testproxy.
+		logger.Info("using database", zap.String("url", databaseUrl))
 
 		var db *pgxpool.Pool
 		pool.MaxWait = 120 * time.Second
@@ -85,5 +92,5 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		}
 		return store, flushed, nil
 	}
-	return nil, nil, fmt.Errorf("no database configured expost DATABASE_URL or DOCKER_HOST to run locally")
+	return nil, nil, fmt.Errorf("no database configured export DATABASE_URL or DOCKER_HOST to run locally")
 }

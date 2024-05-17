@@ -162,7 +162,7 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 		return err
 	}
 	if res.RowsAffected() == 0 {
-		return ErrAlreadyInLobby
+		return ErrLobbyExists
 	}
 	return nil
 }

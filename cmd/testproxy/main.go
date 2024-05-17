@@ -32,7 +32,7 @@ func main() {
 	}
 
 	if err := db.Ping(ctx); err != nil {
-		logger.Fatal("failed to ping db", zap.Error(err))
+		logger.Fatal("failed to ping db", zap.Error(err), zap.String("url", os.Getenv("DATABASE_URL")))
 	}
 
 	connections := make(map[string]net.Conn)

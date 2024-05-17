@@ -90,8 +90,6 @@ Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
     values.push(`(${v.join(', ')})`)
   })
 
-  console.log('INSERT INTO lobbies (' + columns.join(', ') + ') VALUES ' + values.join(', '))
-
   await fetch(`${this.testproxyURL}/sql`, {
     method: 'POST',
     body: 'INSERT INTO lobbies (' + columns.join(', ') + ') VALUES ' + values.join(', ')

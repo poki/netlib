@@ -292,7 +292,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 		WITH lobbies AS (
 			SELECT
 				code,
-				ARRAY_LENGTH(peers, 1) AS "playerCount",
+				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
 				public,
 				meta,
 				created_at AS "createdAt",

@@ -105,3 +105,24 @@ Feature: Lobby Discovery
     Then "green" should have received only these lobbies:
       | code          |
       | 2qva9vyurwbbl |
+
+  Scenario: List empty lobbies
+    Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+
+    When "blue" creates a lobby with these settings:
+      """json
+      {
+        "codeFormat": "short",
+        "public": true
+      }
+      """
+    And "blue" receives the network event "lobby" with the argument "52YS"
+
+    When "blue" disconnects
+    Then "blue" receives the network event "close"
+
+    When "green" requests all lobbies
+    Then "green" should have received only these lobbies:
+      | code | playerCount |
+      | 52YS | 0           |

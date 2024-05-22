@@ -126,3 +126,33 @@ Feature: Lobby Discovery
     Then "green" should have received only these lobbies:
       | code | playerCount |
       | 52YS | 0           |
+
+  Scenario: Filter lobbies on customData
+    Given "green" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And these lobbies exist:
+      | code          | game                                 | playerCount | public | meta               |
+      | 1qva9vyurwbbl | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} |
+      | 2qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_dust"} |
+      | 3qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_nuke"} |
+
+    When "green" creates a lobby with these settings:
+      """json
+      {
+        "public": true,
+        "customData": {
+          "map": "de_nuke"
+        }
+      }
+      """
+    And "green" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+
+    When "green" requests lobbies with this filter:
+      """json
+      {
+        "map": "de_nuke"
+      }
+      """
+    Then "green" should have received only these lobbies:
+      | code          |
+      | 19yrzmetd2bn7 |
+      | 3qva9vyurwbbl |

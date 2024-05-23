@@ -128,12 +128,14 @@ Feature: Lobby Discovery
       | 52YS | 0           |
 
   Scenario: Filter lobbies on customData
-    Given "green" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+
     And these lobbies exist:
-      | code          | game                                 | playerCount | public | meta               |
-      | 1qva9vyurwbbl | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} |
-      | 2qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_dust"} |
-      | 3qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_nuke"} |
+      | code         | game                                 | playerCount | public | meta               |
+      | 1qva9vyurwbb | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} |
+      | 2qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_dust"} |
+      | 3qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_nuke"} |
 
     When "green" creates a lobby with these settings:
       """json
@@ -144,15 +146,15 @@ Feature: Lobby Discovery
         }
       }
       """
-    And "green" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "green" receives the network event "lobby" with the argument "prb67ouj837u"
 
-    When "green" requests lobbies with this filter:
+    When "blue" requests lobbies with this filter:
       """json
       {
         "map": "de_nuke"
       }
       """
-    Then "green" should have received only these lobbies:
-      | code          |
-      | 19yrzmetd2bn7 |
-      | 3qva9vyurwbbl |
+    Then "blue" should have received only these lobbies:
+      | code         |
+      | prb67ouj837u |
+      | 3qva9vyurwbb |

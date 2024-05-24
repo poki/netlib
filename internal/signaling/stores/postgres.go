@@ -141,7 +141,7 @@ func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) 
 	return nil
 }
 
-func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string, public bool) error {
+func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string, public bool, customData map[string]any) error {
 	if len(lobbyCode) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("lobby code too long", zap.String("lobbyCode", lobbyCode))
@@ -154,10 +154,10 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	}
 	now := util.Now(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, public, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $4)
+		INSERT INTO lobbies (code, game, public, meta, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $5)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, public, now)
+	`, lobbyCode, game, public, customData, now)
 	if err != nil {
 		return err
 	}

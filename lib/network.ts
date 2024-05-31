@@ -68,19 +68,23 @@ export default class Network extends EventEmitter<NetworkListeners> {
       ...settings
     })
     if (reply.type === 'joined') {
-      return reply.lobby
+      return reply.code
     }
     return ''
   }
 
-  async join (lobby: string): Promise<void> {
+  async join (lobby: string): Promise<LobbyListEntry|undefined> {
     if (this._closing || this.signaling.receivedID === undefined) {
-      return
+      return undefined
     }
-    await this.signaling.request({
+    const reply = await this.signaling.request({
       type: 'join',
       lobby
     })
+    if (reply.type === 'joined') {
+      return reply.lobbyInfo;
+    }
+    return undefined;
   }
 
   close (reason?: string): void {

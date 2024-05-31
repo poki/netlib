@@ -364,6 +364,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		RequestID: packet.RequestID,
 		Type:      "joined",
 		Lobby:     p.Lobby,
+		LobbyCode: p.Lobby,
 	})
 }
 
@@ -387,6 +388,11 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return err
 	}
 
+	lobby, err := p.store.GetLobby(ctx, p.Game, packet.Lobby)
+	if err != nil && err != stores.ErrNotFound {
+		return err
+	}
+
 	p.Lobby = packet.Lobby
 	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
@@ -394,6 +400,8 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		RequestID: packet.RequestID,
 		Type:      "joined",
 		Lobby:     p.Lobby,
+		LobbyCode: p.Lobby,
+		LobbyInfo: lobby,
 	})
 	if err != nil {
 		return err

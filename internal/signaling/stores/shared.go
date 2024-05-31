@@ -20,7 +20,7 @@ type Store interface {
 	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
 	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
-	GetLobby(ctx context.Context, game, lobby string) ([]string, error)
+	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error)
 
 	Subscribe(ctx context.Context, topic string, callback SubscriptionCallback)

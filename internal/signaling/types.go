@@ -63,7 +63,9 @@ type JoinedPacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 
-	Lobby string `json:"lobby"`
+	Lobby     string       `json:"lobby"` // for backwards compatibility, can't rename
+	LobbyCode string       `json:"code"`
+	LobbyInfo stores.Lobby `json:"lobbyInfo"`
 }
 
 type ConnectPacket struct {

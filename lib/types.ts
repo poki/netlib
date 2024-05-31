@@ -15,9 +15,10 @@ export interface LobbySettings {
   customData?: {[key: string]: any}
 }
 
-export interface LobbyListEntry extends LobbySettings{
+export interface LobbyListEntry {
   code: string
   playerCount: number
+  customData?: {[key: string]: any}
   createdAt: string
   updatedAt: string
 }
@@ -93,8 +94,9 @@ export interface JoinPacket extends Base {
 
 export interface JoinedPacket extends Base {
   type: 'joined'
-  lobby: string
-  id: string
+  code: string // lobby code
+  lobby: string // lobby code
+  lobbyInfo?: LobbyListEntry
 }
 
 export interface ClosePacket extends Base {

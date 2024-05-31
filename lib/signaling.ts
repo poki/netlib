@@ -175,8 +175,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           if (packet.lobby === '') {
             throw new Error('missing lobby on received connect packet')
           }
-          this.currentLobby = packet.lobby
-          this.network.emit('lobby', packet.lobby)
+          this.currentLobby = packet.code
+          this.network.emit('lobby', packet.code)
           break
 
         case 'connect':

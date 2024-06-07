@@ -25,6 +25,9 @@ Given('the {string} backend is running', async function (this: World, backend: s
     prc.stderr.on('data', (data: string) => {
       const lines = data.split('\n')
       lines.forEach(line => {
+        if (line === '') {
+          return
+        }
         try {
           const entry = JSON.parse(line)
           const severity = entry.severity.toLowerCase()

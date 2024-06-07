@@ -155,7 +155,7 @@ When('{string} requests lobbies with this filter:', async function (this: World,
   if (player == null) {
     return 'no such player'
   }
-  const lobbies = await player.network.list(filter)
+  const lobbies = await player.network.list(JSON.parse(filter))
   player.lastReceivedLobbies = lobbies
 })
 
@@ -189,6 +189,17 @@ Then('{string} receives the network event {string} with the arguments {string}, 
   const event = await player.waitForEvent(eventName, [expectedArgument0, expectedArgument1, expectedArgument2])
   if (event == null) {
     throw new Error(`no event ${eventName}(${expectedArgument0}, ${expectedArgument1}, ${expectedArgument2}) received`)
+  }
+})
+
+Then('{string} receives the network event {string} with the arguments:', async function (this: World, playerName: string, eventName: string, args: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const event = await player.waitForEvent(eventName, JSON.parse(args))
+  if (event == null) {
+    throw new Error(`no event ${eventName}(...) received`)
   }
 })
 

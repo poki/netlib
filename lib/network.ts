@@ -8,7 +8,7 @@ import Credentials from './credentials'
 
 interface NetworkListeners {
   ready: () => void | Promise<void>
-  lobby: (code: string) => void | Promise<void>
+  lobby: (code: string, lobbyInfo: LobbyListEntry) => void | Promise<void>
   connecting: (peer: Peer) => void | Promise<void>
   connected: (peer: Peer) => void | Promise<void>
   reconnecting: (peer: Peer) => void | Promise<void>
@@ -45,13 +45,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
   }
 
-  async list (filter?: string): Promise<LobbyListEntry[]> {
+  async list (filter?: object): Promise<LobbyListEntry[]> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return []
     }
+    const filterString = (filter != null) ? JSON.stringify(filter) : undefined
     const reply = await this.signaling.request({
       type: 'list',
-      filter
+      filter: filterString
     })
     if (reply.type === 'lobbies') {
       return reply.lobbies
@@ -68,7 +69,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
       ...settings
     })
     if (reply.type === 'joined') {
-      return reply.code
+      return reply.lobbyInfo.code
     }
     return ''
   }
@@ -82,9 +83,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
       lobby
     })
     if (reply.type === 'joined') {
-      return reply.lobbyInfo;
+      return reply.lobbyInfo
     }
-    return undefined;
+    return undefined
   }
 
   close (reason?: string): void {

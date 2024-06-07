@@ -58,7 +58,7 @@ export class Player {
         let interval: NodeJS.Timeout | null = null
         const timeout = setTimeout(() => {
           const sameEvents = this.events.slice(this.scanIndex).filter(e => e.eventName === eventName)
-          const others = sameEvents.map(e => Array.from(e.eventPayload).map(a => `${a as string}`).join(',')).join(' + ')
+          const others = sameEvents.map(e => Array.from(e.eventPayload).map(a => `${JSON.stringify(a)}`).join(',')).join(' + ')
           if (interval !== null) {
             clearInterval(interval)
           }
@@ -88,6 +88,13 @@ function matchEvent (e: RecordedEvent, eventName: string, matchArguments: any[] 
     if (typeof arg === 'string' || arg instanceof String) {
       // Fool typescript into calling toString() on the event argument:
       argumentsMatch = `${e.eventPayload[i] as string}` === arg
+    } else if (e.eventPayload[i] instanceof Object) {
+      const a = { ...e.eventPayload[i] }
+      delete a.createdAt
+      delete a.updatedAt
+      delete arg.createdAt
+      delete arg.updatedAt
+      argumentsMatch = JSON.stringify(a) === JSON.stringify(arg)
     } else {
       argumentsMatch = e.eventPayload[i] === arg
     }

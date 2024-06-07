@@ -34,35 +34,15 @@ type Store interface {
 }
 
 type Lobby struct {
-	Code        string `json:"code"`
-	PlayerCount int    `json:"playerCount"`
+	Code        string   `json:"code"`
+	Peers       []string `json:"peers"`
+	PlayerCount int      `json:"playerCount"`
 
 	Public     bool           `json:"public"`
 	MaxPlayers int            `json:"maxPlayers"`
-	Password   string         `json:"password"`
+	Password   string         `json:"password,omitempty"`
 	CustomData map[string]any `json:"customData"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
-
-	peers map[string]struct{}
-}
-
-func (l *Lobby) Build() Lobby {
-	clone := Lobby{
-		Code:        l.Code,
-		PlayerCount: len(l.peers),
-		Public:      l.Public,
-		MaxPlayers:  l.MaxPlayers,
-		Password:    l.Password,
-		CustomData:  l.CustomData,
-		peers:       make(map[string]struct{}),
-	}
-	for k, v := range l.CustomData {
-		clone.CustomData[k] = v
-	}
-	for id := range l.peers {
-		clone.peers[id] = struct{}{}
-	}
-	return clone
 }

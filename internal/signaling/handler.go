@@ -113,7 +113,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 
 			if peer.closedPacketReceived {
-				logger.Warn("received packet after close", zap.String("peer", peer.ID), zap.String("type", base.Type))
+				if base.Type != "disconnect" { // expected lingering packets after closure.
+					logger.Warn("received packet after close", zap.String("peer", peer.ID), zap.String("type", base.Type))
+				}
 				continue
 			}
 

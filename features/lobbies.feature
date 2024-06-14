@@ -127,13 +127,13 @@ Feature: Lobby Discovery
       | code | playerCount |
       | 52YS | 0           |
 
-  Scenario: Filter lobbies on customData
+  Scenario: Filter created lobbies on customData
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     And these lobbies exist:
       | code         | game                                 | playerCount | public | meta               |
-      | 1qva9vyurwbb | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} |
+      | 1qva9vyurwbb | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} | # different game
       | 2qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_dust"} |
       | 3qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_nuke"} |
 

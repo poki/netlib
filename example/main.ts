@@ -3,8 +3,11 @@ import { Network } from '../lib'
 const n = new Network('d0fe1ca1-7fa0-47ed-9469-6c792f68bae0')
 ;(window as any).n = n
 
+const mapNames = ['de_dust2', 'de_inferno', 'de_nuke', 'de_mirage', 'de_overpass', 'de_train', 'de_vertigo']
+
 const inp = document.getElementById('input') as HTMLInputElement
 const out = document.getElementById('output') as HTMLTextAreaElement
+const mapName = document.getElementById('mapName') as HTMLInputElement
 const log = (text: string): void => {
   console.log(text)
   if (out?.innerText != null) {
@@ -32,7 +35,8 @@ n.on('ready', () => {
 
   document.querySelector('a[data-action="create"]')?.addEventListener('click', () => {
     if (n.currentLobby === undefined) {
-      void n.create({ codeFormat: 'short' })
+      const randomMap = mapNames[Math.floor(Math.random() * mapNames.length)]
+      void n.create({ codeFormat: 'short', public: true, customData: { map: randomMap } })
     }
   })
 
@@ -40,14 +44,24 @@ n.on('ready', () => {
     if (n.currentLobby === undefined) {
       const code = prompt('Lobby code? (empty to create a new one)')
       if (code != null && code !== '') {
-        void n.join(code)
+        void n.join(code).then(lobbyInfo => {
+          if (lobbyInfo === undefined) {
+            alert('Lobby not found')
+          } else {
+            log(`joined lobby ${code}, map ${lobbyInfo.customData?.map as string}`)
+          }
+        })
       }
     }
   })
 
   const queryLobbies = (): void => {
     console.log('querying lobbies...')
-    void n.list().then(lobbies => {
+    let filter = {}
+    if (mapName.value !== '') {
+      filter = { map: { $regex: mapName.value } }
+    }
+    void n.list(filter).then(lobbies => {
       console.log('queried lobbies:', lobbies)
       const el = document.getElementById('lobbies')
       if (el !== null) {
@@ -60,7 +74,7 @@ n.on('ready', () => {
           lobbies.forEach(lobby => {
             const li = document.createElement('li')
             li.id = lobby.code
-            li.innerHTML = `<a href="javascript:void(0)" class="code">${lobby.code}</a> - <span class="players">${lobby.playerCount}</span> players`
+            li.innerHTML = `<a href="javascript:void(0)" class="code">${lobby.code}</a> - <span class="map_name">${lobby.customData?.map as string ?? 'unknown map'}</span>  - <span class="players">${lobby.playerCount}</span> players`
             el.appendChild(li)
             if (n.currentLobby === undefined) {
               li.querySelector('a.code')?.addEventListener('click', () => {
@@ -74,6 +88,12 @@ n.on('ready', () => {
   }
   queryLobbies()
   setInterval(queryLobbies, 5000)
+
+  let debounceTimer: ReturnType<typeof setTimeout>
+  mapName.addEventListener('keyup', () => {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(queryLobbies, 300)
+  })
 })
 
 n.on('lobby', code => {

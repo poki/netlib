@@ -172,11 +172,14 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           break
 
         case 'joined':
-          if (packet.lobby === '') {
-            throw new Error('missing lobby on received connect packet')
+          {
+            const code = packet.lobbyInfo.code
+            if (code === '') {
+              throw new Error('missing lobby on received connect packet')
+            }
+            this.currentLobby = code
+            this.network.emit('lobby', code, packet.lobbyInfo)
           }
-          this.currentLobby = packet.lobby
-          this.network.emit('lobby', packet.lobby)
           break
 
         case 'connect':

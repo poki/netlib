@@ -357,13 +357,19 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return err
 	}
 
+	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
+	if err != nil && err != stores.ErrNotFound {
+		return err
+	}
+
 	logger.Info("created lobby", zap.String("game", p.Game), zap.String("lobby", p.Lobby), zap.String("peer", p.ID))
 	go metrics.Record(ctx, "lobby", "created", p.Game, p.ID, p.Lobby)
 
 	return p.Send(ctx, JoinedPacket{
 		RequestID: packet.RequestID,
 		Type:      "joined",
-		Lobby:     p.Lobby,
+		LobbyCode: p.Lobby, // backwards compatibility
+		LobbyInfo: lobby,
 	})
 }
 
@@ -387,13 +393,19 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return err
 	}
 
+	lobby, err := p.store.GetLobby(ctx, p.Game, packet.Lobby)
+	if err != nil && err != stores.ErrNotFound {
+		return err
+	}
+
 	p.Lobby = packet.Lobby
 	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	err = p.Send(ctx, JoinedPacket{
 		RequestID: packet.RequestID,
 		Type:      "joined",
-		Lobby:     p.Lobby,
+		LobbyCode: p.Lobby, // backwards compatibility
+		LobbyInfo: lobby,
 	})
 	if err != nil {
 		return err

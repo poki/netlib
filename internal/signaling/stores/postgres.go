@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -257,21 +258,26 @@ func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID 
 	return peerlist, nil
 }
 
-func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) ([]string, error) {
-	var peerlist []string
+func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (Lobby, error) {
+	var lobby Lobby
 	err := s.DB.QueryRow(ctx, `
-		SELECT peers
+		SELECT
+			code,
+			peers,
+			COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
+			public,
+			meta,
+			created_at AS "createdAt",
+			updated_at AS "updatedAt"
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
-	`, lobbyCode, game).Scan(&peerlist)
+	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
+		return Lobby{}, err
 	}
-	return peerlist, nil
+	sort.Strings(lobby.Peers)
+	return lobby, nil
 }
 
 func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error) {

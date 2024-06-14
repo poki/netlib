@@ -218,9 +218,13 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		if !hasReconnected {
 			logger.Info("peer failed reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 
-			// Return nil immediately. The peer will stay connected, but will not be able to do anything.
+			err := fmt.Errorf("failed to reconnect, missing pid or invalid secret")
+			err = util.ErrorWithCode(err, "reconnect-failed")
+			util.ReplyError(ctx, p.conn, err)
+
+			// Return nil. Peers with old code will stay connected, but will not be able to do anything. Peers with new
+			// code will close their network completely based on the error send above.
 			// This is to prevent the peer from being disconnected by the server making it reconnect again right away.
-			// TODO: After we implement a server protocol version we can do something better here while staying backwards compatible.
 			return nil
 		}
 

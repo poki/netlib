@@ -144,7 +144,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       switch (packet.type) {
         case 'error':
           {
-            const error = new SignalingError('server-error', packet.message)
+            const error = new SignalingError('server-error', packet.message, undefined, packet.code)
             this.network._onSignalingError(error)
             if (packet.code === 'missing-recipient' && packet.error?.recipient !== undefined) {
               const id = packet.error?.recipient
@@ -152,6 +152,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
                 this.network.log('cleaning up missing recipient', id)
                 this.connections.get(id)?.close('missing-recipient')
               }
+            } else if (packet.code === 'reconnect-failed') {
+              this.network.close('reconnect failed')
             }
           }
           break
@@ -247,7 +249,7 @@ export class SignalingError {
   /**
    * @internal
    */
-  constructor (public type: 'unknown-error' | 'socket-error' | 'server-error', public message: string, public event?: Event) {
+  constructor (public type: 'unknown-error' | 'socket-error' | 'server-error', public message: string, public event?: Event, public code?: string) {
   }
 
   public toString (): string {

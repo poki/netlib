@@ -23,6 +23,23 @@ type errorResponse struct {
 	Errors []string `json:"errors,omitempty"`
 }
 
+type errorCodeError struct {
+	err  error
+	code string
+}
+
+func (e *errorCodeError) Error() string {
+	return e.err.Error()
+}
+
+func (e *errorCodeError) ErrorCode() string {
+	return e.code
+}
+
+func ErrorWithCode(err error, code string) error {
+	return &errorCodeError{err: err, code: code}
+}
+
 func ErrorAndAbort(w http.ResponseWriter, r *http.Request, status int, key string, errs ...error) {
 	if status/100 == 5 && len(errs) != 0 {
 		logger := logging.GetLogger(r.Context())

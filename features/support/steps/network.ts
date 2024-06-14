@@ -34,7 +34,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
     const playerName = playerNames[i]
     const player = this.players.get(playerName)
     if (player == null) {
-      return new Error(`player ${playerName} not found`)
+      throw new Error(`player ${playerName} not found`)
     }
     void player.network.join(lobbyCode)
     await player.waitForEvent('lobby')
@@ -47,7 +47,7 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
       await player?.waitForEvent('connected')
     }
     if (player?.network.peers.size !== playerNames.length - 1) {
-      return new Error('player not connected with enough others')
+      throw new Error('player not connected with enough others')
     }
   }
 })
@@ -103,7 +103,7 @@ When('{string} creates a network for game {string}', function (this: World, play
 When('{string} creates a lobby', function (this: World, playerName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   void player.network.create()
 })
@@ -111,7 +111,7 @@ When('{string} creates a lobby', function (this: World, playerName: string) {
 When('{string} creates a lobby with these settings:', function (this: World, playerName: string, settingsBlob: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   const settings = JSON.parse(settingsBlob)
   void player.network.create(settings)
@@ -120,7 +120,7 @@ When('{string} creates a lobby with these settings:', function (this: World, pla
 When('{string} connects to the lobby {string}', function (this: World, playerName: string, lobbyCode: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   void player.network.join(lobbyCode)
 })
@@ -128,7 +128,7 @@ When('{string} connects to the lobby {string}', function (this: World, playerNam
 When('{string} boardcasts {string} over the reliable channel', function (this: World, playerName: string, message: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   player.network.broadcast('reliable', message)
 })
@@ -136,7 +136,7 @@ When('{string} boardcasts {string} over the reliable channel', function (this: W
 When('{string} disconnects', async function (this: World, playerName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   player.network.close()
 })
@@ -144,7 +144,7 @@ When('{string} disconnects', async function (this: World, playerName: string) {
 When('{string} requests all lobbies', async function (this: World, playerName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   const lobbies = await player.network.list()
   player.lastReceivedLobbies = lobbies
@@ -153,7 +153,7 @@ When('{string} requests all lobbies', async function (this: World, playerName: s
 When('{string} requests lobbies with this filter:', async function (this: World, playerName: string, filter: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   const lobbies = await player.network.list(JSON.parse(filter))
   player.lastReceivedLobbies = lobbies
@@ -221,7 +221,9 @@ Then('{string} should receive {int} lobbies', function (this: World, playerName:
   if (player == null) {
     throw new Error('no such player')
   }
-  return player.lastReceivedLobbies?.length === expectedLobbyCount
+  if (player.lastReceivedLobbies?.length !== expectedLobbyCount) {
+    throw new Error(`expected ${expectedLobbyCount} lobbies but got ${player.lastReceivedLobbies?.length}`)
+  }
 })
 
 Then('{string} should have received only these lobbies:', function (this: World, playerName: string, expectedLobbies: DataTable) {
@@ -274,7 +276,7 @@ When('{string} disconnected from the signaling server', function (this: World, p
 When('the websocket of {string} is reconnected', function (this: World, playerName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
-    return 'no such player'
+    throw new Error('no such player')
   }
   player.network._forceReconnectSignaling()
 })

@@ -38,10 +38,9 @@ export class World extends CucumberWorld {
 
   public print (message: string): void {
     if (this.scenarioRunning) {
-      this.log(message) as any
-      // console.log(message)
+      void this.attach(message)
     } else {
-      // console.log(message)
+      // this.attach(message)
     }
   }
 

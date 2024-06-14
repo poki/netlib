@@ -32,7 +32,7 @@
   "scripts": {
     "prepare": "yarn build",
     "build": "parcel build",
-    "lint": "ts-standard",
+    "lint": "ts-standard --fix",
     "cucumber": "./node_modules/@cucumber/cucumber/bin/cucumber-js --require 'features/support/**/*.ts' --require-module ts-node/register --publish-quiet --format @cucumber/pretty-formatter --order random --retry 2 --retry-tag-filter flakey",
     "watch": "parcel --no-hmr example/index.html"
   },

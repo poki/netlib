@@ -155,10 +155,10 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	}
 	now := util.Now(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, public, meta, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $5)
+		INSERT INTO lobbies (code, game, peers, public, meta, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $6)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, public, customData, now)
+	`, lobbyCode, game, []string{peerID}, public, customData, now)
 	if err != nil {
 		return err
 	}

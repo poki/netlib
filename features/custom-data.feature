@@ -5,8 +5,8 @@ Feature: customData on lobbies can be used for filtering and extra information
 
 
   Scenario: Connect to a lobby with custom data
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby with these settings:
       """json

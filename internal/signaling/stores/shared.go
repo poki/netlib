@@ -17,9 +17,8 @@ type SubscriptionCallback func(context.Context, []byte)
 
 type Store interface {
 	CreateLobby(ctx context.Context, game, lobby, id string, public bool, customData map[string]any) error
-	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
-	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
-	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
+	JoinLobby(ctx context.Context, game, lobby, id string) error
+	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error)
 

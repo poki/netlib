@@ -60,18 +60,14 @@ func (i *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID strin
 	}
 	data, _ := json.Marshal(packet)
 
-	others, err := i.Store.LeaveLobby(ctx, gameID, lobby, peerID)
+	err := i.Store.LeaveLobby(ctx, gameID, lobby, peerID)
 	if err != nil {
 		logger.Warn("failed to leave lobby", zap.Error(err))
 		return err
 	}
-	for _, id := range others {
-		if id != peerID {
-			err := i.Store.Publish(ctx, gameID+lobby+id, data)
-			if err != nil {
-				logger.Error("failed to publish disconnect packet", zap.Error(err))
-			}
-		}
+	err = i.Store.Publish(ctx, gameID+lobby, data)
+	if err != nil {
+		logger.Error("failed to publish disconnect packet", zap.Error(err))
 	}
 	return nil
 }

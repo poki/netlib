@@ -207,35 +207,26 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
 
-	if hasReconnected && len(reconnectingLobbies) > 0 && reconnectingLobbies[0] != "" {
-		lobby := reconnectingLobbies[0]
-		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, lobby, p.ID)
-		if err != nil {
-			return err
-		}
-		if inLobby {
-			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
-			p.Lobby = lobby
-			p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
-			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
-		} else {
-			fakeJoinPacket := JoinPacket{
-				Type:  "join",
-				Lobby: lobby,
-			}
-			err := p.HandleJoinPacket(ctx, fakeJoinPacket)
-			if err != nil {
-				return err
-			}
-			go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
-		}
-	}
-
-	return p.Send(ctx, WelcomePacket{
+	err := p.Send(ctx, WelcomePacket{
 		Type:   "welcome",
 		ID:     p.ID,
 		Secret: p.Secret,
 	})
+	if err != nil {
+		return err
+	}
+
+	if hasReconnected {
+		for _, lobbyID := range reconnectingLobbies {
+			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
+			p.Lobby = lobbyID
+			p.store.Subscribe(ctx, p.Game+p.Lobby, p.ForwardMessage)
+			p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
+		}
+	}
+
+	return nil
 }
 
 func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error {
@@ -252,7 +243,7 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 	)
 
 	if p.Lobby != "" {
-		others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
+		err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
 		if err != nil {
 			return fmt.Errorf("unable to leave lobby: %w", err)
 		}
@@ -262,13 +253,9 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 		}
 		data, err := json.Marshal(packet)
 		if err == nil {
-			for _, id := range others {
-				if id != p.ID {
-					err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
-					if err != nil {
-						logger.Error("failed to publish disconnect packet", zap.Error(err))
-					}
-				}
+			err := p.store.Publish(ctx, p.Game+p.Lobby, data)
+			if err != nil {
+				logger.Error("failed to publish disconnect packet", zap.Error(err))
 			}
 		}
 		p.Lobby = ""
@@ -328,16 +315,11 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return fmt.Errorf("unable to create lobby, too many attempts to find a unique code")
 	}
 
+	p.store.Subscribe(ctx, p.Game+p.Lobby, p.ForwardMessage)
 	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
-	// TODO: Move joining of lobby in the CreateLobby
-	_, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
-	if err != nil {
-		return err
-	}
-
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
-	if err != nil && err != stores.ErrNotFound {
+	if err != nil {
 		return err
 	}
 
@@ -367,18 +349,19 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return fmt.Errorf("lobby code too long")
 	}
 
-	others, err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID)
+	err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID)
 	if err != nil {
 		return err
 	}
 
-	lobby, err := p.store.GetLobby(ctx, p.Game, packet.Lobby)
-	if err != nil && err != stores.ErrNotFound {
+	p.Lobby = packet.Lobby
+	p.store.Subscribe(ctx, p.Game+p.Lobby, p.ForwardMessage)
+	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+
+	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
+	if err != nil {
 		return err
 	}
-
-	p.Lobby = packet.Lobby
-	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
 	err = p.Send(ctx, JoinedPacket{
 		RequestID: packet.RequestID,
@@ -390,7 +373,11 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return err
 	}
 
-	for _, otherID := range others {
+	for _, otherID := range lobby.Peers {
+		if otherID == p.ID {
+			continue
+		}
+
 		err := p.RequestConnection(ctx, otherID)
 		if err != nil {
 			return err
@@ -401,7 +388,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		zap.String("game", p.Game),
 		zap.String("lobby", p.Lobby),
 		zap.String("peer", p.ID),
-		zap.Strings("others", others))
+		zap.Strings("peers", lobby.Peers))
 	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
 	return nil

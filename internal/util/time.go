@@ -6,5 +6,5 @@ import (
 )
 
 func Now(ctx context.Context) time.Time {
-	return time.Now()
+	return time.Now().UTC()
 }

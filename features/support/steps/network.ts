@@ -9,7 +9,7 @@ After(async function (this: World) {
 })
 
 Given('{string} is connected and ready for game {string}', async function (this: World, playerName: string, gameID: string) {
-  const player = this.createPlayer(playerName, gameID)
+  const player = await this.createPlayer(playerName, gameID)
   const event = await player.waitForEvent('ready')
   if (event == null) {
     throw new Error(`unable to add player ${playerName} to network`)
@@ -96,8 +96,8 @@ Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
   })
 })
 
-When('{string} creates a network for game {string}', function (this: World, playerName: string, gameID: string) {
-  this.createPlayer(playerName, gameID)
+When('{string} creates a network for game {string}', async function (this: World, playerName: string, gameID: string) {
+  await this.createPlayer(playerName, gameID)
 })
 
 When('{string} creates a lobby', function (this: World, playerName: string) {

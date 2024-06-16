@@ -168,18 +168,18 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	return nil
 }
 
-func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
+func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID string) error {
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
-		return nil, ErrInvalidPeerID
+		return ErrInvalidPeerID
 	}
 
 	now := util.NowUTC(ctx)
 
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
@@ -193,14 +193,14 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 	`, lobbyCode, game).Scan(&peerlist)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
+			return ErrNotFound
 		}
-		return nil, err
+		return err
 	}
 
 	for _, peer := range peerlist {
 		if peer == peerID {
-			return nil, ErrAlreadyInLobby
+			return ErrAlreadyInLobby
 		}
 	}
 
@@ -213,15 +213,15 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 		AND game = $4
 	`, peerID, now, lobbyCode, game)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return peerlist, nil
+	return nil
 }
 
 func (s *PostgresStore) IsPeerInLobby(ctx context.Context, game, lobbyCode, peerID string) (bool, error) {
@@ -239,23 +239,21 @@ func (s *PostgresStore) IsPeerInLobby(ctx context.Context, game, lobbyCode, peer
 	return count > 0, nil
 }
 
-func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
+func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) error {
 	now := util.NowUTC(ctx)
 
-	var peerlist []string
-	err := s.DB.QueryRow(ctx, `
+	_, err := s.DB.Exec(ctx, `
 		UPDATE lobbies
 		SET
 			peers = array_remove(peers, $1),
 			updated_at = $2
 		WHERE code = $3
 		AND game = $4
-		RETURNING peers
-	`, peerID, now, lobbyCode, game).Scan(&peerlist)
+	`, peerID, now, lobbyCode, game)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
+		return err
 	}
-	return peerlist, nil
+	return nil
 }
 
 func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (Lobby, error) {

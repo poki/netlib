@@ -55,7 +55,7 @@ export class World extends CucumberWorld {
       // Giving this some time makes our test less flaky.
       setTimeout(() => {
         resolve(player)
-      }, 100)
+      }, 50)
     })
   }
 }

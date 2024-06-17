@@ -95,12 +95,17 @@ func (s *PostgresStore) notify(ctx context.Context, topic string, data []byte) {
 	}
 }
 
-func (s *PostgresStore) Subscribe(ctx context.Context, callback SubscriptionCallback, topics ...string) {
+func (s *PostgresStore) Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	id := s.nextCallbackIndex
 	s.nextCallbackIndex += 1
+
+	topics := []string{
+		game + lobby + peerID, // Topic for a specific peer in a specific lobby.
+		game + lobby,          // Topic for all peers in a specific lobby.
+	}
 
 	for _, topic := range topics {
 		if _, found := s.callbacks[topic]; !found {

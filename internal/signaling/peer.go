@@ -209,7 +209,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 
 	if hasReconnected && len(reconnectingLobbies) > 0 {
 		p.Lobby = reconnectingLobbies[0]
-		p.store.Subscribe(ctx, p.ForwardMessage, p.Game+p.Lobby, p.Game+p.Lobby+p.ID)
+		p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 		go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
 		logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
 	}
@@ -307,7 +307,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return fmt.Errorf("unable to create lobby, too many attempts to find a unique code")
 	}
 
-	p.store.Subscribe(ctx, p.ForwardMessage, p.Game+p.Lobby, p.Game+p.Lobby+p.ID)
+	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
 	if err != nil && err != stores.ErrNotFound {
@@ -346,7 +346,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	}
 
 	p.Lobby = packet.Lobby
-	p.store.Subscribe(ctx, p.ForwardMessage, p.Game+p.Lobby, p.Game+p.Lobby+p.ID)
+	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
 	if err != nil && err != stores.ErrNotFound {

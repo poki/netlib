@@ -23,7 +23,7 @@ type Store interface {
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error)
 
-	Subscribe(ctx context.Context, callback SubscriptionCallback, topics ...string)
+	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
 	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error

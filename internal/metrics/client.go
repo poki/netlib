@@ -76,7 +76,7 @@ func (c *Client) Record(ctx context.Context, category, action, game, peerID, lob
 
 func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 	logger := logging.GetLogger(ctx)
-	now := util.Now(ctx)
+	now := util.NowUTC(ctx)
 	remoteAddr, _ := ctx.Value(remoteAddrKey).(string)
 	userAgent, _ := ctx.Value(userAgentKey).(string)
 

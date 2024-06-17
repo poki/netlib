@@ -153,7 +153,7 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
 		return ErrInvalidPeerID
 	}
-	now := util.Now(ctx)
+	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
 		INSERT INTO lobbies (code, game, public, meta, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $5)
@@ -175,7 +175,7 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 		return nil, ErrInvalidPeerID
 	}
 
-	now := util.Now(ctx)
+	now := util.NowUTC(ctx)
 
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
@@ -240,7 +240,7 @@ func (s *PostgresStore) IsPeerInLobby(ctx context.Context, game, lobbyCode, peer
 }
 
 func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
-	now := util.Now(ctx)
+	now := util.NowUTC(ctx)
 
 	var peerlist []string
 	err := s.DB.QueryRow(ctx, `
@@ -347,7 +347,7 @@ func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID 
 		}
 	}
 
-	now := util.Now(ctx)
+	now := util.NowUTC(ctx)
 	_, err := s.DB.Exec(ctx, `
 		INSERT INTO timeouts (peer, secret, game, lobbies, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $5)
@@ -387,7 +387,7 @@ func (s *PostgresStore) ReconnectPeer(ctx context.Context, peerID, secret, gameI
 }
 
 func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (more bool, err error) {
-	now := util.Now(ctx)
+	now := util.NowUTC(ctx)
 
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {

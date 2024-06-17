@@ -35,7 +35,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			select {
 			case <-ticker.C:
 				logger.Info("cleaning empty lobbies")
-				if err := store.CleanEmptyLobbies(ctx, time.Now().Add(-LobbyCleanThreshold)); err != nil {
+				if err := store.CleanEmptyLobbies(ctx, util.NowUTC(ctx).Add(-LobbyCleanThreshold)); err != nil {
 					logger.Error("failed to clean empty lobbies", zap.Error(err))
 				}
 			case <-ctx.Done():

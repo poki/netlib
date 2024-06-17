@@ -95,26 +95,31 @@ func (s *PostgresStore) notify(ctx context.Context, topic string, data []byte) {
 	}
 }
 
-func (s *PostgresStore) Subscribe(ctx context.Context, topic string, callback SubscriptionCallback) {
+func (s *PostgresStore) Subscribe(ctx context.Context, callback SubscriptionCallback, topics ...string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if _, found := s.callbacks[topic]; !found {
-		s.callbacks[topic] = make(map[uint64]SubscriptionCallback)
-	}
-
 	id := s.nextCallbackIndex
 	s.nextCallbackIndex += 1
-	s.callbacks[topic][id] = callback
+
+	for _, topic := range topics {
+		if _, found := s.callbacks[topic]; !found {
+			s.callbacks[topic] = make(map[uint64]SubscriptionCallback)
+		}
+
+		s.callbacks[topic][id] = callback
+	}
 
 	go func() {
 		defer func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
 
-			delete(s.callbacks[topic], id)
-			if len(s.callbacks[topic]) == 0 {
-				delete(s.callbacks, topic)
+			for _, topic := range topics {
+				delete(s.callbacks[topic], id)
+				if len(s.callbacks[topic]) == 0 {
+					delete(s.callbacks, topic)
+				}
 			}
 		}()
 

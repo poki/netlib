@@ -44,12 +44,19 @@ export class World extends CucumberWorld {
     }
   }
 
-  public createPlayer (playerName: string, gameID: string): Player {
-    const config = this.useTestProxy ? { testproxyURL: this.testproxyURL } : undefined
-    const network = new Network(gameID, config, this.signalingURL)
-    const player = new Player(playerName, network)
-    this.players.set(playerName, player)
-    return player
+  public async createPlayer (playerName: string, gameID: string): Promise<Player> {
+    return await new Promise((resolve) => {
+      const config = this.useTestProxy ? { testproxyURL: this.testproxyURL } : undefined
+      const network = new Network(gameID, config, this.signalingURL)
+      const player = new Player(playerName, network)
+      this.players.set(playerName, player)
+
+      // Give the Network some time to connect to the signaling server.
+      // Giving this some time makes our test less flaky.
+      setTimeout(() => {
+        resolve(player)
+      }, 50)
+    })
   }
 }
 setWorldConstructor(World)

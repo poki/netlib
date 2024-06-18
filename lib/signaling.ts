@@ -53,7 +53,13 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         ws.removeEventListener('error', onError)
         ws.removeEventListener('message', onMessage)
         ws.removeEventListener('close', onClose)
-        this.reconnect()
+
+        // Don't try to reconnect too quickly, give the server a chance
+        // to store our disconnection in the db, so when we reconnect
+        // it recognizes us.
+        setTimeout(() => {
+          this.reconnect()
+        }, 100)
       }
     }
     const onMessage = (ev: MessageEvent): void => {
@@ -68,7 +74,13 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       ws.removeEventListener('error', onError)
       ws.removeEventListener('message', onMessage)
       ws.removeEventListener('close', onClose)
-      this.reconnect()
+
+      // Don't try to reconnect too quickly, give the server a chance
+      // to store our disconnection in the db, so when we reconnect
+      // it recognizes us.
+      setTimeout(() => {
+        this.reconnect()
+      }, 100)
     }
     ws.addEventListener('open', onOpen)
     ws.addEventListener('error', onError)

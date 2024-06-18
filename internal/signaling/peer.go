@@ -207,28 +207,11 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
 
-	if hasReconnected && len(reconnectingLobbies) > 0 && reconnectingLobbies[0] != "" {
-		lobby := reconnectingLobbies[0]
-		inLobby, err := p.store.IsPeerInLobby(ctx, p.Game, lobby, p.ID)
-		if err != nil {
-			return err
-		}
-		if inLobby {
-			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
-			p.Lobby = lobby
-			p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
-			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
-		} else {
-			fakeJoinPacket := JoinPacket{
-				Type:  "join",
-				Lobby: lobby,
-			}
-			err := p.HandleJoinPacket(ctx, fakeJoinPacket)
-			if err != nil {
-				return err
-			}
-			go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
-		}
+	if hasReconnected && len(reconnectingLobbies) > 0 {
+		p.Lobby = reconnectingLobbies[0]
+		p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
+		go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
+		logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
 	}
 
 	return p.Send(ctx, WelcomePacket{

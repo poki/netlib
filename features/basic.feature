@@ -11,13 +11,13 @@ Feature: Players can create and connect a network of players
 
 
   Scenario: A player can create a lobby
-    Given "green" is connected and ready for game "b6f7fc97-8545-4ffd-b714-7cf339048556"
+    Given "green" is connected as "h5yzwyizlwao" and ready for game "b6f7fc97-8545-4ffd-b714-7cf339048556"
     When "green" creates a lobby
     And "green" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
 
   Scenario: A player can create a lobby with a short code
-    Given "green" is connected and ready for game "b6f7fc97-8545-4ffd-b714-7cf339048556"
+    Given "green" is connected as "h5yzwyizlwao" and ready for game "b6f7fc97-8545-4ffd-b714-7cf339048556"
     When "green" creates a lobby with these settings:
       """
       {
@@ -28,8 +28,8 @@ Feature: Players can create and connect a network of players
 
 
   Scenario: Connect two players to a lobby
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby
     And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
@@ -40,9 +40,9 @@ Feature: Players can create and connect a network of players
 
 
   Scenario: Connect three players to a lobby and broadcast a message
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "green" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "green" is connected as "ka9qy8em4vxr" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     Given "blue,yellow" are joined in a lobby
     When "green" connects to the lobby "dhgp75mn2bll"
@@ -57,9 +57,9 @@ Feature: Players can create and connect a network of players
 
 
   Scenario: A player leaves a lobby
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "green" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "green" is connected as "ka9qy8em4vxr" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     Given "blue,yellow,green" are joined in a lobby
     When "yellow" disconnects

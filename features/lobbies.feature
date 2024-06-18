@@ -5,21 +5,21 @@ Feature: Lobby Discovery
     And the "testproxy" backend is running
 
   Scenario: List empty lobby set
-    Given "green" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     When "green" requests all lobbies
     Then "green" should receive 0 lobbies
 
   Scenario: Don't list lobbies from a different game
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "blue" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "ka9qy8em4vxr" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue,yellow" are joined in a lobby
     When "green" requests all lobbies
     Then "green" should receive 0 lobbies
 
   Scenario: List lobbies that exist
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -36,8 +36,8 @@ Feature: Lobby Discovery
 
   Scenario: Only list public lobbies
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "yellow" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "yellow" is connected as "ka9qy8em4vxr" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -60,7 +60,7 @@ Feature: Lobby Discovery
       | dhgp75mn2bll | 1           | true   |
 
   Scenario: Filter on playerCount
-    Given "green" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And these lobbies exist:
       | code          | game                                 | playerCount | public |
       | 0qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | true   |
@@ -88,7 +88,7 @@ Feature: Lobby Discovery
       | 9qva9vyurwbbl | 10          | true   |
 
   Scenario: Filter on customData
-    Given "green" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And these lobbies exist:
       | code          | game                                 | playerCount | meta               | public | created_at |
       | 0qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_nuke"} | true   | 2020-01-01 |
@@ -108,7 +108,7 @@ Feature: Lobby Discovery
 
   Scenario: List empty lobbies
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -129,7 +129,7 @@ Feature: Lobby Discovery
 
   Scenario: Filter created lobbies on customData
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     And these lobbies exist:
       | code         | game                                 | playerCount | public | meta               |

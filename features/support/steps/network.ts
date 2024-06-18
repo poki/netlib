@@ -8,15 +8,18 @@ After(async function (this: World) {
   this.players.clear()
 })
 
-Given('{string} is connected and ready for game {string}', async function (this: World, playerName: string, gameID: string) {
+Given('{string} is connected as {string} and ready for game {string}', async function (this: World, playerName: string, peerID: string, gameID: string) {
   const player = await this.createPlayer(playerName, gameID)
   const event = await player.waitForEvent('ready')
   if (event == null) {
     throw new Error(`unable to add player ${playerName} to network`)
   }
+  if (player.network.id !== peerID) {
+    throw new Error(`expected peer ID ${peerID} but got ${player.network.id}`)
+  }
 })
 
-Given('{string} are joined in a lobby', async function (this: World, playerNamesRaw: string) {
+async function areJoinedInALobby (this: World, playerNamesRaw: string): Promise<void> {
   const playerNames = playerNamesRaw.split(',').map(s => s.trim())
   if (playerNames.length < 2) {
     throw new Error('need at least 2 players to join a lobby')
@@ -50,6 +53,26 @@ Given('{string} are joined in a lobby', async function (this: World, playerNames
       throw new Error('player not connected with enough others')
     }
   }
+}
+
+Given('{string} are joined in a lobby', areJoinedInALobby)
+
+Given('{string} are joined in a lobby for game {string}', async function (this: World, playerNamesRaw: string, gameID: string) {
+  const playerNames = playerNamesRaw.split(',').map(s => s.trim())
+  if (playerNames.length < 2) {
+    throw new Error('need at least 2 players to join a lobby')
+  }
+
+  for (let i = 0; i < playerNames.length; i++) {
+    const playerName = playerNames[i]
+    const player = await this.createPlayer(playerName, gameID)
+    const event = await player.waitForEvent('ready')
+    if (event == null) {
+      throw new Error(`unable to add player ${playerName} to network`)
+    }
+  }
+
+  await areJoinedInALobby.call(this, playerNamesRaw)
 })
 
 Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {

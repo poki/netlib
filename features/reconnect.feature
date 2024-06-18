@@ -8,8 +8,8 @@ Feature: Players can create and connect a network of players
   Scenario: Connections are reconnected before rtc is disconnected
     Given webrtc is intercepted by the testproxy
 
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby
     And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
@@ -28,8 +28,8 @@ Feature: Players can create and connect a network of players
   Scenario: Connections are reconnected when rtc is disconnected
     Given webrtc is intercepted by the testproxy
 
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby
     And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
@@ -39,9 +39,9 @@ Feature: Players can create and connect a network of players
 
     When the connection between "yellow" and "blue" is interrupted until the first "disconnected" state
 
-    And "blue" boardcasts "Goodbye, world!" over the reliable channel
     Then "yellow" receives the network event "reconnecting" with the argument "[Peer: h5yzwyizlwao]"
     And "yellow" receives the network event "reconnected" with the argument "[Peer: h5yzwyizlwao]"
+    And "blue" boardcasts "Goodbye, world!" over the reliable channel
     And "yellow" receives the network event "message" with the arguments "[Peer: h5yzwyizlwao]", "reliable" and "Goodbye, world!"
 
 
@@ -58,8 +58,8 @@ Feature: Players can create and connect a network of players
   Scenario: Two player get disconnected
     Given webrtc is intercepted by the testproxy
 
-    Given "blue" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue,yellow" are joined in a lobby
 
     When the connection between "yellow" and "blue" is interrupted
@@ -81,8 +81,8 @@ Feature: Players can create and connect a network of players
 
 
   Scenario: Reconnect with the signaling server
-    Given "green" is connected and ready for game "325a2754-1a6f-4578-b768-196463271229"
-    And "blue" is connected and ready for game "325a2754-1a6f-4578-b768-196463271229"
+    Given "green" is connected as "h5yzwyizlwao" and ready for game "325a2754-1a6f-4578-b768-196463271229"
+    And "blue" is connected as "3t3cfgcqup9e" and ready for game "325a2754-1a6f-4578-b768-196463271229"
 
     When "green" creates a lobby
     Then "green" receives the network event "lobby" with the argument "prb67ouj837u"

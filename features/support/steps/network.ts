@@ -77,13 +77,17 @@ Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
           peers.push(`'peer${i}'`)
         }
 
-        v.push(`ARRAY [${peers.join(', ')}]`)
+        v.push(`ARRAY[${peers.join(', ')}]::VARCHAR(20)[]`)
       } else {
         if (!columns.includes(key)) {
           columns.push(key)
         }
 
-        v.push(`'${value}'`)
+        if (value === 'null') {
+          v.push('NULL')
+        } else {
+          v.push(`'${value}'`)
+        }
       }
     })
 

@@ -364,6 +364,10 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	}
 
 	for _, otherID := range lobby.Peers {
+		if otherID == p.ID {
+			continue
+		}
+
 		err := p.RequestConnection(ctx, otherID)
 		if err != nil {
 			return err

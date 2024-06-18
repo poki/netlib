@@ -90,7 +90,7 @@ Feature: Lobby Discovery
   Scenario: Filter on customData
     Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And these lobbies exist:
-      | code          | game                                 | playerCount | meta               | public | created_at |
+      | code          | game                                 | playerCount | custom_data        | public | created_at |
       | 0qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_nuke"} | true   | 2020-01-01 |
       | 1qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_dust"} | true   | 2020-01-02 | 
       | 2qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_nuke"} | true   | 2020-01-03 |
@@ -132,7 +132,7 @@ Feature: Lobby Discovery
     And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     And these lobbies exist:
-      | code         | game                                 | playerCount | public | meta               |
+      | code         | game                                 | playerCount | public | custom_data        |
       | 1qva9vyurwbb | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} | # different game
       | 2qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_dust"} |
       | 3qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_nuke"} |

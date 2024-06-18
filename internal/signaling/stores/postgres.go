@@ -32,7 +32,7 @@ func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, er
 		DB:        db,
 		callbacks: make(map[string]map[uint64]SubscriptionCallback),
 		filterConverter: filter.NewConverter(
-			filter.WithNestedJSONB("meta", "code", "playerCount", "createdAt", "updatedAt"),
+			filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
 			filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 		),
 	}
@@ -165,7 +165,7 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	}
 	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, peers, public, meta, created_at, updated_at)
+		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $6)
 		ON CONFLICT DO NOTHING
 	`, lobbyCode, game, []string{peerID}, public, customData, now)
@@ -259,7 +259,7 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 			peers,
 			COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
 			public,
-			meta,
+			custom_data,
 			created_at AS "createdAt",
 			updated_at AS "updatedAt"
 		FROM lobbies
@@ -296,7 +296,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 				code,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
 				public,
-				meta,
+				custom_data,
 				created_at AS "createdAt",
 				updated_at AS "updatedAt"
 			FROM lobbies

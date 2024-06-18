@@ -29,37 +29,6 @@ type Peer struct {
 	Lobby  string
 }
 
-func (p *Peer) Close(ctx context.Context) {
-	logger := logging.GetLogger(ctx)
-	logger.Info("closing peer", zap.String("peer", p.ID))
-	if p.ID != "" && p.Game != "" && p.Lobby != "" {
-		packet := DisconnectPacket{
-			Type: "disconnect",
-			ID:   p.ID,
-		}
-		data, err := json.Marshal(packet)
-		if err == nil {
-			ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-			defer cancel()
-
-			others, err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
-			if err != nil {
-				logger.Warn("failed to leave lobby", zap.Error(err))
-			} else {
-				for _, id := range others {
-					if id != p.ID {
-						err := p.store.Publish(ctx, p.Game+p.Lobby+id, data)
-						if err != nil {
-							logger.Error("failed to publish disconnect packet", zap.Error(err))
-						}
-					}
-				}
-			}
-		}
-	}
-	p.conn.Close(websocket.StatusInternalError, "error")
-}
-
 func (p *Peer) Send(ctx context.Context, packet interface{}) error {
 	return wsjson.Write(ctx, p.conn, packet)
 }

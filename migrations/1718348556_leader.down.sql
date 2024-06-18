@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE "lobbies" DROP COLUMN "leader";
+
+COMMIT;

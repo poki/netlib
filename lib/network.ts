@@ -9,6 +9,7 @@ import Credentials from './credentials'
 interface NetworkListeners {
   ready: () => void | Promise<void>
   lobby: (code: string, lobbyInfo: LobbyListEntry) => void | Promise<void>
+  leader: (leader: string) => void | Promise<void>
   connecting: (peer: Peer) => void | Promise<void>
   connected: (peer: Peer) => void | Promise<void>
   reconnecting: (peer: Peer) => void | Promise<void>
@@ -185,5 +186,9 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   get currentLobby (): string | undefined {
     return this.signaling.currentLobby
+  }
+
+  get currentLeader (): string | null | undefined {
+    return this.signaling.currentLeader
   }
 }

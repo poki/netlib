@@ -20,6 +20,8 @@ export interface LobbyListEntry {
   public: boolean
   playerCount: number
   customData?: {[key: string]: any}
+  leader: string | null
+  term: number
   createdAt: string
   updatedAt: string
 }
@@ -44,6 +46,7 @@ export type SignalingPacketTypes =
 | HelloPacket
 | JoinedPacket
 | JoinPacket
+| LeaderPacket
 | ListPacket
 | LobbiesPacket
 | PingPacket
@@ -96,6 +99,12 @@ export interface JoinPacket extends Base {
 export interface JoinedPacket extends Base {
   type: 'joined'
   lobbyInfo: LobbyListEntry
+}
+
+export interface LeaderPacket extends Base {
+  type: 'leader'
+  leader: string
+  term: number
 }
 
 export interface ClosePacket extends Base {

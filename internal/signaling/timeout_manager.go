@@ -58,11 +58,9 @@ func (i *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID strin
 		Type: "disconnect",
 		ID:   peerID,
 	}
-	data, _ := json.Marshal(packet)
-
-	err := i.Store.LeaveLobby(ctx, gameID, lobby, peerID)
+	data, err := json.Marshal(packet)
 	if err != nil {
-		logger.Warn("failed to leave lobby", zap.Error(err))
+		logger.Error("failed to marshal disconnect packet", zap.Error(err))
 		return err
 	}
 
@@ -88,6 +86,28 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	err := i.Store.TimeoutPeer(ctx, p.ID, p.Secret, p.Game, lobbies)
 	if err != nil {
 		logger.Error("failed to record timeout peer", zap.Error(err))
+	} else {
+		for _, lobby := range lobbies {
+			result, err := i.Store.DoLeaderElection(ctx, p.Game, lobby)
+			if err != nil {
+				logger.Error("failed to do leader election", zap.Error(err))
+			} else if result != nil {
+				packet := LeaderPacket{
+					Type:   "leader",
+					Leader: result.Leader,
+					Term:   result.Term,
+				}
+				data, err := json.Marshal(packet)
+				if err != nil {
+					logger.Error("failed to marshal leader packet", zap.Error(err))
+				} else {
+					err = i.Store.Publish(ctx, p.Game+lobby, data)
+					if err != nil {
+						logger.Error("failed to publish leader packet", zap.Error(err))
+					}
+				}
+			}
+		}
 	}
 }
 

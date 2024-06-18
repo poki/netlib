@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE "lobbies"
+    ADD COLUMN "leader" VARCHAR(20) NULL,
+    ADD COLUMN "term" INT NOT NULL DEFAULT 0;
+
+COMMIT;

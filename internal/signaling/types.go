@@ -67,6 +67,13 @@ type JoinedPacket struct {
 	LobbyInfo stores.Lobby `json:"lobbyInfo"`
 }
 
+type LeaderPacket struct {
+	Type string `json:"type"`
+
+	Leader *string `json:"leader,omitempty"`
+	Term   int     `json:"term"`
+}
+
 type ConnectPacket struct {
 	Type string `json:"type"`
 

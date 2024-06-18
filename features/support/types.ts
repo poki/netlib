@@ -6,7 +6,7 @@ interface RecordedEvent {
   eventPayload: IArguments
 }
 
-const allEvents = ['close', 'ready', 'lobby', 'connected', 'disconnected', 'reconnecting', 'reconnected', 'message', 'signalingerror', 'signalingreconnected']
+const allEvents = ['close', 'ready', 'lobby', 'connected', 'disconnected', 'reconnecting', 'reconnected', 'message', 'signalingerror', 'signalingreconnected', 'leader']
 
 export class Player {
   public lastReceivedLobbies: LobbyListEntry[] = []

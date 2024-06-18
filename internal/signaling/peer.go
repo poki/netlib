@@ -310,7 +310,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
-	if err != nil && err != stores.ErrNotFound {
+	if err != nil {
 		return err
 	}
 
@@ -349,7 +349,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
-	if err != nil && err != stores.ErrNotFound {
+	if err != nil {
 		return err
 	}
 

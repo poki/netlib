@@ -234,21 +234,6 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 	return nil
 }
 
-func (s *PostgresStore) IsPeerInLobby(ctx context.Context, game, lobbyCode, peerID string) (bool, error) {
-	var count int
-	err := s.DB.QueryRow(ctx, `
-		SELECT COUNT(*)
-		FROM lobbies
-		WHERE code = $1
-		AND game = $2
-		AND $3 = ANY(peers)
-	`, lobbyCode, game, peerID).Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
 func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) error {
 	now := util.NowUTC(ctx)
 
@@ -282,6 +267,9 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 		AND game = $2
 	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Lobby{}, ErrNotFound
+		}
 		return Lobby{}, err
 	}
 	sort.Strings(lobby.Peers)

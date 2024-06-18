@@ -48,8 +48,8 @@ Feature: Players can create and connect a network of players
     When "green" connects to the lobby "dhgp75mn2bll"
     And "blue" receives the network event "connected" with the argument "[Peer: ka9qy8em4vxr]"
     And "yellow" receives the network event "connected" with the argument "[Peer: ka9qy8em4vxr]"
-    And "green" receives the network event "connected" with the argument "[Peer: h5yzwyizlwao]"
     And "green" receives the network event "connected" with the argument "[Peer: 3t3cfgcqup9e]"
+    And "green" receives the network event "connected" with the argument "[Peer: h5yzwyizlwao]"
 
     When "blue" boardcasts "Hello, world!" over the reliable channel
     Then "yellow" receives the network event "message" with the arguments "[Peer: ka9qy8em4vxr]", "reliable" and "Hello, world!"

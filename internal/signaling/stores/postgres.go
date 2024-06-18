@@ -95,26 +95,36 @@ func (s *PostgresStore) notify(ctx context.Context, topic string, data []byte) {
 	}
 }
 
-func (s *PostgresStore) Subscribe(ctx context.Context, topic string, callback SubscriptionCallback) {
+func (s *PostgresStore) Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if _, found := s.callbacks[topic]; !found {
-		s.callbacks[topic] = make(map[uint64]SubscriptionCallback)
-	}
-
 	id := s.nextCallbackIndex
 	s.nextCallbackIndex += 1
-	s.callbacks[topic][id] = callback
+
+	topics := []string{
+		game + lobby + peerID, // Topic for a specific peer in a specific lobby.
+		game + lobby,          // Topic for all peers in a specific lobby.
+	}
+
+	for _, topic := range topics {
+		if _, found := s.callbacks[topic]; !found {
+			s.callbacks[topic] = make(map[uint64]SubscriptionCallback)
+		}
+
+		s.callbacks[topic][id] = callback
+	}
 
 	go func() {
 		defer func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
 
-			delete(s.callbacks[topic], id)
-			if len(s.callbacks[topic]) == 0 {
-				delete(s.callbacks, topic)
+			for _, topic := range topics {
+				delete(s.callbacks[topic], id)
+				if len(s.callbacks[topic]) == 0 {
+					delete(s.callbacks, topic)
+				}
 			}
 		}()
 
@@ -168,18 +178,18 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	return nil
 }
 
-func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
+func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID string) error {
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
-		return nil, ErrInvalidPeerID
+		return ErrInvalidPeerID
 	}
 
 	now := util.NowUTC(ctx)
 
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
@@ -193,14 +203,14 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 	`, lobbyCode, game).Scan(&peerlist)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
+			return ErrNotFound
 		}
-		return nil, err
+		return err
 	}
 
 	for _, peer := range peerlist {
 		if peer == peerID {
-			return nil, ErrAlreadyInLobby
+			return ErrAlreadyInLobby
 		}
 	}
 
@@ -213,49 +223,32 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 		AND game = $4
 	`, peerID, now, lobbyCode, game)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return peerlist, nil
+	return nil
 }
 
-func (s *PostgresStore) IsPeerInLobby(ctx context.Context, game, lobbyCode, peerID string) (bool, error) {
-	var count int
-	err := s.DB.QueryRow(ctx, `
-		SELECT COUNT(*)
-		FROM lobbies
-		WHERE code = $1
-		AND game = $2
-		AND $3 = ANY(peers)
-	`, lobbyCode, game, peerID).Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) ([]string, error) {
+func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) error {
 	now := util.NowUTC(ctx)
 
-	var peerlist []string
-	err := s.DB.QueryRow(ctx, `
+	_, err := s.DB.Exec(ctx, `
 		UPDATE lobbies
 		SET
 			peers = array_remove(peers, $1),
 			updated_at = $2
 		WHERE code = $3
 		AND game = $4
-		RETURNING peers
-	`, peerID, now, lobbyCode, game).Scan(&peerlist)
+	`, peerID, now, lobbyCode, game)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
+		return err
 	}
-	return peerlist, nil
+	return nil
 }
 
 func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (Lobby, error) {
@@ -274,6 +267,9 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 		AND game = $2
 	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Lobby{}, ErrNotFound
+		}
 		return Lobby{}, err
 	}
 	sort.Strings(lobby.Peers)

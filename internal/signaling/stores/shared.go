@@ -17,13 +17,12 @@ type SubscriptionCallback func(context.Context, []byte)
 
 type Store interface {
 	CreateLobby(ctx context.Context, game, lobby, peerID string, public bool, customData map[string]any) error
-	JoinLobby(ctx context.Context, game, lobby, id string) ([]string, error)
-	IsPeerInLobby(ctx context.Context, game, lobby, id string) (bool, error)
-	LeaveLobby(ctx context.Context, game, lobby, id string) ([]string, error)
+	JoinLobby(ctx context.Context, game, lobby, id string) error
+	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error)
 
-	Subscribe(ctx context.Context, topic string, callback SubscriptionCallback)
+	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
 	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error

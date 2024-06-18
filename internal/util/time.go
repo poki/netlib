@@ -5,6 +5,6 @@ import (
 	"time"
 )
 
-func Now(ctx context.Context) time.Time {
-	return time.Now()
+func NowUTC(ctx context.Context) time.Time {
+	return time.Now().UTC()
 }

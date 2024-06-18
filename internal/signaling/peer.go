@@ -330,12 +330,6 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 
 	p.store.Subscribe(ctx, p.Game+p.Lobby+p.ID, p.ForwardMessage)
 
-	// TODO: Move joining of lobby in the CreateLobby
-	_, err := p.store.JoinLobby(ctx, p.Game, p.Lobby, p.ID)
-	if err != nil {
-		return err
-	}
-
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
 	if err != nil && err != stores.ErrNotFound {
 		return err

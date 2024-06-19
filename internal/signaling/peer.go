@@ -134,6 +134,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "update":
+		packet := UpdatePacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleUpdatePacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	// case "leave":
 
 	case "connected": // TODO: Do we want to keep track of connections between peers?
@@ -325,6 +335,10 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
 	}
 
+	if packet.CanUpdateBy == "" {
+		packet.CanUpdateBy = stores.CanUpdateByCreator
+	}
+
 	attempts := 20
 	for ; attempts > 0; attempts-- {
 		switch packet.CodeFormat {
@@ -334,7 +348,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 			p.Lobby = util.GenerateLobbyCode(ctx)
 		}
 
-		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData)
+		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData, packet.CanUpdateBy)
 		if err != nil {
 			if err == stores.ErrLobbyExists {
 				continue
@@ -428,6 +442,53 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
 	return nil
+}
+
+func (p *Peer) HandleUpdatePacket(ctx context.Context, packet UpdatePacket) error {
+	logger := logging.GetLogger(ctx)
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	if p.Lobby == "" {
+		return fmt.Errorf("not in a lobby")
+	}
+	if packet.CanUpdateBy != nil {
+		if *packet.CanUpdateBy != stores.CanUpdateByCreator &&
+			*packet.CanUpdateBy != stores.CanUpdateByLeader &&
+			*packet.CanUpdateBy != stores.CanUpdateByAnyone &&
+			*packet.CanUpdateBy != stores.CanUpdateByNone {
+			return fmt.Errorf("invalid canUpdateBy value")
+		}
+	}
+
+	err := p.store.UpdateCustomData(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData, packet.CanUpdateBy)
+	if err != nil {
+		logger.Error("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))
+
+		return p.Send(ctx, UpdatedPacket{
+			RequestID: packet.RequestID,
+			Type:      "updated",
+			Error:     fmt.Sprintf("unable to update lobby: %v", err),
+		})
+	}
+
+	lobbyInfo, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(UpdatedPacket{
+		// Include the request ID for the peer that requested the update.
+		// Other peers will ignore this.
+		RequestID: packet.RequestID,
+
+		Type:      "updated",
+		LobbyInfo: lobbyInfo,
+	})
+	if err != nil {
+		return err
+	}
+	return p.store.Publish(ctx, p.Game+p.Lobby, data)
 }
 
 // doLeaderElectionAndPublish will do a leader election and publish the result if a new leader was elected.

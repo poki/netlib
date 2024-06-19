@@ -331,3 +331,25 @@ Given('{string} becomes the leader of the lobby', async function (this: World, p
     throw new Error('player is not the leader')
   }
 })
+
+When('{string} updates the lobby with these settings:', async function (this: World, playerName: string, settings: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const r = await player.network.setLobbySettings(JSON.parse(settings))
+  if (r !== true) {
+    throw new Error(`failed to update lobby: ${r.message}`)
+  }
+})
+
+When('{string} fails to update the lobby with these settings:', async function (this: World, playerName: string, settings: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const r = await player.network.setLobbySettings(JSON.parse(settings))
+  if (r === true) {
+    throw new Error('unexpected success')
+  }
+})

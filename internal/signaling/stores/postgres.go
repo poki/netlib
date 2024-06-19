@@ -153,7 +153,7 @@ func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) 
 	return nil
 }
 
-func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string, public bool, customData map[string]any) error {
+func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string, public bool, customData map[string]any, canUpdateBy string) error {
 	if len(lobbyCode) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("lobby code too long", zap.String("lobbyCode", lobbyCode))
@@ -166,10 +166,10 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	}
 	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term)
-		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1)
+		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator)
+		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, []string{peerID}, public, customData, now, peerID)
+	`, lobbyCode, game, []string{peerID}, public, customData, now, peerID, canUpdateBy)
 	if err != nil {
 		return err
 	}
@@ -264,11 +264,13 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 			created_at AS "createdAt",
 			updated_at AS "updatedAt",
 			leader,
-			term
+			term,
+			can_update_by,
+			creator
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
-	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term)
+	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Lobby{}, ErrNotFound
@@ -303,7 +305,9 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 				created_at AS "createdAt",
 				updated_at AS "updatedAt",
 				leader,
-				term
+				term,
+				can_update_by,
+				creator
 			FROM lobbies
 			WHERE game = $1
 			AND public = true
@@ -321,7 +325,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator)
 		if err != nil {
 			return nil, err
 		}
@@ -602,4 +606,73 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 		Leader: newLeader,
 		Term:   newTerm,
 	}, nil
+}
+
+func (s *PostgresStore) UpdateCustomData(ctx context.Context, game, lobby, peer string, public *bool, customData *map[string]any, canUpdateBy *string) error {
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background()) //nolint:errcheck
+
+	var leader string
+	var currentCanUpdateBy string
+	var creator string
+	err = tx.QueryRow(ctx, `
+		SELECT leader, can_update_by, creator
+		FROM lobbies
+		WHERE game = $1
+		AND code = $2
+		FOR UPDATE
+	`, game, lobby).Scan(&leader, &currentCanUpdateBy, &creator)
+	if err != nil {
+		return err
+	}
+
+	switch currentCanUpdateBy {
+	case CanUpdateByAnyone:
+		// No restrictions.
+	case CanUpdateByCreator:
+		if creator != peer {
+			return ErrNotAllowed
+		}
+	case CanUpdateByLeader:
+		if leader != peer {
+			return ErrNotAllowed
+		}
+	default:
+		return ErrNotAllowed
+	}
+
+	columns := make([]string, 0, 3)
+	values := []any{game, lobby}
+
+	if public != nil {
+		columns = append(columns, fmt.Sprintf("public = $%d", len(values)+1))
+		values = append(values, *public)
+	}
+	if customData != nil {
+		columns = append(columns, fmt.Sprintf("custom_data = $%d", len(values)+1))
+		values = append(values, *customData)
+	}
+	if canUpdateBy != nil {
+		columns = append(columns, fmt.Sprintf("can_update_by = $%d", len(values)+1))
+		values = append(values, *canUpdateBy)
+	}
+
+	if len(columns) == 0 {
+		return nil
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE lobbies
+		SET `+strings.Join(columns, ", ")+`
+		WHERE game = $1
+		AND code = $2
+	`, values...)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }

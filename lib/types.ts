@@ -13,6 +13,7 @@ export interface LobbySettings {
   password?: string
   public?: boolean
   customData?: {[key: string]: any}
+  canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
 export interface LobbyListEntry {
@@ -47,6 +48,8 @@ export type SignalingPacketTypes =
 | JoinedPacket
 | JoinPacket
 | LeaderPacket
+| UpdatePacket
+| UpdatedPacket
 | ListPacket
 | LobbiesPacket
 | PingPacket
@@ -105,6 +108,19 @@ export interface LeaderPacket extends Base {
   type: 'leader'
   leader: string
   term: number
+}
+
+export interface UpdatePacket extends Base {
+  type: 'update'
+  public?: boolean
+  customData?: {[key: string]: any}
+  canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
+}
+
+export interface UpdatedPacket extends Base {
+  type: 'updated'
+  lobbyInfo: LobbyListEntry
+  error?: string
 }
 
 export interface ClosePacket extends Base {

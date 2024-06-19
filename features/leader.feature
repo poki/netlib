@@ -23,9 +23,11 @@ Feature: Lobbies have a leader that can control the lobby
             "h5yzwyizlwao"
           ],
           "playerCount": 2,
+          "creator": "h5yzwyizlwao",
           "public": false,
           "maxPlayers": 0,
           "customData": null,
+          "canUpdateBy": "creator",
           "leader": "h5yzwyizlwao",
           "term": 1
         }
@@ -46,8 +48,8 @@ Feature: Lobbies have a leader that can control the lobby
   Scenario: Joining an empty lobby makes you the leader
     Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And these lobbies exist:
-      | code         | game                                 | playerCount | public | custom_data        |
-      | 1qva9vyurwbb | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 0           | true   | {"map": "de_nuke"} |
+      | code         | game                                 | playerCount | public | custom_data        | creator |
+      | 1qva9vyurwbb | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 0           | true   | {"map": "de_nuke"} | foo     |
 
     When "blue" connects to the lobby "1qva9vyurwbb"
     And "blue" receives the network event "lobby" with the arguments:
@@ -60,11 +62,13 @@ Feature: Lobbies have a leader that can control the lobby
             "h5yzwyizlwao"
           ],
           "playerCount": 1,
+          "creator": "foo",
           "public": true,
           "maxPlayers": 0,
           "customData": {
             "map": "de_nuke"
           },
+          "canUpdateBy": "creator",
           "leader": "h5yzwyizlwao",
           "term": 1
         }

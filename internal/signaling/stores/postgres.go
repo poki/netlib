@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -504,7 +505,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 		}
 	}
 
-	var currentLeader *string
+	var currentLeader string
 	var currentTerm int
 	var peers []string
 	err = tx.QueryRow(ctx, `
@@ -522,14 +523,14 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	}
 
 	needNewLeader := false
-	if currentLeader == nil {
+	if currentLeader == "" {
 		needNewLeader = true
 	}
 
 	if !needNewLeader {
 		found := false
 		for _, peer := range peers {
-			if *currentLeader == peer {
+			if currentLeader == peer {
 				found = true
 				break
 			}
@@ -542,7 +543,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	if !needNewLeader {
 		found := false
 		for _, peer := range timedOutPeers {
-			if *currentLeader == peer {
+			if currentLeader == peer {
 				found = true
 				break
 			}
@@ -556,7 +557,12 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 		return nil, nil
 	}
 
-	var newLeader *string
+	// Randomize the order of the peers to avoid always picking the same leader.
+	rand.Shuffle(len(peers), func(i, j int) {
+		peers[i], peers[j] = peers[j], peers[i]
+	})
+
+	newLeader := ""
 	for _, peer := range peers {
 		found := false
 		for _, timedOutPeer := range timedOutPeers {
@@ -566,7 +572,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 			}
 		}
 		if !found {
-			newLeader = &peer
+			newLeader = peer
 			break
 		}
 	}

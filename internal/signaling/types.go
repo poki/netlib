@@ -70,8 +70,8 @@ type JoinedPacket struct {
 type LeaderPacket struct {
 	Type string `json:"type"`
 
-	Leader *string `json:"leader,omitempty"`
-	Term   int     `json:"term"`
+	Leader string `json:"leader,omitempty"`
+	Term   int    `json:"term"`
 }
 
 type ConnectPacket struct {

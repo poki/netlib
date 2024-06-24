@@ -235,17 +235,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 				// With race conditions it's possible that there are multiple peers
 				// and not just us, so we need to publish the leader packet to the whole lobby.
 
-				packet := LeaderPacket{
-					Type:   "leader",
-					Leader: result.Leader,
-					Term:   result.Term,
-				}
-				data, err := json.Marshal(packet)
-				if err != nil {
-					return err
-				}
-				err = p.store.Publish(ctx, p.Game+lobbyID, data)
-				if err != nil {
+				if err := p.publishLeaderToLobby(ctx, result); err != nil {
 					return err
 				}
 			} else {
@@ -307,17 +297,8 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 		if err != nil {
 			logger.Error("failed to do leader election", zap.Error(err))
 		} else if result != nil {
-			packet := LeaderPacket{
-				Type:   "leader",
-				Leader: result.Leader,
-				Term:   result.Term,
-			}
-			data, err := json.Marshal(packet)
-			if err == nil {
-				err = p.store.Publish(ctx, p.Game+p.Lobby, data)
-				if err != nil {
-					logger.Error("failed to publish leader packet", zap.Error(err))
-				}
+			if err := p.publishLeaderToLobby(ctx, result); err != nil {
+				return err
 			}
 		}
 		p.Lobby = ""
@@ -418,9 +399,14 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	p.Lobby = packet.Lobby
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-	_, err = p.store.DoLeaderElection(ctx, p.Game, packet.Lobby)
+	// Lobby might be empty when joining, then you need to become the leader.
+	result, err := p.store.DoLeaderElection(ctx, p.Game, packet.Lobby)
 	if err != nil {
 		return err
+	} else if result != nil {
+		if err := p.publishLeaderToLobby(ctx, result); err != nil {
+			return err
+		}
 	}
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
@@ -456,5 +442,19 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		zap.Strings("peers", lobby.Peers))
 	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
+	return nil
+}
+
+func (p *Peer) publishLeaderToLobby(ctx context.Context, result *stores.ElectionResult) error {
+	packet := LeaderPacket{
+		Type:   "leader",
+		Leader: result.Leader,
+		Term:   result.Term,
+	}
+	if data, err := json.Marshal(packet); err != nil {
+		return err
+	} else if err := p.store.Publish(ctx, p.Game+p.Lobby, data); err != nil {
+		return err
+	}
 	return nil
 }

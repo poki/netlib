@@ -15,7 +15,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   receivedID?: string
   receivedSecret?: string
   currentLobby?: string
-  currentLeader: string | null | undefined = null
+  currentLeader?: string
   currentTerm: number = 0
 
   private readonly connections: Map<string, Peer>
@@ -197,10 +197,17 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
             this.currentLeader = packet.lobbyInfo.leader
             this.currentTerm = packet.lobbyInfo.term
             this.network.emit('lobby', code, packet.lobbyInfo)
+            if (this.currentLeader !== undefined) {
+              this.network.emit('leader', this.currentLeader)
+            }
           }
           break
 
         case 'leader':
+          if (this.currentLobby === undefined) {
+            // We're not in a lobby, ignore leader packets.
+            return
+          }
           if (packet.term > this.currentTerm) {
             this.currentLeader = packet.leader
             this.currentTerm = packet.term

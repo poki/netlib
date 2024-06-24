@@ -20,7 +20,7 @@ export interface LobbyListEntry {
   public: boolean
   playerCount: number
   customData?: {[key: string]: any}
-  leader: string | null
+  leader?: string
   term: number
   createdAt: string
   updatedAt: string

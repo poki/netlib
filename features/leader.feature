@@ -38,9 +38,9 @@ Feature: Lobbies have a leader that can control the lobby
     And "blue" is the leader of the lobby
 
     When "blue" disconnects
-    Then "yellow" becomes the leader of the lobby
-    And "yellow" receives the network event "leader" with the argument "3t3cfgcqup9e"
-    And "green" receives the network event "leader" with the argument "3t3cfgcqup9e"
+    Then "green" becomes the leader of the lobby
+    And "yellow" receives the network event "leader" with the argument "ka9qy8em4vxr"
+    And "green" receives the network event "leader" with the argument "ka9qy8em4vxr"
 
 
   Scenario: Joining an empty lobby makes you the leader
@@ -74,9 +74,10 @@ Feature: Lobbies have a leader that can control the lobby
 
   Scenario: A player reconnects when a websocket gets a leader event
     Given "blue,yellow,green" are joined in a lobby for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-
+    
     When "yellow" disconnected from the signaling server
     And "blue" disconnected from the signaling server
+    Then "green" becomes the leader of the lobby
 
-    Then "yellow" receives the network event "signalingreconnected"
-    And "yellow" receives the network event "leader" with the argument "ka9qy8em4vxr"
+    When "yellow" receives the network event "signalingreconnected"
+    Then "yellow" receives the network event "leader" with the argument "ka9qy8em4vxr"

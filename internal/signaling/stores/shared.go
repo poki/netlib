@@ -46,14 +46,14 @@ type Lobby struct {
 	Password   string         `json:"password,omitempty"`
 	CustomData map[string]any `json:"customData"`
 
-	Leader *string `json:"leader"`
-	Term   int     `json:"term"`
+	Leader string `json:"leader,omitempty"`
+	Term   int    `json:"term"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type ElectionResult struct {
-	Leader *string
+	Leader string
 	Term   int
 }

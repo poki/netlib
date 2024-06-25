@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -165,10 +166,10 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	}
 	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $6)
+		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term)
+		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, []string{peerID}, public, customData, now)
+	`, lobbyCode, game, []string{peerID}, public, customData, now, peerID)
 	if err != nil {
 		return err
 	}
@@ -261,11 +262,13 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 			public,
 			custom_data,
 			created_at AS "createdAt",
-			updated_at AS "updatedAt"
+			updated_at AS "updatedAt",
+			leader,
+			term
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
-	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt)
+	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Lobby{}, ErrNotFound
@@ -298,7 +301,9 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 				public,
 				custom_data,
 				created_at AS "createdAt",
-				updated_at AS "updatedAt"
+				updated_at AS "updatedAt",
+				leader,
+				term
 			FROM lobbies
 			WHERE game = $1
 			AND public = true
@@ -316,7 +321,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term)
 		if err != nil {
 			return nil, err
 		}
@@ -391,6 +396,12 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 	}
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
+	// DELETE FROM timeouts will lock the row for this peer in this transaction.
+	// This means we can safely remove the peer from lobbies without getting a
+	// race condition with DoLeaderElection.
+	// It is important that both ClaimNextTimedOutPeer and DoLeaderElection always
+	// lock timeouts first to avoid deadlocks.
+
 	var peerID string
 	var gameID string
 	var lobbies []string
@@ -416,6 +427,21 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 		}
 		return false, err
 	}
+
+	for _, lobby := range lobbies {
+		_, err := tx.Exec(ctx, `
+			UPDATE lobbies
+			SET
+				peers = array_remove(peers, $1),
+				updated_at = $2
+			WHERE code = $3
+			AND game = $4
+		`, peerID, now, lobby, gameID)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	err = callback(peerID, gameID, lobbies)
 	if err != nil {
 		return false, err
@@ -431,4 +457,149 @@ func (s *PostgresStore) CleanEmptyLobbies(ctx context.Context, olderThan time.Ti
 		AND peers = '{}'
 	`, olderThan)
 	return err
+}
+
+// DoLeaderElection attempts to elect a leader for the given lobby. If a correct leader already exists it will return nil.
+// If no leader can be elected, it will return an ElectionResult with a nil leader.
+func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode string) (*ElectionResult, error) {
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(context.Background()) //nolint:errcheck
+
+	// We need to lock the whole table as SELECT FOR UPDATE does not lock rows that do not exist yet
+	// And we can't have timed out peers being added during the election.
+	_, err = tx.Exec(ctx, `
+		LOCK TABLE timeouts IN EXCLUSIVE MODE
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	var timedOutPeers []string
+	rows, err := tx.Query(ctx, `
+		SELECT peer
+		FROM timeouts
+		WHERE game = $1
+		AND $2 = ANY(lobbies)
+	`, gameID, lobbyCode)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+	} else {
+		defer rows.Close() //nolint:errcheck
+
+		for rows.Next() {
+			var peer string
+			err = rows.Scan(&peer)
+			if err != nil {
+				return nil, err
+			}
+			timedOutPeers = append(timedOutPeers, peer)
+		}
+
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	var currentLeader string
+	var currentTerm int
+	var peers []string
+	err = tx.QueryRow(ctx, `
+		SELECT leader, term, peers
+		FROM lobbies
+		WHERE game = $1
+		AND code = $2
+		FOR UPDATE
+	`, gameID, lobbyCode).Scan(&currentLeader, &currentTerm, &peers)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	needNewLeader := false
+	if currentLeader == "" {
+		needNewLeader = true
+	}
+
+	if !needNewLeader {
+		found := false
+		for _, peer := range peers {
+			if currentLeader == peer {
+				found = true
+				break
+			}
+		}
+		if !found {
+			needNewLeader = true
+		}
+	}
+
+	if !needNewLeader {
+		found := false
+		for _, peer := range timedOutPeers {
+			if currentLeader == peer {
+				found = true
+				break
+			}
+		}
+		if found {
+			needNewLeader = true
+		}
+	}
+
+	if !needNewLeader {
+		return nil, nil
+	}
+
+	// Randomize the order of the peers to avoid always picking the same leader.
+	rand.Shuffle(len(peers), func(i, j int) {
+		peers[i], peers[j] = peers[j], peers[i]
+	})
+
+	newLeader := ""
+	for _, peer := range peers {
+		found := false
+		for _, timedOutPeer := range timedOutPeers {
+			if peer == timedOutPeer {
+				found = true
+				break
+			}
+		}
+		if !found {
+			newLeader = peer
+			break
+		}
+	}
+
+	newTerm := currentTerm + 1
+
+	now := util.NowUTC(ctx)
+	_, err = tx.Exec(ctx, `
+		UPDATE lobbies
+		SET
+			leader = $1,
+			term = $2,
+			updated_at = $3
+		WHERE game = $4
+		AND code = $5
+	`, newLeader, newTerm, now, gameID, lobbyCode)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ElectionResult{
+		Leader: newLeader,
+		Term:   newTerm,
+	}, nil
 }

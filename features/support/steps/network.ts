@@ -307,3 +307,27 @@ When('the websocket of {string} is reconnected', function (this: World, playerNa
   }
   player.network._forceReconnectSignaling()
 })
+
+Given('{string} is the leader of the lobby', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  if (player.network.currentLeader !== player.network.id) {
+    throw new Error('player is not the leader')
+  }
+})
+
+Given('{string} becomes the leader of the lobby', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const event = await player.waitForEvent('leader', [player.network.id], false)
+  if (event == null) {
+    throw new Error(`no event leader(${player.network.id}) received`)
+  }
+  if (player.network.currentLeader !== player.network.id) {
+    throw new Error('player is not the leader')
+  }
+})

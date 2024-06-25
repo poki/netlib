@@ -30,6 +30,10 @@ type Store interface {
 	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (bool, error)
 
 	CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error
+
+	// DoLeaderElection attempts to elect a leader for the given lobby. If a correct leader already exists it will return nil.
+	// If no leader can be elected, it will return an ElectionResult with a nil leader.
+	DoLeaderElection(ctx context.Context, gameID, lobbyCode string) (*ElectionResult, error)
 }
 
 type Lobby struct {
@@ -42,6 +46,14 @@ type Lobby struct {
 	Password   string         `json:"password,omitempty"`
 	CustomData map[string]any `json:"customData"`
 
+	Leader string `json:"leader,omitempty"`
+	Term   int    `json:"term"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type ElectionResult struct {
+	Leader string
+	Term   int
 }

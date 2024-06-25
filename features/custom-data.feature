@@ -33,7 +33,9 @@ Feature: customData on lobbies can be used for filtering and extra information
           "customData": {
             "gameMode": "deathmatch",
             "map": "de_dust2"
-          }
+          },
+          "leader": "h5yzwyizlwao",
+          "term": 1
         }
       ]
       """
@@ -55,7 +57,9 @@ Feature: customData on lobbies can be used for filtering and extra information
           "customData": {
             "gameMode": "deathmatch",
             "map": "de_dust2"
-          }
+          },
+          "leader": "h5yzwyizlwao",
+          "term": 1
         }
       ]
       """

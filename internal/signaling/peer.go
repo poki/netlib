@@ -207,18 +207,52 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
 	}
 
-	if hasReconnected && len(reconnectingLobbies) > 0 {
-		p.Lobby = reconnectingLobbies[0]
-		p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
-		go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
-		logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
-	}
-
-	return p.Send(ctx, WelcomePacket{
+	err := p.Send(ctx, WelcomePacket{
 		Type:   "welcome",
 		ID:     p.ID,
 		Secret: p.Secret,
 	})
+	if err != nil {
+		return err
+	}
+
+	if hasReconnected {
+		for _, lobbyID := range reconnectingLobbies {
+			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
+			p.Lobby = lobbyID
+			p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
+
+			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
+
+			// We just reconnected, and we might be the only peer in the lobby.
+			// So do an election to make sure we then become the leader.
+			// This won't do anything if there's already a leader.
+			changed, err := p.doLeaderElectionAndPublish(ctx)
+			if err != nil {
+				return err
+			} else if !changed {
+				// No new leader was elected, but we might still have missed
+				// changes in leadership while we were disconnected.
+				// So send the current leader to the client just in case.
+
+				lobbyInfo, err := p.store.GetLobby(ctx, p.Game, lobbyID)
+				if err != nil {
+					return err
+				}
+
+				err = p.Send(ctx, LeaderPacket{
+					Type:   "leader",
+					Leader: lobbyInfo.Leader,
+					Term:   lobbyInfo.Term,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error {
@@ -250,6 +284,12 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 				logger.Error("failed to publish disconnect packet", zap.Error(err))
 			}
 		}
+
+		_, err = p.doLeaderElectionAndPublish(ctx)
+		if err != nil {
+			return err
+		}
+
 		p.Lobby = ""
 	}
 
@@ -348,6 +388,12 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	p.Lobby = packet.Lobby
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
+	// Lobby might be empty when joining, then you need to become the leader.
+	_, err = p.doLeaderElectionAndPublish(ctx)
+	if err != nil {
+		return err
+	}
+
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
 	if err != nil {
 		return err
@@ -382,4 +428,31 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
 	return nil
+}
+
+// doLeaderElectionAndPublish will do a leader election and publish the result if a new leader was elected.
+// It returns true if a new leader was elected, false if not.
+func (p *Peer) doLeaderElectionAndPublish(ctx context.Context) (bool, error) {
+	result, err := p.store.DoLeaderElection(ctx, p.Game, p.Lobby)
+	if err != nil {
+		return false, err
+	}
+
+	if result != nil {
+		packet := LeaderPacket{
+			Type:   "leader",
+			Leader: result.Leader,
+			Term:   result.Term,
+		}
+		data, err := json.Marshal(packet)
+		if err != nil {
+			return false, err
+		}
+		err = p.store.Publish(ctx, p.Game+p.Lobby, data)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return result != nil, nil
 }

@@ -91,21 +91,27 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 			result, err := i.Store.DoLeaderElection(ctx, p.Game, lobby)
 			if err != nil {
 				logger.Error("failed to do leader election", zap.Error(err))
-			} else if result != nil {
-				packet := LeaderPacket{
-					Type:   "leader",
-					Leader: result.Leader,
-					Term:   result.Term,
-				}
-				data, err := json.Marshal(packet)
-				if err != nil {
-					logger.Error("failed to marshal leader packet", zap.Error(err))
-				} else {
-					err = i.Store.Publish(ctx, p.Game+lobby, data)
-					if err != nil {
-						logger.Error("failed to publish leader packet", zap.Error(err))
-					}
-				}
+				continue
+			}
+
+			if result == nil {
+				continue
+			}
+
+			packet := LeaderPacket{
+				Type:   "leader",
+				Leader: result.Leader,
+				Term:   result.Term,
+			}
+			data, err := json.Marshal(packet)
+			if err != nil {
+				logger.Error("failed to marshal leader packet", zap.Error(err))
+				continue
+			}
+
+			err = i.Store.Publish(ctx, p.Game+lobby, data)
+			if err != nil {
+				logger.Error("failed to publish leader packet", zap.Error(err))
 			}
 		}
 	}

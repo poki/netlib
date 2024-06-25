@@ -227,19 +227,11 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			// We just reconnected, and we might be the only peer in the lobby.
 			// So do an election to make sure we then become the leader.
 			// This won't do anything if there's already a leader.
-			result, err := p.store.DoLeaderElection(ctx, p.Game, lobbyID)
+			changed, err := p.doLeaderElectionAndPublish(ctx)
 			if err != nil {
 				return err
-			} else if result != nil {
-				// A new leader was elected, let everyone know.
-				// With race conditions it's possible that there are multiple peers
-				// and not just us, so we need to publish the leader packet to the whole lobby.
-
-				if err := p.publishLeaderToLobby(ctx, result); err != nil {
-					return err
-				}
-			} else {
-				// No leader was elected, but we might still have missed
+			} else if !changed {
+				// No new leader was elected, but we might still have missed
 				// changes in leadership while we were disconnected.
 				// So send the current leader to the client just in case.
 
@@ -293,14 +285,11 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 			}
 		}
 
-		result, err := p.store.DoLeaderElection(ctx, p.Game, p.Lobby)
+		_, err = p.doLeaderElectionAndPublish(ctx)
 		if err != nil {
-			logger.Error("failed to do leader election", zap.Error(err))
-		} else if result != nil {
-			if err := p.publishLeaderToLobby(ctx, result); err != nil {
-				return err
-			}
+			return err
 		}
+
 		p.Lobby = ""
 	}
 
@@ -400,13 +389,9 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
 	// Lobby might be empty when joining, then you need to become the leader.
-	result, err := p.store.DoLeaderElection(ctx, p.Game, packet.Lobby)
+	_, err = p.doLeaderElectionAndPublish(ctx)
 	if err != nil {
 		return err
-	} else if result != nil {
-		if err := p.publishLeaderToLobby(ctx, result); err != nil {
-			return err
-		}
 	}
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
@@ -445,16 +430,29 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	return nil
 }
 
-func (p *Peer) publishLeaderToLobby(ctx context.Context, result *stores.ElectionResult) error {
-	packet := LeaderPacket{
-		Type:   "leader",
-		Leader: result.Leader,
-		Term:   result.Term,
+// doLeaderElectionAndPublish will do a leader election and publish the result if a new leader was elected.
+// It returns true if a new leader was elected, false if not.
+func (p *Peer) doLeaderElectionAndPublish(ctx context.Context) (bool, error) {
+	result, err := p.store.DoLeaderElection(ctx, p.Game, p.Lobby)
+	if err != nil {
+		return false, err
 	}
-	if data, err := json.Marshal(packet); err != nil {
-		return err
-	} else if err := p.store.Publish(ctx, p.Game+p.Lobby, data); err != nil {
-		return err
+
+	if result != nil {
+		packet := LeaderPacket{
+			Type:   "leader",
+			Leader: result.Leader,
+			Term:   result.Term,
+		}
+		data, err := json.Marshal(packet)
+		if err != nil {
+			return false, err
+		}
+		err = p.store.Publish(ctx, p.Game+p.Lobby, data)
+		if err != nil {
+			return false, err
+		}
 	}
-	return nil
+
+	return result != nil, nil
 }

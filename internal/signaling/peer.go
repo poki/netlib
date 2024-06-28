@@ -337,6 +337,13 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 
 	if packet.CanUpdateBy == "" {
 		packet.CanUpdateBy = stores.CanUpdateByCreator
+	} else if packet.CanUpdateBy != "" {
+		if packet.CanUpdateBy != stores.CanUpdateByCreator &&
+			packet.CanUpdateBy != stores.CanUpdateByLeader &&
+			packet.CanUpdateBy != stores.CanUpdateByAnyone &&
+			packet.CanUpdateBy != stores.CanUpdateByNone {
+			return fmt.Errorf("invalid canUpdateBy value")
+		}
 	}
 
 	attempts := 20
@@ -464,12 +471,8 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet UpdatePacket) erro
 	err := p.store.UpdateCustomData(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData, packet.CanUpdateBy)
 	if err != nil {
 		logger.Error("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))
-
-		return p.Send(ctx, UpdatedPacket{
-			RequestID: packet.RequestID,
-			Type:      "updated",
-			Error:     fmt.Sprintf("unable to update lobby: %v", err),
-		})
+		util.ReplyError(ctx, p.conn, fmt.Errorf("unable to update lobby: %v", err))
+		return nil
 	}
 
 	lobbyInfo, err := p.store.GetLobby(ctx, p.Game, p.Lobby)

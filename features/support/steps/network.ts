@@ -348,8 +348,10 @@ When('{string} fails to update the lobby with these settings:', async function (
   if (player == null) {
     throw new Error('no such player')
   }
-  const r = await player.network.setLobbySettings(JSON.parse(settings))
-  if (r === true) {
-    throw new Error('unexpected success')
+  try {
+    await player.network.setLobbySettings(JSON.parse(settings))
+  } catch (e) {
+    return // we expect this to fail
   }
+  throw new Error('no error thrown')
 })

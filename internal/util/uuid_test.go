@@ -44,9 +44,11 @@ func FuzzIsUUID(f *testing.F) {
 	f.Add("-")
 	f.Add("🔥")
 	f.Add("foobar")
+	var result bool
 	f.Fuzz(func(t *testing.T, data string) {
-		util.IsUUID(data)
+		result = util.IsUUID(data)
 	})
+	_ = result
 }
 
 var result any

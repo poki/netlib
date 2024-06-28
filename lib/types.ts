@@ -120,7 +120,6 @@ export interface UpdatePacket extends Base {
 export interface UpdatedPacket extends Base {
   type: 'updated'
   lobbyInfo: LobbyListEntry
-  error?: string
 }
 
 export interface ClosePacket extends Base {

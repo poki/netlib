@@ -94,17 +94,11 @@ export default class Network extends EventEmitter<NetworkListeners> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return new Error('network is closing or not connected')
     }
-    const reply = await this.signaling.request({
+    await this.signaling.request({
       type: 'update',
-      ...settings,
+      ...settings
     })
-    if (reply.type !== 'updated') {
-      return new Error(`unexpected reply type: ${reply.type}`)
-    }
-    if (reply.error === undefined) {
-      return true
-    }
-    return new Error(reply.error)
+    return true
   }
 
   close (reason?: string): void {

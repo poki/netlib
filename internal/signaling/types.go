@@ -89,7 +89,6 @@ type UpdatedPacket struct {
 	Type      string `json:"type"`
 
 	LobbyInfo stores.Lobby `json:"lobbyInfo"`
-	Error     string       `json:"error,omitempty"`
 }
 
 type ConnectPacket struct {

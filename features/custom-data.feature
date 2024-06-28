@@ -160,7 +160,7 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    Then "yellow" receives the network event "updated" with the argument "prb67ouj837u"
+    Then "yellow" receives the network event "lobbyUpdated" with the argument "prb67ouj837u"
 
 
   Scenario: The creator can update the lobby when canUpdateBy is 'creator' and they are not the leader
@@ -186,8 +186,8 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    Then "blue" receives the network event "updated" with the argument "prb67ouj837u"
-    And "yellow" receives the network event "updated" with the arguments:
+    Then "blue" receives the network event "lobbyUpdated" with the argument "prb67ouj837u"
+    And "yellow" receives the network event "lobbyUpdated" with the arguments:
       """json
       [
         "prb67ouj837u",
@@ -235,4 +235,4 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    Then "yellow" receives the network event "updated" with the argument "prb67ouj837u"
+    Then "yellow" receives the network event "lobbyUpdated" with the argument "prb67ouj837u"

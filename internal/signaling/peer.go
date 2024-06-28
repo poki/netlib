@@ -134,8 +134,8 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "update":
-		packet := UpdatePacket{}
+	case "lobbyUpdate":
+		packet := LobbyUpdatePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
 			return fmt.Errorf("unable to unmarshal json: %w", err)
 		}
@@ -451,7 +451,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	return nil
 }
 
-func (p *Peer) HandleUpdatePacket(ctx context.Context, packet UpdatePacket) error {
+func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket) error {
 	logger := logging.GetLogger(ctx)
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
@@ -480,12 +480,12 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet UpdatePacket) erro
 		return err
 	}
 
-	data, err := json.Marshal(UpdatedPacket{
+	data, err := json.Marshal(LobbyUpdatedPacket{
 		// Include the request ID for the peer that requested the update.
 		// Other peers will ignore this.
 		RequestID: packet.RequestID,
 
-		Type:      "updated",
+		Type:      "lobbyUpdated",
 		LobbyInfo: lobbyInfo,
 	})
 	if err != nil {

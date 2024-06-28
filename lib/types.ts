@@ -48,8 +48,8 @@ export type SignalingPacketTypes =
 | JoinedPacket
 | JoinPacket
 | LeaderPacket
-| UpdatePacket
-| UpdatedPacket
+| LobbyUpdatePacket
+| LobbyUpdatedPacket
 | ListPacket
 | LobbiesPacket
 | PingPacket
@@ -110,15 +110,15 @@ export interface LeaderPacket extends Base {
   term: number
 }
 
-export interface UpdatePacket extends Base {
-  type: 'update'
+export interface LobbyUpdatePacket extends Base {
+  type: 'lobbyUpdate'
   public?: boolean
   customData?: {[key: string]: any}
   canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
-export interface UpdatedPacket extends Base {
-  type: 'updated'
+export interface LobbyUpdatedPacket extends Base {
+  type: 'lobbyUpdated'
   lobbyInfo: LobbyListEntry
 }
 

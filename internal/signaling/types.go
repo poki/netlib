@@ -75,7 +75,7 @@ type LeaderPacket struct {
 	Term   int    `json:"term"`
 }
 
-type UpdatePacket struct {
+type LobbyUpdatePacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 
@@ -84,7 +84,7 @@ type UpdatePacket struct {
 	CanUpdateBy *string         `json:"canUpdateBy"`
 }
 
-type UpdatedPacket struct {
+type LobbyUpdatedPacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 

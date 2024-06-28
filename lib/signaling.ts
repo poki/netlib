@@ -216,13 +216,13 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           }
           break
 
-        case 'updated':
+        case 'lobbyUpdated':
           if (this.currentLobby === undefined) {
             // We're not in a lobby, ignore updated packets.
             return
           }
           this.currentLobbyInfo = packet.lobbyInfo
-          this.network.emit('updated', packet.lobbyInfo.code, packet.lobbyInfo)
+          this.network.emit('lobbyUpdated', packet.lobbyInfo.code, packet.lobbyInfo)
           break
 
         case 'connect':

@@ -10,7 +10,7 @@ interface NetworkListeners {
   ready: () => void | Promise<void>
   lobby: (code: string, lobbyInfo: LobbyListEntry) => void | Promise<void>
   leader: (leader: string) => void | Promise<void>
-  updated: (code: string, settings: LobbySettings) => void | Promise<void>
+  lobbyUpdated: (code: string, settings: LobbySettings) => void | Promise<void>
   connecting: (peer: Peer) => void | Promise<void>
   connected: (peer: Peer) => void | Promise<void>
   reconnecting: (peer: Peer) => void | Promise<void>
@@ -95,7 +95,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
       return new Error('network is closing or not connected')
     }
     await this.signaling.request({
-      type: 'update',
+      type: 'lobbyUpdate',
       ...settings
     })
     return true

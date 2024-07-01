@@ -17,6 +17,10 @@ import (
 	"nhooyr.io/websocket/wsjson"
 )
 
+type requestIDContextKeyType int
+
+const requestIDContextKey requestIDContextKeyType = 0
+
 type errorResponse struct {
 	Status int      `json:"status"`
 	Key    string   `json:"key"`
@@ -75,14 +79,18 @@ func ErrorAndDisconnect(ctx context.Context, conn *websocket.Conn, err error) {
 
 func ReplyError(ctx context.Context, conn *websocket.Conn, err error) {
 	payload := struct {
-		Type    string `json:"type"`
-		Message string `json:"message"`
-		Error   any    `json:"error,omitempty"`
-		Code    string `json:"code,omitempty"`
+		Type      string `json:"type"`
+		RequestID string `json:"rid,omitempty"`
+		Message   string `json:"message"`
+		Error     any    `json:"error,omitempty"`
+		Code      string `json:"code,omitempty"`
 	}{
 		Type:    "error",
 		Message: err.Error(),
 		Error:   err,
+	}
+	if rid, ok := ctx.Value(requestIDContextKey).(string); ok {
+		payload.RequestID = rid
 	}
 	if cerr, ok := err.(interface{ ErrorCode() string }); ok {
 		payload.Code = cerr.ErrorCode()
@@ -104,6 +112,15 @@ func RenderJSON(w http.ResponseWriter, r *http.Request, status int, val interfac
 		logger := logging.GetLogger(r.Context())
 		logger.Warn("uncaught server error", zap.Error(err))
 	}
+}
+
+// WithRequestID returns a new context with the given request ID attached, this ID
+// can be used when replying errors etc.
+func WithRequestID(ctx context.Context, id string) context.Context {
+	if id == "" || len(id) > 64 {
+		return ctx
+	}
+	return context.WithValue(ctx, requestIDContextKey, id)
 }
 
 func IsPipeError(err error) bool {

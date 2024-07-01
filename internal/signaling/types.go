@@ -45,11 +45,12 @@ type CreatePacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 
-	CodeFormat string         `json:"codeFormat"`
-	Public     bool           `json:"public"`
-	Password   string         `json:"password"`
-	MaxPlayers int            `json:"maxPlayers"`
-	CustomData map[string]any `json:"customData"`
+	CodeFormat  string         `json:"codeFormat"`
+	Public      bool           `json:"public"`
+	Password    string         `json:"password"`
+	MaxPlayers  int            `json:"maxPlayers"`
+	CustomData  map[string]any `json:"customData"`
+	CanUpdateBy string         `json:"canUpdateBy"`
 }
 
 type JoinPacket struct {
@@ -72,6 +73,22 @@ type LeaderPacket struct {
 
 	Leader string `json:"leader,omitempty"`
 	Term   int    `json:"term"`
+}
+
+type LobbyUpdatePacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+
+	Public      *bool           `json:"public"`
+	CustomData  *map[string]any `json:"customData"`
+	CanUpdateBy *string         `json:"canUpdateBy"`
+}
+
+type LobbyUpdatedPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+
+	LobbyInfo stores.Lobby `json:"lobbyInfo"`
 }
 
 type ConnectPacket struct {

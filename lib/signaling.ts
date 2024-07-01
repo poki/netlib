@@ -1,7 +1,7 @@
 import { EventEmitter } from 'eventemitter3'
 import Network from './network'
 import Peer from './peer'
-import { SignalingPacketTypes } from './types'
+import { LobbyListEntry, SignalingPacketTypes } from './types'
 
 interface SignalingListeners {
   credentials: (data: SignalingPacketTypes) => void | Promise<void>
@@ -15,6 +15,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   receivedID?: string
   receivedSecret?: string
   currentLobby?: string
+  currentLobbyInfo?: LobbyListEntry
   currentLeader?: string
   currentTerm: number = 0
 
@@ -213,6 +214,15 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
             this.currentTerm = packet.term
             this.network.emit('leader', packet.leader)
           }
+          break
+
+        case 'lobbyUpdated':
+          if (this.currentLobby === undefined) {
+            // We're not in a lobby, ignore updated packets.
+            return
+          }
+          this.currentLobbyInfo = packet.lobbyInfo
+          this.network.emit('lobbyUpdated', packet.lobbyInfo.code, packet.lobbyInfo)
           break
 
         case 'connect':

@@ -88,6 +88,11 @@ AfterAll(function (this: World) {
   // a quick workaround to make sure the process is killed neatly.
   // source: https://github.com/node-webrtc/node-webrtc/issues/636#issuecomment-774171409
   process.on('beforeExit', (code) => process.exit(code))
+
+  setTimeout(() => {
+    console.log('cucumber did not exit cleanly, forcing exit')
+    process.exit(0)
+  }, 1000).unref()
 })
 
 Before(function (this: World) {

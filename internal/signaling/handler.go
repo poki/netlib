@@ -112,6 +112,10 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
 
+			if base.RequestID != "" {
+				ctx = util.WithRequestID(ctx, base.RequestID)
+			}
+
 			if peer.closedPacketReceived {
 				if base.Type != "disconnect" && base.Type != "disconnected" { // expected lingering packets after closure.
 					logger.Warn("received packet after close", zap.String("peer", peer.ID), zap.String("type", base.Type))

@@ -10,6 +10,7 @@ interface NetworkListeners {
   ready: () => void | Promise<void>
   lobby: (code: string, lobbyInfo: LobbyListEntry) => void | Promise<void>
   leader: (leader: string) => void | Promise<void>
+  lobbyUpdated: (code: string, settings: LobbySettings) => void | Promise<void>
   connecting: (peer: Peer) => void | Promise<void>
   connected: (peer: Peer) => void | Promise<void>
   reconnecting: (peer: Peer) => void | Promise<void>
@@ -87,6 +88,17 @@ export default class Network extends EventEmitter<NetworkListeners> {
       return reply.lobbyInfo
     }
     return undefined
+  }
+
+  async setLobbySettings (settings: LobbySettings): Promise<true | Error> {
+    if (this._closing || this.signaling.receivedID === undefined) {
+      return new Error('network is closing or not connected')
+    }
+    await this.signaling.request({
+      type: 'lobbyUpdate',
+      ...settings
+    })
+    return true
   }
 
   close (reason?: string): void {
@@ -186,6 +198,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   get currentLobby (): string | undefined {
     return this.signaling.currentLobby
+  }
+
+  get currentLobbyInfo (): LobbyListEntry | undefined {
+    return this.signaling.currentLobbyInfo
   }
 
   get currentLeader (): string | null | undefined {

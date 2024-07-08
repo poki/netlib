@@ -60,8 +60,11 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 			pool.Purge(resource) // nolint:errcheck
 			close(flushed)
 		}()
-		if err := resource.Expire(120); err != nil {
-			return nil, nil, err
+		if os.Getenv("ENV") == "test" {
+			// Automatically expire the container after 120 seconds in tests.
+			if err := resource.Expire(120); err != nil {
+				return nil, nil, err
+			}
 		}
 		databaseUrl := fmt.Sprintf("postgres://test:test@%s/test?sslmode=disable", resource.GetHostPort("5432/tcp"))
 

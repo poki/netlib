@@ -12,7 +12,6 @@ var ErrNotFound = errors.New("lobby not found")
 var ErrNoSuchTopic = errors.New("no such topic")
 var ErrInvalidLobbyCode = errors.New("invalid lobby code")
 var ErrInvalidPeerID = errors.New("invalid peer id")
-var ErrNotAllowed = errors.New("not allowed")
 
 type SubscriptionCallback func(context.Context, []byte)
 

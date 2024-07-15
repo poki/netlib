@@ -470,7 +470,7 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 
 	err := p.store.UpdateCustomData(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData, packet.CanUpdateBy)
 	if err != nil {
-		logger.Error("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))
+		logger.Warn("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))
 		util.ReplyError(ctx, p.conn, fmt.Errorf("unable to update lobby: %v", err))
 		return nil
 	}

@@ -634,14 +634,14 @@ func (s *PostgresStore) UpdateCustomData(ctx context.Context, game, lobby, peer 
 		// No restrictions.
 	case CanUpdateByCreator:
 		if creator != peer {
-			return ErrNotAllowed
+			return errors.New("not allowed: peer is not the creator")
 		}
 	case CanUpdateByLeader:
 		if leader != peer {
-			return ErrNotAllowed
+			return errors.New("not allowed: peer is not the leader")
 		}
 	default:
-		return ErrNotAllowed
+		return fmt.Errorf("invalid can_update_by value: %q", currentCanUpdateBy)
 	}
 
 	columns := make([]string, 0, 3)

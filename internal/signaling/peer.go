@@ -71,7 +71,7 @@ func (p *Peer) ForwardMessage(ctx context.Context, raw []byte) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 	err := p.conn.Write(ctx, websocket.MessageText, raw)
-	if err != nil && !util.IsPipeError(err) {
+	if err != nil && !util.ShouldIgnoreNetworkError(err) {
 		logger.Warn("failed to forward message", zap.Error(err))
 	}
 }

@@ -16,7 +16,7 @@ export const DefaultRTCConfiguration: PeerConfiguration = {
   ]
 }
 
-export const DefaultDataChannels: {[label: string]: RTCDataChannelInit} = {
+export const DefaultDataChannels: { [label: string]: RTCDataChannelInit } = {
   reliable: {
     ordered: true
   },

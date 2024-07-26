@@ -27,7 +27,7 @@ export default class Peer {
   private politenessTimeout?: ReturnType<typeof setTimeout>
   private reportLatencyEventTimeout?: ReturnType<typeof setTimeout>
   private readonly checkStateInterval: ReturnType<typeof setInterval>
-  private readonly channels: {[name: string]: RTCDataChannel}
+  private readonly channels: { [name: string]: RTCDataChannel }
 
   private readonly testSessionWrapper?: (desc: RTCSessionDescription, config: PeerConfiguration, selfID: string, otherID: string) => Promise<void>
 

@@ -12,7 +12,7 @@ export interface LobbySettings {
   maxPlayers?: number
   password?: string
   public?: boolean
-  customData?: {[key: string]: any}
+  customData?: { [key: string]: any }
   canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
@@ -20,7 +20,7 @@ export interface LobbyListEntry {
   code: string
   public: boolean
   playerCount: number
-  customData?: {[key: string]: any}
+  customData?: { [key: string]: any }
   leader?: string
   term: number
   createdAt: string
@@ -113,7 +113,7 @@ export interface LeaderPacket extends Base {
 export interface LobbyUpdatePacket extends Base {
   type: 'lobbyUpdate'
   public?: boolean
-  customData?: {[key: string]: any}
+  customData?: { [key: string]: any }
   canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
@@ -182,5 +182,5 @@ export interface EventPacket extends Base {
   peer: string
   lobby?: string
 
-  data?: {[key: string]: string}
+  data?: { [key: string]: string }
 }

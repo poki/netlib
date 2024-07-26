@@ -19,7 +19,7 @@ export class Player {
       this.network.on(eventName as any, function () {
         // console.log(name, `(${network.id})`, 'received event', eventName, `${arguments[0] as string}`, arguments[1], arguments[2])
         events.push({
-          eventName: eventName,
+          eventName,
           eventPayload: arguments
         })
       })

@@ -70,7 +70,7 @@ func ErrorAndAbort(w http.ResponseWriter, r *http.Request, status int, key strin
 
 func ErrorAndDisconnect(ctx context.Context, conn *websocket.Conn, err error) {
 	logger := logging.GetLogger(ctx)
-	if !IsPipeError(err) {
+	if !ShouldIgnoreNetworkError(err) {
 		logger.Warn("error during connection", zap.Error(err))
 	}
 	ReplyError(ctx, conn, err)
@@ -96,7 +96,7 @@ func ReplyError(ctx context.Context, conn *websocket.Conn, err error) {
 		payload.Code = cerr.ErrorCode()
 	}
 	err = wsjson.Write(ctx, conn, &payload)
-	if err != nil && !IsPipeError(err) {
+	if err != nil && !ShouldIgnoreNetworkError(err) {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("uncaught server error", zap.Error(err), zap.Stack("stack"))
 	}
@@ -108,7 +108,7 @@ func RenderJSON(w http.ResponseWriter, r *http.Request, status int, val interfac
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(val)
-	if err != nil && !IsPipeError(err) {
+	if err != nil && !ShouldIgnoreNetworkError(err) {
 		logger := logging.GetLogger(r.Context())
 		logger.Warn("uncaught server error", zap.Error(err))
 	}
@@ -123,14 +123,14 @@ func WithRequestID(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, requestIDContextKey, id)
 }
 
-func IsPipeError(err error) bool {
+func ShouldIgnoreNetworkError(err error) bool {
 	switch v := err.(type) {
 	case syscall.Errno:
 		return v == syscall.EPIPE
 	case *net.OpError:
-		return IsPipeError(v.Err)
+		return ShouldIgnoreNetworkError(v.Err)
 	case *os.SyscallError:
-		return IsPipeError(v.Err)
+		return ShouldIgnoreNetworkError(v.Err)
 	default:
 		if errors.Is(err, context.Canceled) {
 			return true
@@ -139,6 +139,9 @@ func IsPipeError(err error) bool {
 			return true
 		}
 		if errors.Is(err, io.EOF) {
+			return true
+		}
+		if errors.Is(err, net.ErrClosed) { // "use of closed network connection"
 			return true
 		}
 		closeErr := websocket.CloseError{}

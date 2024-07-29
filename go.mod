@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.17.1
-	github.com/jackc/pgx/v5 v5.5.4
+	github.com/jackc/pgx/v5 v5.6.0
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/poki/mongodb-filter-to-postgres v1.0.0

@@ -15,10 +15,8 @@ import (
 )
 
 type CredentialsClient struct {
-	zone     string
-	appID    string
-	authUser string
-	authKey  string
+	appID   string
+	authKey string
 
 	lifetime time.Duration
 
@@ -28,12 +26,10 @@ type CredentialsClient struct {
 	HasFetchedFirstCredentials bool
 }
 
-func NewCredentialsClient(zone, appID, user, key string, lifetime time.Duration) *CredentialsClient {
+func NewCredentialsClient(appID, key string, lifetime time.Duration) *CredentialsClient {
 	c := &CredentialsClient{
-		zone:     zone,
-		appID:    appID,
-		authUser: user,
-		authKey:  key,
+		appID:   appID,
+		authKey: key,
 
 		lifetime: lifetime,
 	}
@@ -42,11 +38,6 @@ func NewCredentialsClient(zone, appID, user, key string, lifetime time.Duration)
 
 func (c *CredentialsClient) Run(ctx context.Context) {
 	logger := logging.GetLogger(ctx)
-
-	if c.zone == "" {
-		logger.Warn("no Cloudflare zone configured, not fetching credentials")
-		return
-	}
 
 	for ctx.Err() == nil {
 		start := time.Now()
@@ -87,14 +78,15 @@ func (c *CredentialsClient) GetCredentials(ctx context.Context) (*Credentials, e
 }
 
 func (c *CredentialsClient) fetchCredentials(ctx context.Context) (*Credentials, error) {
-	url := "https://api.cloudflare.com/client/v4/zones/" + c.zone + "/webrtc-turn/credential/" + c.appID
-	body := strings.NewReader(fmt.Sprintf(`{"lifetime":%d}`, c.lifetime/time.Second))
+	lifetime := c.lifetime / time.Second
+
+	url := "https://rtc.live.cloudflare.com/v1/turn/keys/" + c.appID + "/credentials/generate"
+	body := strings.NewReader(fmt.Sprintf(`{"ttl":%d}`, lifetime))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-Auth-Email", c.authUser)
-	req.Header.Set("X-Auth-Key", c.authKey)
+	req.Header.Set("Authorization", "Bearer "+c.authKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -102,7 +94,8 @@ func (c *CredentialsClient) fetchCredentials(ctx context.Context) (*Credentials,
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
+
+	if resp.StatusCode/100 != 2 {
 		return nil, fmt.Errorf("unexpected error from Cloudflare: %s", resp.Status)
 	}
 
@@ -111,14 +104,10 @@ func (c *CredentialsClient) fetchCredentials(ctx context.Context) (*Credentials,
 		return nil, fmt.Errorf("failed to decode Cloudflare response: %w", err)
 	}
 
-	if !response.Success {
-		return nil, fmt.Errorf("cloudflare error: %v", response.Errors)
-	}
-
 	return &Credentials{
 		URL:        response.URL(),
-		Username:   response.Result.Userid,
-		Credential: response.Result.Credential,
-		Lifetime:   response.Result.Lifetime,
+		Username:   response.ICEServers.Userid,
+		Credential: response.ICEServers.Credential,
+		Lifetime:   int(lifetime),
 	}, nil
 }

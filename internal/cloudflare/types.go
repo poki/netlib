@@ -10,26 +10,21 @@ type Credentials struct {
 }
 
 type response struct {
-	Result struct {
-		Protocol string `json:"protocol"`
-		DNS      struct {
-			Name string `json:"name"`
-		} `json:"dns"`
-		Lifetime   int    `json:"lifetime"`
-		Userid     string `json:"userid"`
-		Credential string `json:"credential"`
-	} `json:"result"`
-	Success bool          `json:"success"`
-	Errors  []interface{} `json:"errors"`
+	ICEServers struct {
+		URLs       []string `json:"urls"`
+		Userid     string   `json:"username"`
+		Credential string   `json:"credential"`
+	} `json:"iceServers"`
 }
 
 // URL returns in the following format:
 // turn:webrtc-turn.example.com:50000?transport=udp
 func (r response) URL() string {
-	protocol := r.Result.Protocol
-	parts := strings.Split(protocol, "/")
-	if len(parts) != 2 {
-		parts = []string{"udp", "50000"}
+	for _, url := range r.ICEServers.URLs {
+		if strings.HasPrefix(url, "turn:") && strings.Contains(url, "?transport=udp") {
+			return url
+		}
 	}
-	return "turn:" + r.Result.DNS.Name + ":" + parts[1] + "?transport=" + parts[0]
+
+	return ""
 }

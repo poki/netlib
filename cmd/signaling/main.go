@@ -42,12 +42,11 @@ func main() {
 	}
 
 	credentialsClient := cloudflare.NewCredentialsClient(
-		os.Getenv("CLOUDFLARE_ZONE"),
 		os.Getenv("CLOUDFLARE_APP_ID"),
-		os.Getenv("CLOUDFLARE_AUTH_USER"),
 		os.Getenv("CLOUDFLARE_AUTH_KEY"),
 		2*time.Hour,
 	)
+
 	go credentialsClient.Run(ctx)
 
 	mux, cleanup := internal.Signaling(ctx, store, credentialsClient)

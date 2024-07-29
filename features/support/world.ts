@@ -61,7 +61,7 @@ export class World extends CucumberWorld {
 }
 setWorldConstructor(World)
 
-BeforeAll((cb: Function) => {
+BeforeAll(async () => await new Promise(resolve => {
   let c = 2;
   ['signaling', 'testproxy'].forEach(backend => {
     const proc = spawn('go', ['build', '-o', `/tmp/netlib-cucumber-${backend}`, `cmd/${backend}/main.go`], {
@@ -74,13 +74,13 @@ BeforeAll((cb: Function) => {
         process.exit(1)
       }
       if (--c === 0) {
-        cb()
+        resolve(undefined)
       }
     })
   })
-})
+}))
 
-AfterAll(function (this: World) {
+AfterAll(function () {
   unlinkSync('/tmp/netlib-cucumber-signaling')
   unlinkSync('/tmp/netlib-cucumber-testproxy')
 

@@ -87,7 +87,7 @@ Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
     const v: string[] = []
 
     Object.keys(row).forEach(key => {
-      const value = row[key] as string
+      const value = row[key]
       if (key === 'playerCount') {
         if (!columns.includes('peers')) {
           columns.push('peers')
@@ -258,7 +258,7 @@ Then('{string} should have received only these lobbies:', function (this: World,
   if (player == null) {
     throw new Error('no such player')
   }
-  expectedLobbies.hashes().forEach((row: {code: string}) => {
+  expectedLobbies.hashes().forEach(row => {
     const correctCodeLobby = player.lastReceivedLobbies.filter(lobby => lobby.code === row.code)
     if (correctCodeLobby.length !== 1) {
       throw new Error(`expected to find one lobby with code ${row.code} but found ${correctCodeLobby.length}`)

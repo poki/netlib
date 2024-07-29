@@ -263,7 +263,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
   }
 
-  async event (category: string, action: string, data?: {[key: string]: string}): Promise<void> {
+  async event (category: string, action: string, data?: { [key: string]: string }): Promise<void> {
     return await new Promise(resolve => {
       setTimeout(() => {
         this.send({

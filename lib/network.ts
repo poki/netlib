@@ -29,7 +29,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   public readonly peers: Map<string, Peer>
   private readonly signaling: Signaling
   private readonly credentials: Credentials
-  public dataChannels: {[label: string]: RTCDataChannelInit} = DefaultDataChannels
+  public dataChannels: { [label: string]: RTCDataChannelInit } = DefaultDataChannels
 
   public log: (...data: any[]) => void = (...args: any[]) => {} // console.log
 
@@ -76,7 +76,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
     return ''
   }
 
-  async join (lobby: string): Promise<LobbyListEntry|undefined> {
+  async join (lobby: string): Promise<LobbyListEntry | undefined> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return undefined
     }

@@ -46,7 +46,7 @@
     "@roamhq/wrtc": "^0.8.0",
     "@types/node-fetch": "^2.6.11",
     "@types/ws": "^8.5.11",
-    "node-fetch": "=2.7.0",
+    "node-fetch": "=3.3.2",
     "parcel": "^2.12.0",
     "ts-node": "^10.9.2",
     "ts-standard": "^12.0.2",

@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const DefaultMaxPlayers = 64
+
 type Peer struct {
 	store stores.Store
 	conn  *websocket.Conn
@@ -346,6 +348,19 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		}
 	}
 
+	maxPlayers := DefaultMaxPlayers
+	if packet.MaxPlayers != nil {
+		if *packet.MaxPlayers < 1 {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at least 1, got %d", *packet.MaxPlayers), "invalid-max-players"))
+			return nil
+		} else if *packet.MaxPlayers > DefaultMaxPlayers {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at most %d, got %d", DefaultMaxPlayers, *packet.MaxPlayers), "invalid-max-players"))
+			return nil
+		}
+
+		maxPlayers = *packet.MaxPlayers
+	}
+
 	attempts := 20
 	for ; attempts > 0; attempts-- {
 		switch packet.CodeFormat {
@@ -360,6 +375,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 			CustomData:  &packet.CustomData,
 			CanUpdateBy: &packet.CanUpdateBy,
 			Password:    &packet.Password,
+			MaxPlayers:  &maxPlayers,
 		})
 		if err != nil {
 			if err == stores.ErrLobbyExists {
@@ -416,6 +432,9 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 			return nil
 		} else if err == stores.ErrInvalidPassword {
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
+			return nil
+		} else if err == stores.ErrLobbyIsFull {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "lobby-is-full"))
 			return nil
 		}
 
@@ -483,12 +502,22 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 			return fmt.Errorf("invalid canUpdateBy value")
 		}
 	}
+	if packet.MaxPlayers != nil {
+		if *packet.MaxPlayers < 1 {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at least 1, got %d", *packet.MaxPlayers), "invalid-max-players"))
+			return nil
+		} else if *packet.MaxPlayers > DefaultMaxPlayers {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at most %d, got %d", DefaultMaxPlayers, *packet.MaxPlayers), "invalid-max-players"))
+			return nil
+		}
+	}
 
 	err := p.store.UpdateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
 		Public:      packet.Public,
 		CustomData:  packet.CustomData,
 		CanUpdateBy: packet.CanUpdateBy,
 		Password:    packet.Password,
+		MaxPlayers:  packet.MaxPlayers,
 	})
 	if err != nil {
 		logger.Warn("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))

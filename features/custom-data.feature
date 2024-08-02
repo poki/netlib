@@ -30,7 +30,7 @@ Feature: customData on lobbies can be used for filtering and extra information
           "playerCount": 1,
           "creator": "h5yzwyizlwao",
           "public": true,
-          "maxPlayers": 0,
+          "maxPlayers": 64,
           "hasPassword": false,
           "customData": {
             "gameMode": "deathmatch",
@@ -57,7 +57,7 @@ Feature: customData on lobbies can be used for filtering and extra information
           "playerCount": 2,
           "creator": "h5yzwyizlwao",
           "public": true,
-          "maxPlayers": 0,
+          "maxPlayers": 64,
           "hasPassword": false,
           "customData": {
             "gameMode": "deathmatch",
@@ -202,7 +202,7 @@ Feature: customData on lobbies can be used for filtering and extra information
           "playerCount": 2,
           "creator": "h5yzwyizlwao",
           "public": false,
-          "maxPlayers": 0,
+          "maxPlayers": 64,
           "hasPassword": false,
           "customData": {
             "status": "started"

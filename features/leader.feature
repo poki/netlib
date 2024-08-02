@@ -26,6 +26,7 @@ Feature: Lobbies have a leader that can control the lobby
           "creator": "h5yzwyizlwao",
           "public": false,
           "maxPlayers": 0,
+          "hasPassword": false,
           "customData": null,
           "canUpdateBy": "creator",
           "leader": "h5yzwyizlwao",
@@ -65,6 +66,7 @@ Feature: Lobbies have a leader that can control the lobby
           "creator": "foo",
           "public": true,
           "maxPlayers": 0,
+          "hasPassword": false,
           "customData": {
             "map": "de_nuke"
           },

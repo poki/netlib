@@ -144,12 +144,25 @@ When('{string} creates a lobby with these settings:', function (this: World, pla
   void player.network.create(settings)
 })
 
-When('{string} connects to the lobby {string}', function (this: World, playerName: string, lobbyCode: string) {
+When('{string} connects to the lobby {string}', async function (this: World, playerName: string, lobbyCode: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
-  void player.network.join(lobbyCode)
+  try {
+    this.lastError = undefined
+    await player.network.join(lobbyCode)
+  } catch (e) {
+    this.lastError = e as Error
+  }
+})
+
+When('{string} connects to the lobby {string} with the password {string}', function (this: World, playerName: string, lobbyCode: string, password: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  void player.network.join(lobbyCode, password)
 })
 
 When('{string} boardcasts {string} over the reliable channel', function (this: World, playerName: string, message: string) {
@@ -354,4 +367,12 @@ When('{string} fails to update the lobby with these settings:', async function (
     return // we expect this to fail
   }
   throw new Error('no error thrown')
+})
+
+Then('the last error is {string}', function (message: string) {
+  if (this.lastError == null) {
+    throw new Error('no error thrown')
+  } else if (this.lastError.message !== message) {
+    throw new Error(`expected error to contain ${message} but got ${this.lastError.message as string}`)
+  }
 })

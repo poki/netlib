@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE "lobbies"
+    ADD COLUMN "max_players" INTEGER NOT NULL DEFAULT 64;
+
+COMMIT;

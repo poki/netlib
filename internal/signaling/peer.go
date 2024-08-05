@@ -355,10 +355,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 			p.Lobby = util.GenerateLobbyCode(ctx)
 		}
 
-		err := p.store.CreateLobby(ctx, stores.LobbyOptions{
-			Game:        p.Game,
-			LobbyCode:   p.Lobby,
-			PeerID:      p.ID,
+		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
 			Public:      &packet.Public,
 			CustomData:  &packet.CustomData,
 			CanUpdateBy: &packet.CanUpdateBy,
@@ -367,6 +364,9 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		if err != nil {
 			if err == stores.ErrLobbyExists {
 				continue
+			} else if err == stores.ErrInvalidPassword {
+				util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
+				return nil
 			}
 			return err
 		}
@@ -484,10 +484,7 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 		}
 	}
 
-	err := p.store.UpdateLobby(ctx, stores.LobbyOptions{
-		Game:        p.Game,
-		LobbyCode:   p.Lobby,
-		PeerID:      p.ID,
+	err := p.store.UpdateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
 		Public:      packet.Public,
 		CustomData:  packet.CustomData,
 		CanUpdateBy: packet.CanUpdateBy,

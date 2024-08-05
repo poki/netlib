@@ -35,7 +35,7 @@ export class World extends CucumberWorld {
   public databaseURL?: string
 
   public players: Map<string, Player> = new Map<string, Player>()
-  public lastError?: Error
+  public lastError: Map<string, Error> = new Map<string, Error>()
 
   public print (message: string): void {
     if (this.scenarioRunning) {

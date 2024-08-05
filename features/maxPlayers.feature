@@ -20,8 +20,9 @@ Feature: Lobbies can have a maximum number of players
     When "yellow" connects to the lobby "dhgp75mn2bll"
     Then "yellow" receives the network event "lobby" with the argument "dhgp75mn2bll"
 
-    When "green" connects to the lobby "dhgp75mn2bll"
-    Then the last error is "lobby is full"
+    When "green" tries to connect to the lobby "dhgp75mn2bll"
+    Then the last error for "green" is "lobby is full"
+    And "green" is not in a lobby
 
 
   Scenario: You can update the maximum number of players for a lobby
@@ -29,8 +30,7 @@ Feature: Lobbies can have a maximum number of players
     And "yellow" creates a lobby with these settings:
       """json
       {
-        "public": true,
-        "maxPlayers": 2
+        "public": true
       }
       """
     And "yellow" receives the network event "lobby" with the argument "19yrzmetd2bn7"
@@ -42,12 +42,12 @@ Feature: Lobbies can have a maximum number of players
       """
     Then "yellow" should have received only these lobbies:
       | code          | maxPlayers |
-      | 19yrzmetd2bn7 | 2       |
+      | 19yrzmetd2bn7 | 4          |
 
     When "yellow" updates the lobby with these settings:
       """json
       {
-        "maxPlayers": 4
+        "maxPlayers": 12
       }
       """
 
@@ -58,4 +58,4 @@ Feature: Lobbies can have a maximum number of players
       """
     Then "yellow" should have received only these lobbies:
       | code          | maxPlayers |
-      | 19yrzmetd2bn7 | 4      |
+      | 19yrzmetd2bn7 | 12         |

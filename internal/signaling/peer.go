@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const DefaultMaxPlayers = 64
+const DefaultMaxPlayers = 4
 
 type Peer struct {
 	store stores.Store
@@ -350,14 +350,6 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 
 	maxPlayers := DefaultMaxPlayers
 	if packet.MaxPlayers != nil {
-		if *packet.MaxPlayers < 1 {
-			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at least 1, got %d", *packet.MaxPlayers), "invalid-max-players"))
-			return nil
-		} else if *packet.MaxPlayers > DefaultMaxPlayers {
-			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at most %d, got %d", DefaultMaxPlayers, *packet.MaxPlayers), "invalid-max-players"))
-			return nil
-		}
-
 		maxPlayers = *packet.MaxPlayers
 	}
 
@@ -500,15 +492,6 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 			*packet.CanUpdateBy != stores.CanUpdateByAnyone &&
 			*packet.CanUpdateBy != stores.CanUpdateByNone {
 			return fmt.Errorf("invalid canUpdateBy value")
-		}
-	}
-	if packet.MaxPlayers != nil {
-		if *packet.MaxPlayers < 1 {
-			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at least 1, got %d", *packet.MaxPlayers), "invalid-max-players"))
-			return nil
-		} else if *packet.MaxPlayers > DefaultMaxPlayers {
-			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("maxPlayers must be at most %d, got %d", DefaultMaxPlayers, *packet.MaxPlayers), "invalid-max-players"))
-			return nil
 		}
 	}
 

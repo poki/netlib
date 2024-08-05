@@ -395,7 +395,7 @@ Then('the latest error for {string} is {string}', function (playerName: string, 
   if (error === undefined) {
     throw new Error('no error thrown')
   } else if (error.message !== message) {
-    throw new Error(`expected error to contain ${message} but got ${error.message as string}`)
+    throw new Error(`expected error to be '${message}' but got '${error.message as string}'`)
   }
 })
 

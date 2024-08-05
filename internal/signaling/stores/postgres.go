@@ -227,7 +227,7 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 		return ErrInvalidPassword
 	}
 
-	if len(peerlist) >= maxPlayers {
+	if maxPlayers > 0 && len(peerlist) >= maxPlayers {
 		return ErrLobbyIsFull
 	}
 

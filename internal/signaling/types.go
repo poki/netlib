@@ -57,7 +57,8 @@ type JoinPacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 
-	Lobby string `json:"lobby"`
+	Lobby    string `json:"lobby"`
+	Password string `json:"password"`
 }
 
 type JoinedPacket struct {
@@ -82,6 +83,7 @@ type LobbyUpdatePacket struct {
 	Public      *bool           `json:"public"`
 	CustomData  *map[string]any `json:"customData"`
 	CanUpdateBy *string         `json:"canUpdateBy"`
+	Password    *string         `json:"password"`
 }
 
 type LobbyUpdatedPacket struct {

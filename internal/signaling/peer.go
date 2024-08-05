@@ -355,10 +355,18 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 			p.Lobby = util.GenerateLobbyCode(ctx)
 		}
 
-		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData, packet.CanUpdateBy)
+		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
+			Public:      &packet.Public,
+			CustomData:  &packet.CustomData,
+			CanUpdateBy: &packet.CanUpdateBy,
+			Password:    &packet.Password,
+		})
 		if err != nil {
 			if err == stores.ErrLobbyExists {
 				continue
+			} else if err == stores.ErrInvalidPassword {
+				util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
+				return nil
 			}
 			return err
 		}
@@ -401,8 +409,16 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return fmt.Errorf("lobby code too long")
 	}
 
-	err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID)
+	err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID, packet.Password)
 	if err != nil {
+		if err == stores.ErrNotFound {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "lobby-not-found"))
+			return nil
+		} else if err == stores.ErrInvalidPassword {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
+			return nil
+		}
+
 		return err
 	}
 
@@ -468,7 +484,12 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 		}
 	}
 
-	err := p.store.UpdateCustomData(ctx, p.Game, p.Lobby, p.ID, packet.Public, packet.CustomData, packet.CanUpdateBy)
+	err := p.store.UpdateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
+		Public:      packet.Public,
+		CustomData:  packet.CustomData,
+		CanUpdateBy: packet.CanUpdateBy,
+		Password:    packet.Password,
+	})
 	if err != nil {
 		logger.Warn("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))
 		util.ReplyError(ctx, p.conn, fmt.Errorf("unable to update lobby: %v", err))

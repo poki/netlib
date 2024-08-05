@@ -31,6 +31,7 @@ Feature: customData on lobbies can be used for filtering and extra information
           "creator": "h5yzwyizlwao",
           "public": true,
           "maxPlayers": 0,
+          "hasPassword": false,
           "customData": {
             "gameMode": "deathmatch",
             "map": "de_dust2"
@@ -57,6 +58,7 @@ Feature: customData on lobbies can be used for filtering and extra information
           "creator": "h5yzwyizlwao",
           "public": true,
           "maxPlayers": 0,
+          "hasPassword": false,
           "customData": {
             "gameMode": "deathmatch",
             "map": "de_dust2"
@@ -201,6 +203,7 @@ Feature: customData on lobbies can be used for filtering and extra information
           "creator": "h5yzwyizlwao",
           "public": false,
           "maxPlayers": 0,
+          "hasPassword": false,
           "customData": {
             "status": "started"
           },

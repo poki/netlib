@@ -17,6 +17,7 @@ import (
 	"github.com/poki/mongodb-filter-to-postgres/filter"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type PostgresStore struct {
@@ -153,7 +154,7 @@ func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) 
 	return nil
 }
 
-func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string, public bool, customData map[string]any, canUpdateBy string) error {
+func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID string, options LobbyOptions) error {
 	if len(lobbyCode) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("lobby code too long", zap.String("lobbyCode", lobbyCode))
@@ -164,12 +165,23 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
 		return ErrInvalidPeerID
 	}
+
+	var hashedPassword []byte
+
+	if options.Password != nil && len(*options.Password) > 0 {
+		var err error
+		hashedPassword, err = bcrypt.GenerateFromPassword([]byte(*options.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+	}
+
 	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator)
-		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7)
+		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator, password)
+		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7, $9)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, []string{peerID}, public, customData, now, peerID, canUpdateBy)
+	`, lobbyCode, game, []string{peerID}, options.Public, options.CustomData, now, peerID, options.CanUpdateBy, hashedPassword)
 	if err != nil {
 		return err
 	}
@@ -179,7 +191,7 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	return nil
 }
 
-func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID string) error {
+func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, password string) error {
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
@@ -195,18 +207,23 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID s
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
 	var peerlist []string
+	var lobbyPassword []byte
 	err = tx.QueryRow(ctx, `
-		SELECT peers
+		SELECT peers, password
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
 		FOR UPDATE
-	`, lobbyCode, game).Scan(&peerlist)
+	`, lobbyCode, game).Scan(&peerlist, &lobbyPassword)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		return err
+	}
+
+	if lobbyPassword != nil && bcrypt.CompareHashAndPassword(lobbyPassword, []byte(password)) != nil {
+		return ErrInvalidPassword
 	}
 
 	for _, peer := range peerlist {
@@ -266,11 +283,12 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 			leader,
 			term,
 			can_update_by,
-			creator
+			creator,
+			password IS NOT NULL
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
-	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator)
+	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Lobby{}, ErrNotFound
@@ -307,7 +325,8 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 				leader,
 				term,
 				can_update_by,
-				creator
+				creator,
+				password IS NOT NULL
 			FROM lobbies
 			WHERE game = $1
 			AND public = true
@@ -325,7 +344,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword)
 		if err != nil {
 			return nil, err
 		}
@@ -608,7 +627,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	}, nil
 }
 
-func (s *PostgresStore) UpdateCustomData(ctx context.Context, game, lobby, peer string, public *bool, customData *map[string]any, canUpdateBy *string) error {
+func (s *PostgresStore) UpdateLobby(ctx context.Context, game, lobbyCode, peerID string, options LobbyOptions) error {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return err
@@ -624,7 +643,7 @@ func (s *PostgresStore) UpdateCustomData(ctx context.Context, game, lobby, peer 
 		WHERE game = $1
 		AND code = $2
 		FOR UPDATE
-	`, game, lobby).Scan(&leader, &currentCanUpdateBy, &creator)
+	`, game, lobbyCode).Scan(&leader, &currentCanUpdateBy, &creator)
 	if err != nil {
 		return err
 	}
@@ -633,11 +652,11 @@ func (s *PostgresStore) UpdateCustomData(ctx context.Context, game, lobby, peer 
 	case CanUpdateByAnyone:
 		// No restrictions.
 	case CanUpdateByCreator:
-		if creator != peer {
+		if creator != peerID {
 			return errors.New("not allowed: peer is not the creator")
 		}
 	case CanUpdateByLeader:
-		if leader != peer {
+		if leader != peerID {
 			return errors.New("not allowed: peer is not the leader")
 		}
 	default:
@@ -645,19 +664,32 @@ func (s *PostgresStore) UpdateCustomData(ctx context.Context, game, lobby, peer 
 	}
 
 	columns := make([]string, 0, 3)
-	values := []any{game, lobby}
+	values := []any{game, lobbyCode}
 
-	if public != nil {
+	if options.Public != nil {
 		columns = append(columns, fmt.Sprintf("public = $%d", len(values)+1))
-		values = append(values, *public)
+		values = append(values, *options.Public)
 	}
-	if customData != nil {
+	if options.CustomData != nil {
 		columns = append(columns, fmt.Sprintf("custom_data = $%d", len(values)+1))
-		values = append(values, *customData)
+		values = append(values, *options.CustomData)
 	}
-	if canUpdateBy != nil {
+	if options.CanUpdateBy != nil {
 		columns = append(columns, fmt.Sprintf("can_update_by = $%d", len(values)+1))
-		values = append(values, *canUpdateBy)
+		values = append(values, *options.CanUpdateBy)
+	}
+	if options.Password != nil {
+		var hashedPassword []byte
+
+		if len(*options.Password) > 0 {
+			hashedPassword, err = bcrypt.GenerateFromPassword([]byte(*options.Password), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+		}
+
+		columns = append(columns, fmt.Sprintf("password = $%d", len(values)+1))
+		values = append(values, hashedPassword)
 	}
 
 	if len(columns) == 0 {

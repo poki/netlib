@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE "lobbies"
+    ADD COLUMN "password" BYTEA DEFAULT NULL;
+
+COMMIT;

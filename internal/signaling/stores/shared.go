@@ -12,12 +12,20 @@ var ErrNotFound = errors.New("lobby not found")
 var ErrNoSuchTopic = errors.New("no such topic")
 var ErrInvalidLobbyCode = errors.New("invalid lobby code")
 var ErrInvalidPeerID = errors.New("invalid peer id")
+var ErrInvalidPassword = errors.New("invalid password")
 
 type SubscriptionCallback func(context.Context, []byte)
 
+type LobbyOptions struct {
+	Public      *bool
+	CustomData  *map[string]any
+	CanUpdateBy *string
+	Password    *string
+}
+
 type Store interface {
-	CreateLobby(ctx context.Context, game, lobby, peerID string, public bool, customData map[string]any, canUpdateBy string) error
-	JoinLobby(ctx context.Context, game, lobby, id string) error
+	CreateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
+	JoinLobby(ctx context.Context, game, lobby, id, password string) error
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error)
@@ -35,7 +43,7 @@ type Store interface {
 	// If no leader can be elected, it will return an ElectionResult with a nil leader.
 	DoLeaderElection(ctx context.Context, gameID, lobbyCode string) (*ElectionResult, error)
 
-	UpdateCustomData(ctx context.Context, game, lobby, peer string, public *bool, customData *map[string]any, canUpdateBy *string) error
+	UpdateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 }
 
 const (
@@ -53,7 +61,7 @@ type Lobby struct {
 
 	Public      bool           `json:"public"`
 	MaxPlayers  int            `json:"maxPlayers"`
-	Password    string         `json:"password,omitempty"`
+	HasPassword bool           `json:"hasPassword"`
 	CustomData  map[string]any `json:"customData"`
 	CanUpdateBy string         `json:"canUpdateBy"`
 

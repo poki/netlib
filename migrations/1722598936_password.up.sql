@@ -1,6 +1,6 @@
 BEGIN;
 
 ALTER TABLE "lobbies"
-    ADD COLUMN "password" VARCHAR(20) NOT NULL DEFAULT '';
+    ADD COLUMN "password" BYTEA DEFAULT NULL;
 
 COMMIT;

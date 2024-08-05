@@ -30,8 +30,9 @@ Feature: Lobbies can be password protected
       """
     And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
 
-    When "yellow" connects to the lobby "prb67ouj837u"
-    Then the last error is "invalid password"
+    When "yellow" tries to connect to the lobby "prb67ouj837u"
+    Then the last error for "yellow" is "invalid password"
+    And "yellow" is not in a lobby
 
 
   Scenario: You can change the password
@@ -63,7 +64,7 @@ Feature: Lobbies can be password protected
 
     When "yellow" requests lobbies with this filter:
       """json
-      { 
+      {
       }
       """
     Then "yellow" should have received only these lobbies:

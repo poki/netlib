@@ -17,9 +17,6 @@ var ErrInvalidPassword = errors.New("invalid password")
 type SubscriptionCallback func(context.Context, []byte)
 
 type LobbyOptions struct {
-	Game        string
-	LobbyCode   string
-	PeerID      string
 	Public      *bool
 	CustomData  *map[string]any
 	CanUpdateBy *string
@@ -27,7 +24,7 @@ type LobbyOptions struct {
 }
 
 type Store interface {
-	CreateLobby(ctx context.Context, options LobbyOptions) error
+	CreateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 	JoinLobby(ctx context.Context, game, lobby, id, password string) error
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
@@ -46,7 +43,7 @@ type Store interface {
 	// If no leader can be elected, it will return an ElectionResult with a nil leader.
 	DoLeaderElection(ctx context.Context, gameID, lobbyCode string) (*ElectionResult, error)
 
-	UpdateLobby(ctx context.Context, options LobbyOptions) error
+	UpdateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 }
 
 const (

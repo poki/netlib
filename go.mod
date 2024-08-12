@@ -7,11 +7,11 @@ require (
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504
 	github.com/ory/dockertest/v3 v3.10.0
-	github.com/poki/mongodb-filter-to-postgres v1.0.0
+	github.com/poki/mongodb-filter-to-postgres v1.0.1
 	github.com/rs/cors v1.11.0
 	github.com/rs/xid v1.5.0
 	go.uber.org/zap v1.27.0
-	nhooyr.io/websocket v1.8.11
+	nhooyr.io/websocket v1.8.17
 )
 
 require (

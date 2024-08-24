@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 type Peer struct {

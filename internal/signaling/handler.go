@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/koenbollen/logging"
 	"github.com/poki/netlib/internal/cloudflare"
 	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
-	"nhooyr.io/websocket"
 )
 
 const MaxConnectionTime = 1 * time.Hour

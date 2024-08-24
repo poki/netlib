@@ -30,9 +30,9 @@ Feature: Lobbies can be password protected
       """
     And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
 
-    When "yellow" tries to connect to the lobby "prb67ouj837u"
-    Then the last error for "yellow" is "invalid password"
-    And "yellow" is not in a lobby
+    When "yellow" tries to connect to the lobby "prb67ouj837u" without a password
+    Then "yellow" failed to join the lobby
+    And the latest error for "yellow" is "invalid password"
 
 
   Scenario: You can change the password

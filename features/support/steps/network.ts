@@ -160,7 +160,7 @@ When('{string} connects to the lobby {string} with the password {string}', funct
   void player.network.join(lobbyCode, password)
 })
 
-When('{string} tries to connect to the lobby {string}', async function (this: World, playerName: string, lobbyCode: string) {
+When('{string} tries to connect to the lobby {string} without a password', async function (this: World, playerName: string, lobbyCode: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
@@ -377,7 +377,7 @@ When('{string} fails to update the lobby with these settings:', async function (
   throw new Error('no error thrown')
 })
 
-Then('the last error for {string} is {string}', function (playerName: string, message: string) {
+Then('the latest error for {string} is {string}', function (playerName: string, message: string) {
   const error = this.lastError.get(playerName)
   if (error === undefined) {
     throw new Error('no error thrown')
@@ -386,7 +386,7 @@ Then('the last error for {string} is {string}', function (playerName: string, me
   }
 })
 
-Then('{string} is not in a lobby', function (playerName: string) {
+Then('{string} failed to join the lobby', function (playerName: string) {
   const player = this.players.get(playerName)
   if (player === null) {
     throw new Error('no such player')

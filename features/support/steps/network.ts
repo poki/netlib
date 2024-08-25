@@ -160,6 +160,19 @@ When('{string} connects to the lobby {string} with the password {string}', funct
   void player.network.join(lobbyCode, password)
 })
 
+When('{string} tries to connect to the lobby {string} with the password {string}', async function (this: World, playerName: string, lobbyCode: string, password: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  try {
+    this.lastError.delete(playerName)
+    await player.network.join(lobbyCode, password)
+  } catch (e) {
+    this.lastError.set(playerName, e as Error)
+  }
+})
+
 When('{string} tries to connect to the lobby {string} without a password', async function (this: World, playerName: string, lobbyCode: string) {
   const player = this.players.get(playerName)
   if (player == null) {

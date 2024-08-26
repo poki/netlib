@@ -9,7 +9,7 @@ require (
 	github.com/ory/dockertest/v3 v3.11.0
 	github.com/poki/mongodb-filter-to-postgres v1.0.1
 	github.com/rs/cors v1.11.0
-	github.com/rs/xid v1.5.0
+	github.com/rs/xid v1.6.0
 	go.uber.org/zap v1.27.0
 	nhooyr.io/websocket v1.8.17
 )

@@ -152,6 +152,40 @@ When('{string} connects to the lobby {string}', function (this: World, playerNam
   void player.network.join(lobbyCode)
 })
 
+When('{string} connects to the lobby {string} with the password {string}', function (this: World, playerName: string, lobbyCode: string, password: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  void player.network.join(lobbyCode, password)
+})
+
+When('{string} tries to connect to the lobby {string} with the password {string}', async function (this: World, playerName: string, lobbyCode: string, password: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  try {
+    this.lastError.delete(playerName)
+    await player.network.join(lobbyCode, password)
+  } catch (e) {
+    this.lastError.set(playerName, e as Error)
+  }
+})
+
+When('{string} tries to connect to the lobby {string} without a password', async function (this: World, playerName: string, lobbyCode: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  try {
+    this.lastError.delete(playerName)
+    await player.network.join(lobbyCode)
+  } catch (e) {
+    this.lastError.set(playerName, e as Error)
+  }
+})
+
 When('{string} boardcasts {string} over the reliable channel', function (this: World, playerName: string, message: string) {
   const player = this.players.get(playerName)
   if (player == null) {
@@ -354,4 +388,24 @@ When('{string} fails to update the lobby with these settings:', async function (
     return // we expect this to fail
   }
   throw new Error('no error thrown')
+})
+
+Then('the latest error for {string} is {string}', function (playerName: string, message: string) {
+  const error = this.lastError.get(playerName)
+  if (error === undefined) {
+    throw new Error('no error thrown')
+  } else if (error.message !== message) {
+    throw new Error(`expected error to contain ${message} but got ${error.message as string}`)
+  }
+})
+
+Then('{string} failed to join the lobby', function (playerName: string) {
+  const player = this.players.get(playerName)
+  if (player === null) {
+    throw new Error('no such player')
+  }
+
+  if (player.network.currentLobby !== undefined) {
+    throw new Error(`player is in lobby ${player.network.currentLobby as string}`)
+  }
 })

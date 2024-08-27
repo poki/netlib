@@ -13,13 +13,15 @@ export interface LobbySettings {
   password?: string
   public?: boolean
   customData?: { [key: string]: any }
-  canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
+  canUpdateBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
 export interface LobbyListEntry {
   code: string
   public: boolean
   playerCount: number
+  maxPlayers: number
+  hasPassword: boolean
   customData?: { [key: string]: any }
   leader?: string
   term: number
@@ -97,6 +99,7 @@ export interface CreatePacket extends Base {
 export interface JoinPacket extends Base {
   type: 'join'
   lobby: string
+  password?: string
 }
 
 export interface JoinedPacket extends Base {
@@ -114,7 +117,8 @@ export interface LobbyUpdatePacket extends Base {
   type: 'lobbyUpdate'
   public?: boolean
   customData?: { [key: string]: any }
-  canEditBy?: 'creator' | 'leader' | 'anyone' | 'none'
+  canUpdateBy?: 'creator' | 'leader' | 'anyone' | 'none'
+  password?: string
 }
 
 export interface LobbyUpdatedPacket extends Base {

@@ -150,7 +150,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         if (request != null) {
           this.requests.delete(packet.rid)
           if (packet.type === 'error') {
-            request.reject(new SignalingError('server-error', packet.message))
+            request.reject(new SignalingError('server-error', packet.message, undefined, packet.code))
           } else {
             request.resolve(packet)
           }

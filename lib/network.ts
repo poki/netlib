@@ -76,13 +76,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     return ''
   }
 
-  async join (lobby: string): Promise<LobbyListEntry | undefined> {
+  async join (lobby: string, password?: string): Promise<LobbyListEntry | undefined> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return undefined
     }
     const reply = await this.signaling.request({
       type: 'join',
-      lobby
+      lobby,
+      password
     })
     if (reply.type === 'joined') {
       return reply.lobbyInfo

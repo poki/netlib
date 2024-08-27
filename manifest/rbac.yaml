@@ -1,0 +1,62 @@
+# this file needs to be manually applied with
+# kubectl apply --validate -f manifest/rbac.yaml
+# more info: https://www.notion.so/poki/How-to-set-up-a-CI-CD-91de5fa03e554aa0bc99fe3b247e8545?pvs=4#31c2d98b677e468983578317f628209b
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: netlib
+  name: netlib-ci
+rules:
+- apiGroups: [""]
+  resources:
+    - services
+  verbs:
+    - get
+    - update
+    - create
+    - patch
+- apiGroups: ["apps"]
+  resources:
+    - deployments
+  verbs:
+    - get
+    - update
+    - create
+    - patch
+- apiGroups: ["networking.k8s.io"]
+  resources:
+    - ingresses
+  verbs:
+    - get
+    - update
+    - create
+    - patch
+- apiGroups: ["cloud.google.com"]
+  resources:
+    - backendconfigs
+  verbs:
+    - get
+    - update
+    - create
+    - patch
+- apiGroups: ["networking.gke.io"]
+  resources:
+    - managedCertificates
+  verbs:
+    - get
+    - update
+    - create
+    - patch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: netlib-ci
+  namespace: netlib
+subjects:
+- kind: User
+  name: netlib-builder@poki-core.iam.gserviceaccount.com
+roleRef:
+  kind: Role
+  name: netlib-ci
+  apiGroup: rbac.authorization.k8s.io

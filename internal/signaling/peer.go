@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const DefaultMaxPlayers = 4
+
 type Peer struct {
 	store stores.Store
 	conn  *websocket.Conn
@@ -346,6 +348,11 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		}
 	}
 
+	maxPlayers := DefaultMaxPlayers
+	if packet.MaxPlayers != nil {
+		maxPlayers = *packet.MaxPlayers
+	}
+
 	attempts := 20
 	for ; attempts > 0; attempts-- {
 		switch packet.CodeFormat {
@@ -360,6 +367,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 			CustomData:  &packet.CustomData,
 			CanUpdateBy: &packet.CanUpdateBy,
 			Password:    &packet.Password,
+			MaxPlayers:  &maxPlayers,
 		})
 		if err != nil {
 			if err == stores.ErrLobbyExists {
@@ -416,6 +424,9 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 			return nil
 		} else if err == stores.ErrInvalidPassword {
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
+			return nil
+		} else if err == stores.ErrLobbyIsFull {
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "lobby-is-full"))
 			return nil
 		}
 
@@ -489,6 +500,7 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 		CustomData:  packet.CustomData,
 		CanUpdateBy: packet.CanUpdateBy,
 		Password:    packet.Password,
+		MaxPlayers:  packet.MaxPlayers,
 	})
 	if err != nil {
 		logger.Warn("failed to update lobby", zap.Error(err), zap.Any("customData", packet.CustomData))

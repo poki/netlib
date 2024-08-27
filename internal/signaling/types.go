@@ -48,7 +48,7 @@ type CreatePacket struct {
 	CodeFormat  string         `json:"codeFormat"`
 	Public      bool           `json:"public"`
 	Password    string         `json:"password"`
-	MaxPlayers  int            `json:"maxPlayers"`
+	MaxPlayers  *int           `json:"maxPlayers"`
 	CustomData  map[string]any `json:"customData"`
 	CanUpdateBy string         `json:"canUpdateBy"`
 }
@@ -84,6 +84,7 @@ type LobbyUpdatePacket struct {
 	CustomData  *map[string]any `json:"customData"`
 	CanUpdateBy *string         `json:"canUpdateBy"`
 	Password    *string         `json:"password"`
+	MaxPlayers  *int            `json:"maxPlayers"`
 }
 
 type LobbyUpdatedPacket struct {

@@ -13,6 +13,7 @@ var ErrNoSuchTopic = errors.New("no such topic")
 var ErrInvalidLobbyCode = errors.New("invalid lobby code")
 var ErrInvalidPeerID = errors.New("invalid peer id")
 var ErrInvalidPassword = errors.New("invalid password")
+var ErrLobbyIsFull = errors.New("lobby is full")
 
 type SubscriptionCallback func(context.Context, []byte)
 
@@ -21,6 +22,7 @@ type LobbyOptions struct {
 	CustomData  *map[string]any
 	CanUpdateBy *string
 	Password    *string
+	MaxPlayers  *int
 }
 
 type Store interface {

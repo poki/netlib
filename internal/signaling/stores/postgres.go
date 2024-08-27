@@ -178,10 +178,10 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 
 	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator, password)
-		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7, $9)
+		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator, password, max_players)
+		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7, $9, $10)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, []string{peerID}, options.Public, options.CustomData, now, peerID, options.CanUpdateBy, hashedPassword)
+	`, lobbyCode, game, []string{peerID}, options.Public, options.CustomData, now, peerID, options.CanUpdateBy, hashedPassword, options.MaxPlayers)
 	if err != nil {
 		return err
 	}
@@ -208,13 +208,14 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 
 	var peerlist []string
 	var lobbyPassword []byte
+	var maxPlayers int
 	err = tx.QueryRow(ctx, `
-		SELECT peers, password
+		SELECT peers, password, max_players
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
 		FOR UPDATE
-	`, lobbyCode, game).Scan(&peerlist, &lobbyPassword)
+	`, lobbyCode, game).Scan(&peerlist, &lobbyPassword, &maxPlayers)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -224,6 +225,10 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 
 	if lobbyPassword != nil && bcrypt.CompareHashAndPassword(lobbyPassword, []byte(password)) != nil {
 		return ErrInvalidPassword
+	}
+
+	if maxPlayers > 0 && len(peerlist) >= maxPlayers {
+		return ErrLobbyIsFull
 	}
 
 	for _, peer := range peerlist {
@@ -284,11 +289,12 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 			term,
 			can_update_by,
 			creator,
-			password IS NOT NULL
+			password IS NOT NULL,
+			max_players
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
-	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword)
+	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Lobby{}, ErrNotFound
@@ -326,7 +332,8 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 				term,
 				can_update_by,
 				creator,
-				password IS NOT NULL
+				password IS NOT NULL,
+				max_players
 			FROM lobbies
 			WHERE game = $1
 			AND public = true
@@ -344,7 +351,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
 		if err != nil {
 			return nil, err
 		}
@@ -690,6 +697,10 @@ func (s *PostgresStore) UpdateLobby(ctx context.Context, game, lobbyCode, peerID
 
 		columns = append(columns, fmt.Sprintf("password = $%d", len(values)+1))
 		values = append(values, hashedPassword)
+	}
+	if options.MaxPlayers != nil {
+		columns = append(columns, fmt.Sprintf("max_players = $%d", len(values)+1))
+		values = append(values, *options.MaxPlayers)
 	}
 
 	if len(columns) == 0 {

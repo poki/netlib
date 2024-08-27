@@ -3,6 +3,7 @@ module github.com/poki/netlib
 go 1.22.3
 
 require (
+	github.com/coder/websocket v1.8.12
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504
@@ -11,7 +12,6 @@ require (
 	github.com/rs/cors v1.11.0
 	github.com/rs/xid v1.6.0
 	go.uber.org/zap v1.27.0
-	nhooyr.io/websocket v1.8.17
 )
 
 require (

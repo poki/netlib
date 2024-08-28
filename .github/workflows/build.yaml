@@ -25,7 +25,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         push: true
-        tags: europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/netlib/netlib:${{ github.sha }}
+        tags: europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/netlib/signaling:${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
   deploy:

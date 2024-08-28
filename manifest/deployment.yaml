@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: signaling
-        image: "eu.gcr.io/poki-core/netlib:$GITHUB_SHA"
+        image: "europe-docker.pkg.dev/poki-core/netlib/signaling:$GITHUB_SHA"
         ports:
         - containerPort: 8080
         env:

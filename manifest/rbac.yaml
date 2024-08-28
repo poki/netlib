@@ -1,6 +1,5 @@
-# this file needs to be manually applied with
+# this file needs permissions to be applied, which can be manually done with
 # kubectl apply --validate -f manifest/rbac.yaml
-# more info: https://www.notion.so/poki/How-to-set-up-a-CI-CD-91de5fa03e554aa0bc99fe3b247e8545?pvs=4#31c2d98b677e468983578317f628209b
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

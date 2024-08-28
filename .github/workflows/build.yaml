@@ -1,5 +1,4 @@
 name: Build
-# more info: https://www.notion.so/poki/How-to-set-up-a-CI-CD-91de5fa03e554aa0bc99fe3b247e8545?pvs=4#bb3a522177744c72adb5dd1608334ede
 
 on:
   pull_request:

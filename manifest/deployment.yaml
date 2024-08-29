@@ -14,14 +14,14 @@ spec:
     spec:
       containers:
       - name: signaling
-        image: "eu.gcr.io/poki-core/netlib:$COMMIT_SHA"
+        image: "europe-docker.pkg.dev/poki-core/netlib/signaling:$GITHUB_SHA"
         ports:
         - containerPort: 8080
         env:
         - name: ENV
           value: production
         - name: VERSION
-          value: "$COMMIT_SHA"
+          value: "$GITHUB_SHA"
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:

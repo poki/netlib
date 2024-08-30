@@ -8,7 +8,7 @@ require (
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504
 	github.com/ory/dockertest/v3 v3.11.0
-	github.com/poki/mongodb-filter-to-postgres v1.0.1
+	github.com/poki/mongodb-filter-to-postgres v1.0.2
 	github.com/rs/cors v1.11.0
 	github.com/rs/xid v1.6.0
 	go.uber.org/zap v1.27.0

@@ -30,13 +30,18 @@ type PostgresStore struct {
 }
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
+	filterConverter, err := filter.NewConverter(
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
+		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &PostgresStore{
-		DB:        db,
-		callbacks: make(map[string]map[uint64]SubscriptionCallback),
-		filterConverter: filter.NewConverter(
-			filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
-			filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
-		),
+		DB:              db,
+		callbacks:       make(map[string]map[uint64]SubscriptionCallback),
+		filterConverter: filterConverter,
 	}
 	go s.run(ctx)
 	return s, nil

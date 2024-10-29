@@ -52,7 +52,9 @@ func main() {
 	mux, cleanup := internal.Signaling(ctx, store, credentialsClient)
 
 	cors := cors.Default()
-	handler := logging.Middleware(cors.Handler(mux), logger)
+	handler := cors.Handler(mux)
+	handler = util.NoStoreMiddleware(handler)
+	handler = logging.Middleware(handler, logger)
 
 	if metricsURL, ok := os.LookupEnv("METRICS_URL"); ok {
 		client := metrics.NewClient(metricsURL)

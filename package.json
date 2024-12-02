@@ -40,17 +40,17 @@
     "eventemitter3": "^5.0.1"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^11.0.1",
-    "@parcel/packager-ts": "^2.12.0",
-    "@parcel/transformer-typescript-types": "^2.12.0",
+    "@cucumber/cucumber": "^11.1.0",
+    "@parcel/packager-ts": "^2.13.2",
+    "@parcel/transformer-typescript-types": "^2.13.2",
     "@roamhq/wrtc": "^0.8.0",
     "@types/node-fetch": "^2.6.11",
-    "@types/ws": "^8.5.12",
+    "@types/ws": "^8.5.13",
     "node-fetch": "=2.7.0",
-    "parcel": "^2.12.0",
+    "parcel": "^2.13.2",
     "ts-node": "^10.9.2",
     "ts-standard": "^12.0.2",
-    "typescript": "^5.6.3",
+    "typescript": "^5.7.2",
     "ws": "^8.18.0"
   },
   "engines": {

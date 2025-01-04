@@ -47,7 +47,7 @@ network.on('message', (peer, channel, data) => {
 })
 network.on('connected', peer => {
   console.log(`new peer connected: ${peer.id}`)
-  network.send(peer.id, 'reliable', 'welcome')
+  network.send('reliable', peer.id, 'welcome')
 })
 network.broadcast('unreliable', 'Hello, world!!')
 ```

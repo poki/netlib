@@ -40,7 +40,7 @@
     "eventemitter3": "^5.0.1"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^11.1.1",
+    "@cucumber/cucumber": "^11.2.0",
     "@parcel/packager-ts": "^2.13.3",
     "@parcel/transformer-typescript-types": "^2.13.3",
     "@roamhq/wrtc": "^0.8.0",
@@ -50,7 +50,7 @@
     "parcel": "^2.13.3",
     "ts-node": "^10.9.2",
     "ts-standard": "^12.0.2",
-    "typescript": "^5.7.2",
+    "typescript": "^5.7.3",
     "ws": "^8.18.0"
   },
   "engines": {

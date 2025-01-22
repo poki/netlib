@@ -124,9 +124,6 @@ func WithRequestID(ctx context.Context, id string) context.Context {
 }
 
 func ShouldIgnoreNetworkError(err error) bool {
-	if strings.Contains(err.Error(), "write: broken pipe") {
-		return true
-	}
 	switch v := err.(type) {
 	case syscall.Errno:
 		return v == syscall.EPIPE

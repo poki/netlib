@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -90,7 +91,11 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				select {
 				case <-ticker.C:
 					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil && !util.ShouldIgnoreNetworkError(err) {
-						logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+						if strings.Contains(err.Error(), "write: broken pipe") {
+							logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+						} else {
+							logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+						}
 					}
 				case <-ctx.Done():
 					return

@@ -39,9 +39,9 @@ rules:
     - update
     - create
     - patch
-- apiGroups: ["networking.gke.io"]
+- apiGroups: ["cert-manager.io"]
   resources:
-    - managedCertificates
+    - certificates
   verbs:
     - get
     - update

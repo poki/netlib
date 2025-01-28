@@ -16,7 +16,8 @@ spec:
       - name: signaling
         image: "europe-docker.pkg.dev/poki-core/netlib/signaling:$GITHUB_SHA"
         ports:
-        - containerPort: 8080
+        - name: signaling
+          containerPort: 8080
         env:
         - name: ENV
           value: production

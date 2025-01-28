@@ -8,9 +8,10 @@ spec:
   selector:
     deployment: signaling
   ports:
-  - protocol: TCP
+  - name: http
+    protocol: TCP
     port: 8080
-    targetPort: 8080
+    targetPort: signaling
 ---
 apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
@@ -27,9 +28,10 @@ metadata:
   annotations:
     # gcloud compute addresses create netlib --global
     kubernetes.io/ingress.global-static-ip-name: netlib
-    networking.gke.io/managed-certificates: netlib.poki.io
     kubernetes.io/ingress.allow-http: "false"
 spec:
+  tls:
+  - secretName: netlib-ssl
   rules:
   - host: netlib.poki.io
     http:
@@ -40,7 +42,7 @@ spec:
           service:
             name: netlib-signaling
             port:
-              number: 8080
+              name: http
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig

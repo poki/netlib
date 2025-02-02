@@ -127,37 +127,37 @@ When('{string} creates a network for game {string}', async function (this: World
   await this.createPlayer(playerName, gameID)
 })
 
-When('{string} creates a lobby', function (this: World, playerName: string) {
+When('{string} creates a lobby', async function (this: World, playerName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
-  void player.network.create()
+  await player.network.create()
 })
 
-When('{string} creates a lobby with these settings:', function (this: World, playerName: string, settingsBlob: string) {
+When('{string} creates a lobby with these settings:', async function (this: World, playerName: string, settingsBlob: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
   const settings = JSON.parse(settingsBlob)
-  void player.network.create(settings)
+  await player.network.create(settings)
 })
 
-When('{string} connects to the lobby {string}', function (this: World, playerName: string, lobbyCode: string) {
+When('{string} connects to the lobby {string}', async function (this: World, playerName: string, lobbyCode: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
-  void player.network.join(lobbyCode)
+  await player.network.join(lobbyCode)
 })
 
-When('{string} connects to the lobby {string} with the password {string}', function (this: World, playerName: string, lobbyCode: string, password: string) {
+When('{string} connects to the lobby {string} with the password {string}', async function (this: World, playerName: string, lobbyCode: string, password: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
-  void player.network.join(lobbyCode, password)
+  await player.network.join(lobbyCode, password)
 })
 
 When('{string} tries to connect to the lobby {string} with the password {string}', async function (this: World, playerName: string, lobbyCode: string, password: string) {

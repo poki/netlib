@@ -485,6 +485,123 @@ func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold tim
 	return true, tx.Commit(ctx)
 }
 
+func (s *PostgresStore) MarkAllPeersAsActive(ctx context.Context) error {
+	now := util.NowUTC(ctx)
+	_, err := s.DB.Exec(ctx, `
+		INSERT INTO peer_activity
+		SELECT UNNEST(peers) AS peer, $1 AS updated_at
+		FROM lobbies
+		ON CONFLICT (peer) DO NOTHING
+	`, now)
+	return err
+}
+
+func (s *PostgresStore) UpdatePeerActivity(ctx context.Context, peerID string) error {
+	_, err := s.DB.Exec(ctx, `
+		INSERT INTO peer_activity (peer, updated_at)
+		VALUES ($1, $2)
+		ON CONFLICT (peer) DO UPDATE
+		SET updated_at = $2
+	`, peerID, util.NowUTC(ctx))
+	return err
+}
+
+func (s *PostgresStore) RemovePeerActivity(ctx context.Context, peerID string) error {
+	_, err := s.DB.Exec(ctx, `
+		DELETE FROM peer_activity
+		WHERE peer = $1
+	`, peerID)
+	return err
+}
+
+func (s *PostgresStore) ClaimNextInactivePeer(ctx context.Context, threshold time.Duration) (string, []string, []string, error) {
+	now := util.NowUTC(ctx)
+
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	defer tx.Rollback(context.Background()) //nolint:errcheck
+
+	var peerID string
+	err = tx.QueryRow(ctx, `
+		WITH d AS (
+			SELECT peer
+			FROM peer_activity
+			WHERE updated_at < $1
+			LIMIT 1
+		)
+		DELETE FROM peer_activity
+		USING d
+		WHERE peer_activity.peer = d.peer
+		RETURNING d.peer
+	`, now.Add(-threshold)).Scan(&peerID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			if err := tx.Commit(ctx); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return "", nil, nil, err
+			}
+
+			rows, err := s.DB.Query(ctx, `
+				SELECT peer, updated_at
+				FROM peer_activity
+			`)
+			if err == nil {
+				for rows.Next() {
+					var peer string
+					var updated time.Time
+
+					err = rows.Scan(&peer, &updated)
+					if err == nil {
+						fmt.Printf("peer active: %s, since: %s\n", peer, now.Sub(updated))
+					}
+				}
+			}
+
+			return "", nil, nil, nil
+		}
+		return "", nil, nil, err
+	}
+
+	var games []string
+	var lobbies []string
+
+	rows, err := tx.Query(ctx, `
+		UPDATE lobbies
+		SET
+			peers = array_remove(peers, $1),
+			updated_at = $2
+		WHERE $1 = ANY(peers)
+		RETURNING game, code
+	`, peerID, now)
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	for rows.Next() {
+		var game string
+		var lobby string
+
+		err = rows.Scan(&game, &lobby)
+		if err != nil {
+			return "", nil, nil, err
+		}
+
+		games = append(games, game)
+		lobbies = append(lobbies, lobby)
+	}
+
+	if err = rows.Err(); err != nil {
+		return "", nil, nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return "", nil, nil, err
+	}
+
+	return peerID, games, lobbies, nil
+}
+
 func (s *PostgresStore) CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error {
 	_, err := s.DB.Exec(ctx, `
 		DELETE FROM lobbies

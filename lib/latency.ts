@@ -63,6 +63,6 @@ export default class Latency {
       this.jitter = this.window.slice(1).map((x, i) => Math.abs(x - this.window[i])).reduce((a, b) => a + b, 0) / (this.window.length - 1)
     }
 
-    setTimeout(() => this.ping(), PingInterval - delta)
+    setTimeout(() => this.ping(), Math.max(PingInterval - delta, 0))
   }
 }

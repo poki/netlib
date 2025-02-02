@@ -16,6 +16,8 @@ import { Network } from '../../lib'
 
 process.env.NODE_ENV = 'test'
 
+let anyScenarioFailed = false
+
 interface backend {
   process: ReturnType<typeof spawn>
   port: number
@@ -92,13 +94,17 @@ AfterAll(function () {
 
   setTimeout(() => {
     console.log('cucumber did not exit cleanly, forcing exit')
-    process.exit(0)
-  }, 1000).unref()
+    process.exit(anyScenarioFailed ? 1 : 0)
+  }, 2000).unref()
 })
 
 Before(function (this: World) {
   this.scenarioRunning = true
 })
-After(function (this: World) {
+After(function (this: World, { result }) {
   this.scenarioRunning = false
+
+  if (result?.status === 'FAILED') {
+    anyScenarioFailed = true
+  }
 })

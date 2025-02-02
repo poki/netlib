@@ -39,6 +39,11 @@ type Store interface {
 	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
 	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (bool, error)
 
+	MarkAllPeersAsActive(ctx context.Context) error
+	UpdatePeerActivity(ctx context.Context, peerID string) error
+	RemovePeerActivity(ctx context.Context, peerID string) error
+	ClaimNextInactivePeer(ctx context.Context, threshold time.Duration) (string, []string, []string, error)
+
 	CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error
 
 	// DoLeaderElection attempts to elect a leader for the given lobby. If a correct leader already exists it will return nil.

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,10 @@ func NewCredentialsClient(appID, key string, lifetime time.Duration) *Credential
 }
 
 func (c *CredentialsClient) Run(ctx context.Context) {
+	if os.Getenv("ENV") != "production" && c.appID == "" {
+		return
+	}
+
 	logger := logging.GetLogger(ctx)
 
 	for ctx.Err() == nil {

@@ -35,14 +35,12 @@ type Store interface {
 	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
-	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error
-	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
-	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (bool, error)
-
-	MarkAllPeersAsActive(ctx context.Context) error
-	UpdatePeerActivity(ctx context.Context, peerID string) error
-	RemovePeerActivity(ctx context.Context, peerID string) error
-	ClaimNextInactivePeer(ctx context.Context, threshold time.Duration) (string, []string, []string, error)
+	CreatePeer(ctx context.Context, peerID, secret, gameID string) error
+	MarkPeerAsActive(ctx context.Context, peerID string) error
+	MarkPeerAsDisconnected(ctx context.Context, peerID string) error
+	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
+	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration) (string, bool, map[string][]string, error)
+	ResetAllPeerLastSeen(ctx context.Context) error
 
 	CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error
 

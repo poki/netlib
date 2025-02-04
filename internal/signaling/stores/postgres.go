@@ -369,202 +369,133 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 	return lobbies, nil
 }
 
-func (s *PostgresStore) TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error {
+func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID string) error {
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
 		return ErrInvalidPeerID
 	}
-	for _, lobby := range lobbies {
-		if len(lobby) > 20 {
-			logger := logging.GetLogger(ctx)
-			logger.Warn("lobby code too long", zap.String("lobbyCode", lobby))
-			return ErrInvalidLobbyCode
-		}
-	}
 
 	now := util.NowUTC(ctx)
 	_, err := s.DB.Exec(ctx, `
-		INSERT INTO timeouts (peer, secret, game, lobbies, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $5)
-		ON CONFLICT (peer) DO UPDATE
-		SET
-			secret = $2,
-			game = $3,
-			lobbies = $4,
-			last_seen = $5,
-			updated_at = $5
-	`, peerID, secret, gameID, lobbies, now)
+		INSERT INTO peers (peer, secret, game, last_seen, updated_at)
+		VALUES ($1, $2, $3, $4, $4)
+	`, peerID, secret, gameID, now)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *PostgresStore) ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
-	var lobbies []string
-	err := s.DB.QueryRow(ctx, `
-		DELETE FROM timeouts
-		WHERE peer = $1
-		AND secret = $2
-		AND game = $3
-		RETURNING lobbies
-	`, peerID, secret, gameID).Scan(&lobbies)
+func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) error {
+	now := util.NowUTC(ctx)
+
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			disconnected = FALSE,
+			last_seen = $1,
+			updated_at = $1
+		WHERE peer = $2
+	`, now, peerID)
+	return err
+}
+
+func (s *PostgresStore) MarkPeerAsDisconnected(ctx context.Context, peerID string) error {
+	now := util.NowUTC(ctx)
+
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			disconnected = TRUE,
+			updated_at = $1
+		WHERE peer = $2
+	`, now, peerID)
+	return err
+}
+
+func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
+	now := util.NowUTC(ctx)
+
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			disconnected = FALSE,
+			last_seen = $1,
+			updated_at = $1
+		WHERE peer = $2
+		AND secret = $3
+		AND game = $4
+	`, now, peerID, secret, gameID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil, nil
-		}
 		return false, nil, err
 	}
-	if len(lobbies) == 0 {
-		lobbies = nil
+
+	var lobbies []string
+	rows, err := s.DB.Query(ctx, `
+		SELECT
+			code
+		FROM lobbies
+		WHERE $1 = ANY(peers)
+	`, peerID)
+	if err != nil {
+		return false, nil, err
 	}
+
+	for rows.Next() {
+		var lobby string
+
+		if err := rows.Scan(&lobby); err != nil {
+			return false, nil, err
+		}
+
+		lobbies = append(lobbies, lobby)
+	}
+
+	if err = rows.Err(); err != nil {
+		return false, nil, err
+	}
+
 	return true, lobbies, nil
 }
 
-func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (more bool, err error) {
+func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration) (string, bool, map[string][]string, error) {
 	now := util.NowUTC(ctx)
 
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
-		return false, err
+		return "", false, nil, err
 	}
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
-	// DELETE FROM timeouts will lock the row for this peer in this transaction.
+	// DELETE FROM peers will lock the row for this peer in this transaction.
 	// This means we can safely remove the peer from lobbies without getting a
 	// race condition with DoLeaderElection.
 	// It is important that both ClaimNextTimedOutPeer and DoLeaderElection always
-	// lock timeouts first to avoid deadlocks.
+	// lock peers first to avoid deadlocks.
 
 	var peerID string
-	var gameID string
-	var lobbies []string
+	var disconnected bool
 	err = tx.QueryRow(ctx, `
 		WITH d AS (
-			SELECT peer, game, lobbies
-			FROM timeouts
+			SELECT peer, disconnected
+			FROM peers
 			WHERE last_seen < $1
 			LIMIT 1
 		)
-		DELETE FROM timeouts
+		DELETE FROM peers
 		USING d
-		WHERE timeouts.peer = d.peer
-		AND timeouts.game = d.game
-		RETURNING d.peer, d.game, d.lobbies
-	`, now.Add(-threshold)).Scan(&peerID, &gameID, &lobbies)
+		WHERE peers.peer = d.peer
+		RETURNING d.peer, d.disconnected
+	`, now.Add(-threshold)).Scan(&peerID, &disconnected)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			if err := tx.Commit(ctx); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				return false, err
-			}
-			return false, nil
+			return "", false, nil, nil
 		}
-		return false, err
+		return "", false, nil, err
 	}
 
-	for _, lobby := range lobbies {
-		_, err := tx.Exec(ctx, `
-			UPDATE lobbies
-			SET
-				peers = array_remove(peers, $1),
-				updated_at = $2
-			WHERE code = $3
-			AND game = $4
-		`, peerID, now, lobby, gameID)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	err = callback(peerID, gameID, lobbies)
-	if err != nil {
-		return false, err
-	}
-
-	return true, tx.Commit(ctx)
-}
-
-func (s *PostgresStore) MarkAllPeersAsActive(ctx context.Context) error {
-	now := util.NowUTC(ctx)
-	_, err := s.DB.Exec(ctx, `
-		INSERT INTO peer_activity
-		SELECT UNNEST(peers) AS peer, $1 AS updated_at
-		FROM lobbies
-		ON CONFLICT (peer) DO NOTHING
-	`, now)
-	return err
-}
-
-func (s *PostgresStore) UpdatePeerActivity(ctx context.Context, peerID string) error {
-	_, err := s.DB.Exec(ctx, `
-		INSERT INTO peer_activity (peer, updated_at)
-		VALUES ($1, $2)
-		ON CONFLICT (peer) DO UPDATE
-		SET updated_at = $2
-	`, peerID, util.NowUTC(ctx))
-	return err
-}
-
-func (s *PostgresStore) RemovePeerActivity(ctx context.Context, peerID string) error {
-	_, err := s.DB.Exec(ctx, `
-		DELETE FROM peer_activity
-		WHERE peer = $1
-	`, peerID)
-	return err
-}
-
-func (s *PostgresStore) ClaimNextInactivePeer(ctx context.Context, threshold time.Duration) (string, []string, []string, error) {
-	now := util.NowUTC(ctx)
-
-	tx, err := s.DB.Begin(ctx)
-	if err != nil {
-		return "", nil, nil, err
-	}
-	defer tx.Rollback(context.Background()) //nolint:errcheck
-
-	var peerID string
-	err = tx.QueryRow(ctx, `
-		WITH d AS (
-			SELECT peer
-			FROM peer_activity
-			WHERE updated_at < $1
-			LIMIT 1
-		)
-		DELETE FROM peer_activity
-		USING d
-		WHERE peer_activity.peer = d.peer
-		RETURNING d.peer
-	`, now.Add(-threshold)).Scan(&peerID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			if err := tx.Commit(ctx); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				return "", nil, nil, err
-			}
-
-			rows, err := s.DB.Query(ctx, `
-				SELECT peer, updated_at
-				FROM peer_activity
-			`)
-			if err == nil {
-				for rows.Next() {
-					var peer string
-					var updated time.Time
-
-					err = rows.Scan(&peer, &updated)
-					if err == nil {
-						fmt.Printf("peer active: %s, since: %s\n", peer, now.Sub(updated))
-					}
-				}
-			}
-
-			return "", nil, nil, nil
-		}
-		return "", nil, nil, err
-	}
-
-	var games []string
-	var lobbies []string
+	gameLobbies := make(map[string][]string)
 
 	rows, err := tx.Query(ctx, `
 		UPDATE lobbies
@@ -575,7 +506,7 @@ func (s *PostgresStore) ClaimNextInactivePeer(ctx context.Context, threshold tim
 		RETURNING game, code
 	`, peerID, now)
 	if err != nil {
-		return "", nil, nil, err
+		return "", false, nil, err
 	}
 
 	for rows.Next() {
@@ -584,22 +515,36 @@ func (s *PostgresStore) ClaimNextInactivePeer(ctx context.Context, threshold tim
 
 		err = rows.Scan(&game, &lobby)
 		if err != nil {
-			return "", nil, nil, err
+			return "", false, nil, err
 		}
 
-		games = append(games, game)
-		lobbies = append(lobbies, lobby)
+		gameLobbies[game] = append(gameLobbies[game], lobby)
 	}
 
 	if err = rows.Err(); err != nil {
-		return "", nil, nil, err
+		return "", false, nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return "", nil, nil, err
+		return "", false, nil, err
 	}
 
-	return peerID, games, lobbies, nil
+	return peerID, disconnected, gameLobbies, nil
+}
+
+// ResetAllPeerLastSeen will reset all last_seen.
+// This is being called when the process restarts so it doesn't matter
+// how long the process was down.
+func (s *PostgresStore) ResetAllPeerLastSeen(ctx context.Context) error {
+	now := util.NowUTC(ctx)
+
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			last_seen = $1,
+			updated_at = $1
+	`, now)
+	return err
 }
 
 func (s *PostgresStore) CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error {
@@ -623,7 +568,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	// We need to lock the whole table as SELECT FOR UPDATE does not lock rows that do not exist yet
 	// And we can't have timed out peers being added during the election.
 	_, err = tx.Exec(ctx, `
-		LOCK TABLE timeouts IN EXCLUSIVE MODE
+		LOCK TABLE peers IN EXCLUSIVE MODE
 	`)
 	if err != nil {
 		return nil, err
@@ -632,10 +577,9 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	var timedOutPeers []string
 	rows, err := tx.Query(ctx, `
 		SELECT peer
-		FROM timeouts
-		WHERE game = $1
-		AND $2 = ANY(lobbies)
-	`, gameID, lobbyCode)
+		FROM peers
+		WHERE disconnected = TRUE
+	`)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, err

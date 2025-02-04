@@ -164,12 +164,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				if err := peer.HandlePacket(ctx, base.Type, raw); err != nil {
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
-
-				// The 'hello' packet is when the peer gets assigned an ID, so
-				// it's the first time we can mark the peer as active.
-				if base.Type == "hello" && peer.ID != "" {
-					manager.MarkPeerAsActive(ctx, peer.ID)
-				}
 			}
 		}
 	})

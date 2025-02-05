@@ -162,12 +162,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			util.ErrorAndDisconnect(ctx, p.conn, fmt.Errorf("invalid source set"))
 		}
 		err = p.store.Publish(ctx, p.Game+p.Lobby+routing.Recipient, raw)
-		if err == stores.ErrNoSuchTopic {
-			util.ReplyError(ctx, p.conn, &MissingRecipientError{
-				Recipient: routing.Recipient,
-				Cause:     err,
-			})
-		} else if err != nil {
+		if err != nil {
 			return fmt.Errorf("unable to publish packet to forward: %w", err)
 		}
 

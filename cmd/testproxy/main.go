@@ -117,7 +117,7 @@ func main() {
 	}
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("failed to listen and server", zap.Error(err))
+			logger.Fatal("failed to listen and serve", zap.Error(err))
 		}
 	}()
 	logger.Info("listening", zap.String("addr", addr))

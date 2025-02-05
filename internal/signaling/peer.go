@@ -17,6 +17,8 @@ import (
 
 const DefaultMaxPlayers = 4
 
+var ErrUnknownPacketType = fmt.Errorf("unknown packet type")
+
 type Peer struct {
 	store stores.Store
 	conn  *websocket.Conn
@@ -167,7 +169,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 		}
 
 	default:
-		logger.Warn("unknown packet type received", zap.String("type", typ))
+		return ErrUnknownPacketType
 	}
 
 	return nil

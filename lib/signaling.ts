@@ -33,6 +33,12 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     this.replayQueue = new Map()
 
     this.ws = this.connect()
+
+    // Send a ping every 5 seconds to keep the connection alive,
+    // and to detect when the connection is lost.
+    setInterval(() => {
+      this.ping()
+    }, 5000)
   }
 
   private connect (): WebSocket {
@@ -137,6 +143,19 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     if (this.ws.readyState === WebSocket.OPEN) {
       this.network.log('sending signaling packet:', packet.type)
       const data = JSON.stringify(packet)
+      this.ws.send(data)
+    }
+  }
+
+  ping (): void {
+    // Send a ping to the server to keep the connection alive,
+    // and to detect when the connection is lost.
+    // Sending is enough, we don't need to listen for a pong.
+    // Don't use this.send() as we don't need every ping to be logged.
+    if (this.ws.readyState === WebSocket.OPEN) {
+      const data = JSON.stringify({
+        type: 'ping'
+      })
       this.ws.send(data)
     }
   }

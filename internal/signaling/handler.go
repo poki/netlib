@@ -155,12 +155,16 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				}
 				go metrics.RecordEvent(ctx, params)
 
-			case "pong":
+			case "ping", "pong":
 				// ignore, ping/pong is just for the tcp keepalive.
 
 			default:
 				if err := peer.HandlePacket(ctx, base.Type, raw); err != nil {
-					util.ErrorAndDisconnect(ctx, conn, err)
+					if err == ErrUnknownPacketType {
+						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+					} else {
+						util.ErrorAndDisconnect(ctx, conn, err)
+					}
 				}
 			}
 		}

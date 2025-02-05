@@ -65,7 +65,7 @@ Feature: Lobbies have a leader that can control the lobby
           "playerCount": 1,
           "creator": "foo",
           "public": true,
-          "maxPlayers": 4,
+          "maxPlayers": 64,
           "hasPassword": false,
           "customData": {
             "map": "de_nuke"

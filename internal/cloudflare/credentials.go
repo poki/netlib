@@ -23,8 +23,6 @@ type CredentialsClient struct {
 
 	mutex  sync.RWMutex
 	cached *Credentials
-
-	HasFetchedFirstCredentials bool
 }
 
 func NewCredentialsClient(appID, key string, lifetime time.Duration) *CredentialsClient {

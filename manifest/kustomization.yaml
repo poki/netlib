@@ -6,3 +6,4 @@ commonLabels:
 resources:
 - deployment.yaml
 - ingress.yaml
+- ssl-certificate.yaml

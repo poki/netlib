@@ -49,6 +49,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		logger := logging.GetLogger(ctx)
 		logger.Debug("upgrading connection")
 
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
 		acceptOptions := &websocket.AcceptOptions{
 			InsecureSkipVerify: true, // Allow any origin/game to connect.
 			CompressionMode:    websocket.CompressionDisabled,

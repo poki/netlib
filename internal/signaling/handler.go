@@ -96,6 +96,12 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 						} else {
 							logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
 						}
+					} else {
+						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
+						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.
+						if peer.ID != "" {
+							manager.MarkPeerAsActive(ctx, peer.ID)
+						}
 					}
 				case <-ctx.Done():
 					return

@@ -217,6 +217,10 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		p.ID = util.GeneratePeerID(ctx)
 		p.Secret = util.GenerateSecret(ctx)
 		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
+
+		if err := p.store.CreatePeer(ctx, p.ID, p.Secret, p.Game); err != nil {
+			return fmt.Errorf("unable to create peer: %w", err)
+		}
 	}
 
 	err := p.Send(ctx, WelcomePacket{
@@ -309,11 +313,9 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 }
 
 func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
-	logger := logging.GetLogger(ctx)
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	logger.Debug("listing lobbies", zap.String("game", p.Game), zap.String("peer", p.ID))
 	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter)
 	if err != nil {
 		return err

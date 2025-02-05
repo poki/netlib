@@ -16,41 +16,58 @@ type TimeoutManager struct {
 	Store stores.Store
 }
 
-func (i *TimeoutManager) Run(ctx context.Context) {
-	if i.DisconnectThreshold == 0 {
-		i.DisconnectThreshold = time.Minute
+func (manager *TimeoutManager) Run(ctx context.Context) {
+	logger := logging.GetLogger(ctx)
+
+	if err := manager.Store.ResetAllPeerLastSeen(ctx); err != nil {
+		logger.Error("failed to reset all peer last seen", zap.Error(err))
+	}
+
+	if manager.DisconnectThreshold == 0 {
+		// We update peer activity every 30 seconds. Make it possible to somehow miss
+		// two updates before we consider a peer timed out.
+		manager.DisconnectThreshold = time.Second * 90
 	}
 
 	for ctx.Err() == nil {
 		time.Sleep(time.Second)
-		i.RunOnce(ctx)
+		manager.RunOnce(ctx)
 	}
 }
 
-func (i *TimeoutManager) RunOnce(ctx context.Context) {
+func (manager *TimeoutManager) RunOnce(ctx context.Context) {
 	logger := logging.GetLogger(ctx)
 
 	for ctx.Err() == nil {
-		hasNext, err := i.Store.ClaimNextTimedOutPeer(ctx, i.DisconnectThreshold, func(peerID, gameID string, lobbies []string) error {
-			logger.Info("peer timed out closing peer", zap.String("id", peerID))
+		peerID, disconnected, gameLobbies, err := manager.Store.ClaimNextTimedOutPeer(ctx, manager.DisconnectThreshold)
+		if err != nil {
+			logger.Error("failed to claim next timedout peer", zap.Error(err))
+		}
+		if peerID == "" {
+			break
+		}
 
-			for _, lobby := range lobbies {
-				if err := i.disconnectPeerInLobby(ctx, peerID, gameID, lobby, logger); err != nil {
-					return err
+		for gameID, lobbies := range gameLobbies {
+			for _, lobbyCode := range lobbies {
+				logger.Info("peer timeout", zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
+
+				if err := manager.disconnectPeerInLobby(ctx, peerID, gameID, lobbyCode); err != nil {
+					logger.Error("failed to disconnect peer", zap.Error(err), zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
+				}
+
+				// If the peer wasn't disconnected normally, they might still be the leader of a lobby.
+				// Just to be sure, do a leader election.
+				if !disconnected {
+					if err := manager.doLeaderElectionAndPublish(ctx, gameID, lobbyCode); err != nil {
+						logger.Error("failed to do leader election", zap.Error(err), zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
+					}
 				}
 			}
-			return nil
-		})
-		if err != nil {
-			logger.Error("failed to claim next timed out peer", zap.Error(err))
-		}
-		if !hasNext {
-			break
 		}
 	}
 }
 
-func (i *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID string, gameID string, lobby string, logger *zap.Logger) error {
+func (manager *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID string, gameID string, lobby string) error {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
@@ -60,18 +77,17 @@ func (i *TimeoutManager) disconnectPeerInLobby(ctx context.Context, peerID strin
 	}
 	data, err := json.Marshal(packet)
 	if err != nil {
-		logger.Error("failed to marshal disconnect packet", zap.Error(err))
 		return err
 	}
 
-	err = i.Store.Publish(ctx, gameID+lobby, data)
+	err = manager.Store.Publish(ctx, gameID+lobby, data)
 	if err != nil {
-		logger.Error("failed to publish disconnect packet", zap.Error(err))
+		return err
 	}
 	return nil
 }
 
-func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
+func (manager *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	logger := logging.GetLogger(ctx)
 
 	if p.ID == "" {
@@ -79,47 +95,57 @@ func (i *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	}
 
 	logger.Debug("peer marked as disconnected", zap.String("id", p.ID), zap.String("lobby", p.Lobby))
-	lobbies := []string{}
-	if p.Lobby != "" {
-		lobbies = []string{p.Lobby}
-	}
-	err := i.Store.TimeoutPeer(ctx, p.ID, p.Secret, p.Game, lobbies)
+	err := manager.Store.MarkPeerAsDisconnected(ctx, p.ID)
 	if err != nil {
 		logger.Error("failed to record timeout peer", zap.Error(err))
 	} else {
-		for _, lobby := range lobbies {
-			result, err := i.Store.DoLeaderElection(ctx, p.Game, lobby)
-			if err != nil {
-				logger.Error("failed to do leader election", zap.Error(err))
-				continue
-			}
-
-			if result == nil {
-				continue
-			}
-
-			packet := LeaderPacket{
-				Type:   "leader",
-				Leader: result.Leader,
-				Term:   result.Term,
-			}
-			data, err := json.Marshal(packet)
-			if err != nil {
-				logger.Error("failed to marshal leader packet", zap.Error(err))
-				continue
-			}
-
-			err = i.Store.Publish(ctx, p.Game+lobby, data)
-			if err != nil {
-				logger.Error("failed to publish leader packet", zap.Error(err))
-			}
+		err := manager.doLeaderElectionAndPublish(ctx, p.Game, p.Lobby)
+		if err != nil {
+			logger.Error("failed to do leader election", zap.Error(err), zap.String("game", p.Game), zap.String("lobby", p.Lobby))
 		}
 	}
 }
 
-func (i *TimeoutManager) Reconnected(ctx context.Context, id, secret, game string) (bool, []string, error) {
+func (manager *TimeoutManager) Reconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
 	logger := logging.GetLogger(ctx)
 
-	logger.Debug("peer marked as reconnected", zap.String("id", id))
-	return i.Store.ReconnectPeer(ctx, id, secret, game)
+	logger.Debug("peer marked as reconnected", zap.String("peer", peerID))
+	return manager.Store.MarkPeerAsReconnected(ctx, peerID, secret, gameID)
+}
+
+func (manager *TimeoutManager) MarkPeerAsActive(ctx context.Context, peerID string) {
+	logger := logging.GetLogger(ctx)
+
+	err := manager.Store.MarkPeerAsActive(ctx, peerID)
+	if err != nil {
+		logger.Error("failed to mark peer as active", zap.Error(err), zap.String("peer", peerID))
+	}
+}
+
+func (manager *TimeoutManager) doLeaderElectionAndPublish(ctx context.Context, gameID, lobbyCode string) error {
+	result, err := manager.Store.DoLeaderElection(ctx, gameID, lobbyCode)
+	if err != nil {
+		return err
+	}
+
+	if result == nil {
+		return nil
+	}
+
+	packet := LeaderPacket{
+		Type:   "leader",
+		Leader: result.Leader,
+		Term:   result.Term,
+	}
+	data, err := json.Marshal(packet)
+	if err != nil {
+		return err
+	}
+
+	err = manager.Store.Publish(ctx, gameID+lobbyCode, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

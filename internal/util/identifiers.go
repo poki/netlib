@@ -15,9 +15,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// deterministicRand is used while running tests to ensure that the generated
+// identifiers are deterministic.
+// Each feature test will restart the signaling server, so running tests in a random
+// order will work as expected.
+var deterministicRand = rand.New(rand.NewSource(0))
+
 func GeneratePeerID(ctx context.Context) string {
 	if os.Getenv("ENV") == "test" {
-		return strconv.FormatInt(rand.Int63(), 36) // deterministic for testing
+		return strconv.FormatInt(deterministicRand.Int63(), 36) // deterministic for testing
 	}
 	return xid.New().String()
 }
@@ -37,11 +43,21 @@ func GenerateSecret(ctx context.Context) string {
 }
 
 func GenerateLobbyCode(ctx context.Context) string {
-	return strconv.FormatInt(rand.Int63(), 36)
+	randInt63 := rand.Int63
+	if os.Getenv("ENV") == "test" {
+		randInt63 = deterministicRand.Int63
+	}
+
+	return strconv.FormatInt(randInt63(), 36)
 }
 
 func GenerateShortLobbyCode(ctx context.Context) string {
+	randIntn := rand.Intn
+	if os.Getenv("ENV") == "test" {
+		randIntn = deterministicRand.Intn
+	}
+
 	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
 	alphabet := []string{"A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "M", "N", "P", "R", "S", "T", "V", "W", "X", "Y", "Z"}
-	return numbers[rand.Intn(len(numbers))] + numbers[rand.Intn(len(numbers))] + alphabet[rand.Intn(len(alphabet))] + alphabet[rand.Intn(len(alphabet))]
+	return numbers[randIntn(len(numbers))] + numbers[randIntn(len(numbers))] + alphabet[randIntn(len(alphabet))] + alphabet[randIntn(len(alphabet))]
 }

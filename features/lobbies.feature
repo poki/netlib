@@ -5,21 +5,21 @@ Feature: Lobby Discovery
     And the "testproxy" backend is running
 
   Scenario: List empty lobby set
-    Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" is connected as "1u8fw4aph5ypt" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     When "green" requests all lobbies
     Then "green" should receive 0 lobbies
 
   Scenario: Don't list lobbies from a different game
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected as "ka9qy8em4vxr" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "19yrzmetd2bn7" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue,yellow" are joined in a lobby
     When "green" requests all lobbies
     Then "green" should receive 0 lobbies
 
   Scenario: List lobbies that exist
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -27,17 +27,17 @@ Feature: Lobby Discovery
         "public": true
       }
       """
-    And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
+    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
     When "green" requests all lobbies
     Then "green" should have received only these lobbies:
-      | code         | playerCount |
-      | prb67ouj837u | 1           |
+      | code          | playerCount |
+      | 19yrzmetd2bn7 | 1           |
 
   Scenario: Only list public lobbies
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "yellow" is connected as "ka9qy8em4vxr" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "yellow" is connected as "19yrzmetd2bn7" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -45,22 +45,22 @@ Feature: Lobby Discovery
         "public": true
       }
       """
-    And "blue" receives the network event "lobby" with the argument "dhgp75mn2bll"
+    And "blue" receives the network event "lobby" with the argument "3t3cfgcqup9e"
     And "yellow" creates a lobby with these settings:
       """json
       {
         "public": false
       }
       """
-    And "yellow" receives the network event "lobby" with the argument "1qva9vyurwbbl"
+    And "yellow" receives the network event "lobby" with the argument "prb67ouj837u"
 
     When "green" requests all lobbies
     Then "green" should have received only these lobbies:
       | code         | playerCount | public |
-      | dhgp75mn2bll | 1           | true   |
+      | 3t3cfgcqup9e | 1           | true   |
 
   Scenario: Filter on playerCount
-    Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" is connected as "1u8fw4aph5ypt" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And these lobbies exist:
       | code          | game                                 | playerCount | public |
       | 0qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | true   |
@@ -77,7 +77,9 @@ Feature: Lobby Discovery
     When "green" requests lobbies with this filter:
       """json
       {
-        "playerCount": {"$gte": 5}
+        "playerCount": {
+          "$gte": 5
+        }
       }
       """
     Then "green" should have received only these lobbies:
@@ -88,18 +90,20 @@ Feature: Lobby Discovery
       | 9qva9vyurwbbl | 10          | true   |
 
   Scenario: Filter on customData
-    Given "green" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "green" is connected as "1u8fw4aph5ypt" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And these lobbies exist:
       | code          | game                                 | playerCount | custom_data        | public | created_at |
       | 0qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_nuke"} | true   | 2020-01-01 |
-      | 1qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_dust"} | true   | 2020-01-02 | 
+      | 1qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_dust"} | true   | 2020-01-02 |
       | 2qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_nuke"} | true   | 2020-01-03 |
 
     When "green" requests lobbies with this filter:
       """json
       {
         "map": "de_nuke",
-        "createdAt": {"$gte": "2020-01-02"}
+        "createdAt": {
+          "$gte": "2020-01-02"
+        }
       }
       """
     Then "green" should have received only these lobbies:
@@ -108,7 +112,7 @@ Feature: Lobby Discovery
 
   Scenario: List empty lobbies
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -117,7 +121,7 @@ Feature: Lobby Discovery
         "public": true
       }
       """
-    And "blue" receives the network event "lobby" with the argument "52YS"
+    And "blue" receives the network event "lobby" with the argument "34SB"
 
     When "blue" disconnects
     Then "blue" receives the network event "close"
@@ -125,15 +129,15 @@ Feature: Lobby Discovery
     When "green" requests all lobbies
     Then "green" should have received only these lobbies:
       | code | playerCount |
-      | 52YS | 0           |
+      | 34SB | 0           |
 
   Scenario: Filter created lobbies on customData
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    And "blue" is connected as "3t3cfgcqup9e" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And "blue" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
 
     And these lobbies exist:
       | code         | game                                 | playerCount | public | custom_data        |
-      | 1qva9vyurwbb | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} | # different game
+      | 1qva9vyurwbb | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   | {"map": "de_nuke"} |
       | 2qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_dust"} |
       | 3qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   | {"map": "de_nuke"} |
 
@@ -146,7 +150,7 @@ Feature: Lobby Discovery
         }
       }
       """
-    And "green" receives the network event "lobby" with the argument "prb67ouj837u"
+    And "green" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
     When "blue" requests lobbies with this filter:
       """json
@@ -155,6 +159,6 @@ Feature: Lobby Discovery
       }
       """
     Then "blue" should have received only these lobbies:
-      | code         |
-      | prb67ouj837u |
-      | 3qva9vyurwbb |
+      | code          |
+      | 19yrzmetd2bn7 |
+      | 3qva9vyurwbb  |

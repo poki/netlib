@@ -5,8 +5,8 @@ Feature: customData on lobbies can be used for filtering and extra information
 
 
   Scenario: Connect to a lobby with custom data
-    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
 
     When "blue" creates a lobby with these settings:
       """json
@@ -21,14 +21,14 @@ Feature: customData on lobbies can be used for filtering and extra information
     Then "blue" receives the network event "lobby" with the arguments:
       """json
       [
-        "prb67ouj837u",
+        "19yrzmetd2bn7",
         {
-          "code": "prb67ouj837u",
+          "code": "19yrzmetd2bn7",
           "peers": [
-            "h5yzwyizlwao"
+            "1u8fw4aph5ypt"
           ],
           "playerCount": 1,
-          "creator": "h5yzwyizlwao",
+          "creator": "1u8fw4aph5ypt",
           "public": true,
           "maxPlayers": 4,
           "hasPassword": false,
@@ -37,25 +37,25 @@ Feature: customData on lobbies can be used for filtering and extra information
             "map": "de_dust2"
           },
           "canUpdateBy": "creator",
-          "leader": "h5yzwyizlwao",
+          "leader": "1u8fw4aph5ypt",
           "term": 1
         }
       ]
       """
 
-    When "yellow" connects to the lobby "prb67ouj837u"
+    When "yellow" connects to the lobby "19yrzmetd2bn7"
     Then "yellow" receives the network event "lobby" with the arguments:
       """json
       [
-        "prb67ouj837u",
+        "19yrzmetd2bn7",
         {
-          "code": "prb67ouj837u",
+          "code": "19yrzmetd2bn7",
           "peers": [
-            "3t3cfgcqup9e",
+            "1u8fw4aph5ypt",
             "h5yzwyizlwao"
           ],
           "playerCount": 2,
-          "creator": "h5yzwyizlwao",
+          "creator": "1u8fw4aph5ypt",
           "public": true,
           "maxPlayers": 4,
           "hasPassword": false,
@@ -64,7 +64,7 @@ Feature: customData on lobbies can be used for filtering and extra information
             "map": "de_dust2"
           },
           "canUpdateBy": "creator",
-          "leader": "h5yzwyizlwao",
+          "leader": "1u8fw4aph5ypt",
           "term": 1
         }
       ]
@@ -72,8 +72,8 @@ Feature: customData on lobbies can be used for filtering and extra information
 
 
   Scenario: The creator can edit a lobby
-    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "yellow" creates a lobby with these settings:
       """json
       {
@@ -83,7 +83,7 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    And "yellow" receives the network event "lobby" with the argument "prb67ouj837u"
+    And "yellow" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
     When "blue" requests lobbies with this filter:
       """json
@@ -92,8 +92,8 @@ Feature: customData on lobbies can be used for filtering and extra information
       }
       """
     Then "blue" should have received only these lobbies:
-      | code         |
-      | prb67ouj837u |
+      | code          |
+      | 19yrzmetd2bn7 |
 
     When "yellow" updates the lobby with these settings:
       """json
@@ -115,7 +115,7 @@ Feature: customData on lobbies can be used for filtering and extra information
 
 
   Scenario: The creator can set can_update_by
-    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue" creates a lobby with these settings:
       """json
       {
@@ -123,7 +123,7 @@ Feature: customData on lobbies can be used for filtering and extra information
         "canUpdateBy": "creator"
       }
       """
-    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "blue" receives the network event "lobby" with the argument "h5yzwyizlwao"
 
     When "blue" updates the lobby with these settings:
       """json
@@ -142,17 +142,17 @@ Feature: customData on lobbies can be used for filtering and extra information
 
 
   Scenario: Other players can update the lobby if canUpdateBy is 'anyone'
-    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue" creates a lobby with these settings:
       """json
       {
         "canUpdateBy": "anyone"
       }
       """
-    And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
-    And "yellow" connects to the lobby "prb67ouj837u"
-    And "yellow" receives the network event "lobby" with the argument "prb67ouj837u"
+    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "yellow" connects to the lobby "19yrzmetd2bn7"
+    And "yellow" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
     When "yellow" updates the lobby with these settings:
       """json
@@ -162,20 +162,20 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    Then "yellow" receives the network event "lobbyUpdated" with the argument "prb67ouj837u"
+    Then "yellow" receives the network event "lobbyUpdated" with the argument "19yrzmetd2bn7"
 
 
   Scenario: The creator can update the lobby when canUpdateBy is 'creator' and they are not the leader
-    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue" creates a lobby with these settings:
       """json
       {
         "canUpdateBy": "creator"
       }
       """
-    And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
-    And "yellow" connects to the lobby "prb67ouj837u"
+    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "yellow" connects to the lobby "19yrzmetd2bn7"
     And "blue" disconnected from the signaling server
     And "yellow" becomes the leader of the lobby
     And "blue" receives the network event "signalingreconnected"
@@ -188,19 +188,19 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    Then "blue" receives the network event "lobbyUpdated" with the argument "prb67ouj837u"
+    Then "blue" receives the network event "lobbyUpdated" with the argument "19yrzmetd2bn7"
     And "yellow" receives the network event "lobbyUpdated" with the arguments:
       """json
       [
-        "prb67ouj837u",
+        "19yrzmetd2bn7",
         {
-          "code": "prb67ouj837u",
+          "code": "19yrzmetd2bn7",
           "peers": [
-            "3t3cfgcqup9e",
+            "1u8fw4aph5ypt",
             "h5yzwyizlwao"
           ],
           "playerCount": 2,
-          "creator": "h5yzwyizlwao",
+          "creator": "1u8fw4aph5ypt",
           "public": false,
           "maxPlayers": 4,
           "hasPassword": false,
@@ -208,7 +208,7 @@ Feature: customData on lobbies can be used for filtering and extra information
             "status": "started"
           },
           "canUpdateBy": "creator",
-          "leader": "3t3cfgcqup9e",
+          "leader": "h5yzwyizlwao",
           "term": 2
         }
       ]
@@ -216,16 +216,16 @@ Feature: customData on lobbies can be used for filtering and extra information
 
 
   Scenario: The leader can update the lobby if they are not the creator
-    Given "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
-    And "yellow" is connected as "3t3cfgcqup9e" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue" creates a lobby with these settings:
       """json
       {
         "canUpdateBy": "leader"
       }
       """
-    And "blue" receives the network event "lobby" with the argument "prb67ouj837u"
-    And "yellow" connects to the lobby "prb67ouj837u"
+    And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
+    And "yellow" connects to the lobby "19yrzmetd2bn7"
     And "blue" disconnects
     And "blue" receives the network event "close"
     And "yellow" becomes the leader of the lobby
@@ -238,4 +238,4 @@ Feature: customData on lobbies can be used for filtering and extra information
         }
       }
       """
-    Then "yellow" receives the network event "lobbyUpdated" with the argument "prb67ouj837u"
+    Then "yellow" receives the network event "lobbyUpdated" with the argument "19yrzmetd2bn7"

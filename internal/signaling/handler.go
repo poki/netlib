@@ -17,8 +17,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const MaxConnectionTime = 1 * time.Hour
-
 const LobbyCleanInterval = 30 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
 
@@ -51,7 +49,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		logger := logging.GetLogger(ctx)
 		logger.Debug("upgrading connection")
 
-		ctx, cancel := context.WithTimeout(ctx, MaxConnectionTime)
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		acceptOptions := &websocket.AcceptOptions{

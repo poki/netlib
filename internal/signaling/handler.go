@@ -88,11 +88,13 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			for {
 				select {
 				case <-ticker.C:
-					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil && !util.ShouldIgnoreNetworkError(err) {
-						if strings.Contains(err.Error(), "write: broken pipe") {
-							logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
-						} else {
-							logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil {
+						if !util.ShouldIgnoreNetworkError(err) {
+							if strings.Contains(err.Error(), "write: broken pipe") {
+								logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+							} else {
+								logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+							}
 						}
 					} else {
 						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.

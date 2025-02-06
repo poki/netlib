@@ -17,8 +17,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const MaxConnectionTime = 1 * time.Hour
-
 const LobbyCleanInterval = 30 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
 
@@ -51,7 +49,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		logger := logging.GetLogger(ctx)
 		logger.Debug("upgrading connection")
 
-		ctx, cancel := context.WithTimeout(ctx, MaxConnectionTime)
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		acceptOptions := &websocket.AcceptOptions{
@@ -95,6 +93,12 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 							logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
 						} else {
 							logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+						}
+					} else {
+						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
+						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.
+						if peer.ID != "" {
+							manager.MarkPeerAsActive(ctx, peer.ID)
 						}
 					}
 				case <-ctx.Done():
@@ -151,12 +155,16 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				}
 				go metrics.RecordEvent(ctx, params)
 
-			case "pong":
+			case "ping", "pong":
 				// ignore, ping/pong is just for the tcp keepalive.
 
 			default:
 				if err := peer.HandlePacket(ctx, base.Type, raw); err != nil {
-					util.ErrorAndDisconnect(ctx, conn, err)
+					if err == ErrUnknownPacketType {
+						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+					} else {
+						util.ErrorAndDisconnect(ctx, conn, err)
+					}
 				}
 			}
 		}

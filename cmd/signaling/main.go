@@ -51,8 +51,8 @@ func main() {
 
 	mux, cleanup := internal.Signaling(ctx, store, credentialsClient)
 
-	cors := cors.Default()
-	handler := cors.Handler(mux)
+	corsHandler := cors.Default()
+	handler := corsHandler.Handler(mux)
 	handler = util.NoStoreMiddleware(handler)
 	handler = logging.Middleware(handler, logger)
 
@@ -77,7 +77,7 @@ func main() {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("failed to listen and server", zap.Error(err))
+			logger.Fatal("failed to listen and serve", zap.Error(err))
 		}
 	}()
 	logger.Info("listening", zap.String("addr", addr))

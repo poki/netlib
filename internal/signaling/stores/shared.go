@@ -9,7 +9,6 @@ import (
 var ErrAlreadyInLobby = errors.New("peer already in lobby")
 var ErrLobbyExists = errors.New("lobby already exists")
 var ErrNotFound = errors.New("lobby not found")
-var ErrNoSuchTopic = errors.New("no such topic")
 var ErrInvalidLobbyCode = errors.New("invalid lobby code")
 var ErrInvalidPeerID = errors.New("invalid peer id")
 var ErrInvalidPassword = errors.New("invalid password")
@@ -35,9 +34,12 @@ type Store interface {
 	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
-	TimeoutPeer(ctx context.Context, peerID, secret, gameID string, lobbies []string) error
-	ReconnectPeer(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
-	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration, callback func(peerID, gameID string, lobbies []string) error) (bool, error)
+	CreatePeer(ctx context.Context, peerID, secret, gameID string) error
+	MarkPeerAsActive(ctx context.Context, peerID string) error
+	MarkPeerAsDisconnected(ctx context.Context, peerID string) error
+	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
+	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration) (string, bool, map[string][]string, error)
+	ResetAllPeerLastSeen(ctx context.Context) error
 
 	CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error
 

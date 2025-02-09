@@ -3,6 +3,7 @@ package signaling
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -117,7 +118,10 @@ func (manager *TimeoutManager) MarkPeerAsActive(ctx context.Context, peerID stri
 	logger := logging.GetLogger(ctx)
 
 	err := manager.Store.MarkPeerAsActive(ctx, peerID)
-	if err != nil {
+
+	// context.Canceled is expected when the connection is closed right as this function
+	// is called. We don't want to log this as an error.
+	if err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("failed to mark peer as active", zap.Error(err), zap.String("peer", peerID))
 	}
 }

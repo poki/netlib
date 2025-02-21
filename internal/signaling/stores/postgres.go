@@ -18,6 +18,7 @@ import (
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"slices"
 )
 
 type PostgresStore struct {
@@ -236,10 +237,8 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 		return ErrLobbyIsFull
 	}
 
-	for _, peer := range peerlist {
-		if peer == peerID {
-			return ErrAlreadyInLobby
-		}
+	if slices.Contains(peerlist, peerID) {
+		return ErrAlreadyInLobby
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -624,26 +623,14 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	}
 
 	if !needNewLeader {
-		found := false
-		for _, peer := range peers {
-			if currentLeader == peer {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(peers, currentLeader)
 		if !found {
 			needNewLeader = true
 		}
 	}
 
 	if !needNewLeader {
-		found := false
-		for _, peer := range timedOutPeers {
-			if currentLeader == peer {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(timedOutPeers, currentLeader)
 		if found {
 			needNewLeader = true
 		}
@@ -660,13 +647,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 
 	newLeader := ""
 	for _, peer := range peers {
-		found := false
-		for _, timedOutPeer := range timedOutPeers {
-			if peer == timedOutPeer {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(timedOutPeers, peer)
 		if !found {
 			newLeader = peer
 			break

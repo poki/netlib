@@ -103,7 +103,7 @@ func ReplyError(ctx context.Context, conn *websocket.Conn, err error) {
 }
 
 // RenderJSON will write a json response to the given ResponseWriter.
-func RenderJSON(w http.ResponseWriter, r *http.Request, status int, val interface{}) {
+func RenderJSON(w http.ResponseWriter, r *http.Request, status int, val any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)

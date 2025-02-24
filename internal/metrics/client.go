@@ -107,7 +107,7 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		if i > 0 {
 			time.Sleep(time.Duration(rand.Int63n(backoffRange)*int64(i)) * time.Millisecond)
 		}

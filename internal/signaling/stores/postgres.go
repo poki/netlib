@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -18,7 +19,6 @@ import (
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"slices"
 )
 
 type PostgresStore struct {

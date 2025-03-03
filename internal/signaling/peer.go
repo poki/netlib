@@ -33,7 +33,7 @@ type Peer struct {
 	Lobby  string
 }
 
-func (p *Peer) Send(ctx context.Context, packet interface{}) error {
+func (p *Peer) Send(ctx context.Context, packet any) error {
 	return wsjson.Write(ctx, p.conn, packet)
 }
 

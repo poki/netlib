@@ -436,7 +436,8 @@ func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secre
 			code
 		FROM lobbies
 		WHERE $1 = ANY(peers)
-	`, peerID)
+		  AND game = $2
+	`, peerID, gameID)
 	if err != nil {
 		return false, nil, err
 	}

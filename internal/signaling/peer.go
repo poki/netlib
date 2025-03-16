@@ -352,13 +352,12 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		maxPlayers = *packet.MaxPlayers
 	}
 
-	attempts := 20
-	for ; attempts > 0; attempts-- {
-		switch packet.CodeFormat {
-		case "short":
-			p.Lobby = util.GenerateShortLobbyCode(ctx)
-		default:
-			p.Lobby = util.GenerateLobbyCode(ctx)
+	attempts := 0
+	for ; attempts < 20; attempts++ {
+		if packet.CodeFormat == "short" && attempts < 19 {
+			p.Lobby = util.GenerateShortLobbyCode(ctx, 4+(attempts/5)) // 4-7 characters
+		} else {
+			p.Lobby = util.GenerateLobbyCode(ctx) // 10-13 characters
 		}
 
 		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
@@ -379,7 +378,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		}
 		break
 	}
-	if attempts <= 0 {
+	if attempts == 20 {
 		return fmt.Errorf("unable to create lobby, too many attempts to find a unique code")
 	}
 

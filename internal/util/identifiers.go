@@ -51,7 +51,7 @@ func GenerateLobbyCode(ctx context.Context) string {
 	return strconv.FormatInt(randInt63(), 36)
 }
 
-func GenerateShortLobbyCode(ctx context.Context) string {
+func GenerateShortLobbyCode(ctx context.Context, chars int) string {
 	randIntn := rand.Intn
 	if os.Getenv("ENV") == "test" {
 		randIntn = deterministicRand.Intn
@@ -59,5 +59,14 @@ func GenerateShortLobbyCode(ctx context.Context) string {
 
 	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
 	alphabet := []string{"A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "M", "N", "P", "R", "S", "T", "V", "W", "X", "Y", "Z"}
-	return numbers[randIntn(len(numbers))] + numbers[randIntn(len(numbers))] + alphabet[randIntn(len(alphabet))] + alphabet[randIntn(len(alphabet))]
+
+	ss := make([]string, chars)
+	for i := range chars {
+		if i/2%2 == 0 {
+			ss[i] = numbers[randIntn(len(numbers))]
+		} else {
+			ss[i] = alphabet[randIntn(len(alphabet))]
+		}
+	}
+	return strings.Join(ss, "")
 }

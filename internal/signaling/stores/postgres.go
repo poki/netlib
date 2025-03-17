@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -20,6 +21,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var isTestEnv = os.Getenv("ENV") == "test"
 
 type PostgresStore struct {
 	DB *pgxpool.Pool
@@ -436,7 +439,8 @@ func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secre
 			code
 		FROM lobbies
 		WHERE $1 = ANY(peers)
-	`, peerID)
+		  AND game = $2
+	`, peerID, gameID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -640,10 +644,15 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 		return nil, nil
 	}
 
-	// Randomize the order of the peers to avoid always picking the same leader.
-	rand.Shuffle(len(peers), func(i, j int) {
-		peers[i], peers[j] = peers[j], peers[i]
-	})
+	if isTestEnv {
+		// In tests we want to have a deterministic leader.
+		sort.Strings(peers)
+	} else {
+		// Randomize the order of the peers to avoid always picking the same leader.
+		rand.Shuffle(len(peers), func(i, j int) {
+			peers[i], peers[j] = peers[j], peers[i]
+		})
+	}
 
 	newLeader := ""
 	for _, peer := range peers {

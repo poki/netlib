@@ -24,7 +24,7 @@ Feature: Players can create and connect a network of players
         "codeFormat": "short"
       }
       """
-    And "green" receives the network event "lobby" with the argument "43ES"
+    And "green" receives the network event "lobby" with the argument "SHC6"
 
 
   Scenario: Connect two players to a lobby

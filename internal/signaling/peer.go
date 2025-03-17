@@ -355,9 +355,15 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 	attempts := 0
 	for ; attempts < 20; attempts++ {
 		if packet.CodeFormat == "short" && attempts < 19 {
-			p.Lobby = util.GenerateShortLobbyCode(ctx, 4+(attempts/5)) // 4-7 characters
+			// The first 15 attempts will try to generate a 4 character code.
+			// After that, it will try to generate a 5 character code.
+			length := 4
+			if attempts > 15 {
+				length = 5
+			}
+			p.Lobby = util.GenerateShortLobbyCode(ctx, length)
 		} else {
-			p.Lobby = util.GenerateLobbyCode(ctx) // 10-13 characters
+			p.Lobby = util.GenerateLobbyCode(ctx)
 		}
 
 		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{

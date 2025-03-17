@@ -121,7 +121,7 @@ Feature: Lobby Discovery
         "public": true
       }
       """
-    And "blue" receives the network event "lobby" with the argument "34SB"
+    And "blue" receives the network event "lobby" with the argument "HC6Y"
 
     When "blue" disconnects
     Then "blue" receives the network event "close"
@@ -129,7 +129,7 @@ Feature: Lobby Discovery
     When "green" requests all lobbies
     Then "green" should have received only these lobbies:
       | code | playerCount |
-      | 34SB | 0           |
+      | HC6Y | 0           |
 
   Scenario: Filter created lobbies on customData
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"

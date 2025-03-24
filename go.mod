@@ -1,10 +1,11 @@
 module github.com/poki/netlib
 
 go 1.24.0
+
 require (
 	github.com/coder/websocket v1.8.13
 	github.com/golang-migrate/migrate/v4 v4.18.2
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.3
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504
 	github.com/ory/dockertest/v3 v3.11.0
 	github.com/poki/mongodb-filter-to-postgres v1.0.4

@@ -419,7 +419,7 @@ func (s *PostgresStore) MarkPeerAsDisconnected(ctx context.Context, peerID strin
 func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
 	now := util.NowUTC(ctx)
 
-	_, err := s.DB.Exec(ctx, `
+	result, err := s.DB.Exec(ctx, `
 		UPDATE peers
 		SET
 			disconnected = FALSE,
@@ -431,6 +431,9 @@ func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secre
 	`, now, peerID, secret, gameID)
 	if err != nil {
 		return false, nil, err
+	}
+	if result.RowsAffected() == 0 {
+		return false, nil, nil
 	}
 
 	var lobbies []string

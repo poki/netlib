@@ -34,24 +34,26 @@ export default class Credentials {
           resolve(this.cachedCredentials)
           return
         }
+        const timeout = setTimeout(() => {
+          resolve({ type: 'credentials' })
+          this.cachedCredentials = { type: 'credentials' }
+          this.cachedCredentialsExpireAt = performance.now() + FetchTimeout
+        }, FetchTimeout)
         void this.signaling.request({
           type: 'credentials'
         }).then(credentials => {
           if (credentials.type === 'credentials') {
             this.cachedCredentials = credentials
             this.cachedCredentialsExpireAt = performance.now() + (((credentials.lifetime ?? 0) - 60) * 1000)
+            clearTimeout(timeout)
             resolve(credentials)
           }
         }).catch(() => {
+          clearTimeout(timeout)
           resolve({ type: 'credentials' })
           this.cachedCredentials = { type: 'credentials' }
           this.cachedCredentialsExpireAt = performance.now() + FetchTimeout
         })
-        setTimeout(() => {
-          resolve({ type: 'credentials' })
-          this.cachedCredentials = { type: 'credentials' }
-          this.cachedCredentialsExpireAt = performance.now() + FetchTimeout
-        }, FetchTimeout)
       })
     }
     const credentials = await this.runningPromise

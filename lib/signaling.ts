@@ -129,6 +129,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     return await new Promise<SignalingPacketTypes>((resolve, reject) => {
       if (this.ws.readyState !== WebSocket.OPEN) {
         reject(new SignalingError('socket-error', 'signaling socket not open'))
+        return
       }
       const rid = Math.random().toString(36).slice(2)
       packet.rid = rid

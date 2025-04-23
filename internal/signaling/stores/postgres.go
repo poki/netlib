@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -23,6 +24,8 @@ import (
 )
 
 var isTestEnv = os.Getenv("ENV") == "test"
+
+var topicRegexp = regexp.MustCompile(`^[a-zA-Z0-9\-]{1,76}$`)
 
 type PostgresStore struct {
 	DB *pgxpool.Pool
@@ -144,11 +147,8 @@ func (s *PostgresStore) Subscribe(ctx context.Context, callback SubscriptionCall
 }
 
 func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) error {
-	if len(topic) > 76 {
-		return fmt.Errorf("topic too long")
-	}
-	if strings.ContainsRune(topic, ':') {
-		return fmt.Errorf("topic contains : character")
+	if !topicRegexp.MatchString(topic) {
+		return fmt.Errorf("topic %q is invalid", topic)
 	}
 	totalLength := base64.StdEncoding.EncodedLen(len(data)) + len(topic) + 1
 	if totalLength > 8000 {

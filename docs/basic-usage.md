@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-#### 1. Installation
+#### 1. Add dependency
 First add [@poki/netlib](https://www.npmjs.com/package/@poki/netlib) as a dependency to your project:
 ```sh
 yarn add @poki/netlib
@@ -36,13 +36,8 @@ network.on('lobby', code => {
 // Wait for network to be ready before creating
 network.on('ready', () => {
   network.create({
-    public: true,          // Make lobby visible in listings
-    maxPlayers: 4,         // Optional: limit number of players
-    password: 'secret',    // Optional: add password protection
-    customData: {          // Optional: add custom lobby data
-      map: 'aztec',
-      gameMode: 'deathmatch'
-    }
+    public: true,   // Make lobby visible in listings
+    maxPlayers: 4,  // Optional: limit number of players
   })
 })
 ```
@@ -51,7 +46,7 @@ network.on('ready', () => {
 When a player wants to join an existing game:
 ```js
 network.on('ready', () => {
-  network.join(lobbyCode, 'secret') // Second parameter is optional password
+  network.join(lobbyCode)
 })
 ```
 
@@ -102,15 +97,6 @@ network.on('connected', peer => {
 network.on('disconnected', peer => {
   console.log(`${peer.id} disconnected`)
   // Clean up any game state for this peer
-})
-```
-
-##### Monitoring Connection Quality
-```js
-// Check for errors
-network.on('error', error => {
-  console.error('Network error:', error)
-  // Handle or display error to user
 })
 ```
 

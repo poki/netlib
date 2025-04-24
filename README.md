@@ -1,11 +1,12 @@
 # The Poki Networking Library &nbsp;&nbsp;[<img src="https://img.shields.io/npm/v/@poki/netlib?color=lightgray">](https://www.npmjs.com/package/@poki/netlib)
 
 <img align="right" src="https://raw.githubusercontent.com/poki/netlib/main/.github/logo.png" width=140>
-The Poki Networking Library is a powerful peer-to-peer networking solution for web games, leveraging WebRTC datachannels to enable direct UDP connections between players. Think of it as the Steam Networking Library for the web, designed to make WebRTC as simple to use as WebSockets for game development.
+The Poki Networking Library is a peer-to-peer networking library for web games, leveraging WebRTC datachannels to enable direct UDP connections between players. Think of it as the Steam Networking Library for the web, designed to make WebRTC as simple to use as WebSockets for game development.
 
 <p></p>
 
-> ⚠️ **Warning**: This library is still under development and considered a beta. The library API can change. Make sure to get in touch if you want to go live with this so we can keep you up-to-date about changes.
+> [!WARNING]
+> This library is still under development and considered a beta. While it's being actively used in production by some games, the API can change. Make sure to get in touch if you want to go live with this so we can keep you up-to-date about changes.
 
 ## Features
 
@@ -24,7 +25,6 @@ The Poki Networking Library is a powerful peer-to-peer networking solution for w
   - Optimized for real-time gaming with minimal latency
   - Perfect for fast-paced multiplayer games
   - Unlike WebSockets or HTTP (which use TCP), UDP doesn't pause new packets when one packet is slow or dropped
-  - This is ideal for real-time updates like position data
   - Includes reliable data channels for critical events like chat messages or NPC spawns
 
 - **Easy to Use**
@@ -63,7 +63,7 @@ network.on('ready', () => {
 
 // Or join an existing one
 network.on('ready', () => {
-  network.join('LOBBY-CODE')
+  network.join('ed84')
 })
 ```
 
@@ -80,13 +80,10 @@ network.on('message', (peer, channel, data) => {
 
 For more detailed examples and API documentation:
 - [Basic Usage Guide](./docs/basic-usage.md)
-- [Example Implementation](./example/)
+- [Example Usage](./example/)
 
-## Project Status
+## Roadmap
 
-This library is currently in alpha stage. While it's being actively used in production by some games, the API may change without warning and without bumping the major version. Please contact us if you're planning to use this library in production.
-
-### Roadmap
 - [x] Basic P2P connectivity
 - [x] Lobby system
 - [x] Lobby discovery and filtering
@@ -118,9 +115,8 @@ UDP Transport
 - Facilitates WebRTC connection establishment
 
 #### 2. STUN/TURN Servers
-- STUN: Helps peers discover their public IP
-- TURN: Provides fallback relay when direct P2P fails
-- Hosted by Poki (or self-hostable)
+- STUN: Helps peers discover their public IP (by default Google STUN servers)
+- TURN: Provides fallback relay when direct P2P fails (when using the Poki hosted version, Cloudflare TURN servers are used)
 
 ## Self-Hosting
 

@@ -217,12 +217,13 @@ export default class Peer {
   }
 
   private onError (e: Event): void {
-    this.network.emit('rtcerror', e)
+    const error = new NetworkError('rtc', 'RTC error occurred', e);
+    this.network.emit('rtcerror', error);
     if (this.network.listenerCount('rtcerror') === 0) {
-      console.error('rtcerror not handled:', e)
+      console.error('rtcerror not handled:', error);
     }
-    this.checkState()
-    void this.signaling.event('rtc', 'error', { target: this.id, error: JSON.stringify(e) })
+    this.checkState();
+    void this.signaling.event('rtc', 'error', { target: this.id, error: JSON.stringify(error) });
   }
 
   /**

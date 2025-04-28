@@ -306,14 +306,24 @@ interface RequestHandler {
   reject: (reason?: any) => void
 }
 
-export class SignalingError {
-  /**
-   * @internal
-   */
-  constructor (public type: 'unknown-error' | 'socket-error' | 'server-error', public message: string, public event?: Event, public code?: string) {
-  }
+export class NetworkError {
+  constructor(
+    public readonly type: 'signaling' | 'rtc' | 'general',
+    public readonly message: string,
+    public readonly details?: any
+  ) {}
 
-  public toString (): string {
-    return `[${this.type}: ${this.message}]`
+  public toString(): string {
+    return `[${this.type} error]: ${this.message}`;
+  }
+}
+
+export class SignalingError extends NetworkError {
+  constructor(
+    public readonly code: string,
+    message: string,
+    details?: any
+  ) {
+    super('signaling', message, details);
   }
 }

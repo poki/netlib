@@ -171,11 +171,12 @@ export default class Network extends EventEmitter<NetworkListeners> {
    * @internal
    */
   _onSignalingError (e: SignalingError): void {
-    this.emit('signalingerror', e)
+    const error = new NetworkError('signaling', e.message, e);
+    this.emit('signalingerror', error);
     if (this.listenerCount('signalingerror') === 0) {
-      console.error('signallingerror not handled:', e)
+      console.error('signalingerror not handled:', error);
     }
-    void this.signaling.event('signaling', 'error', { error: JSON.stringify(e) })
+    void this.signaling.event('signaling', 'error', { error: JSON.stringify(error) });
   }
 
   /**

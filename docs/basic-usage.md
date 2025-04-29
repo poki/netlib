@@ -165,7 +165,7 @@ network.on('ready', state => {
 3. **Clean Up**
 ```js
 // When your game stops
-network.disconnect()
+network.close()
 ```
 
 4. **Latency Optimization**

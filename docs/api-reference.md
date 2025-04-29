@@ -67,8 +67,8 @@ Sends data to a specific peer.
 ##### `broadcast(channel: string, data: any): void`
 Sends data to all connected peers.
 
-##### `disconnect(): void`
-Disconnects from the current lobby and cleans up resources.
+##### `close(): void`
+Disconnects everything and cleans up resources.
 
 ### Events
 

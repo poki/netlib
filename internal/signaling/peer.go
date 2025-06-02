@@ -235,7 +235,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			p.Lobby = lobbyID
 			p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-			go metrics.Record(ctx, "lobby", "reconnected", p.Game, p.ID, p.Lobby)
+			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby)
 
 			// We just reconnected, and we might be the only peer in the lobby.
 			// So do an election to make sure we then become the leader.
@@ -263,6 +263,8 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 				}
 			}
 		}
+	} else {
+		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby)
 	}
 
 	return nil
@@ -516,6 +518,17 @@ func (p *Peer) HandleUpdatePacket(ctx context.Context, packet LobbyUpdatePacket)
 	if err != nil {
 		return err
 	}
+
+	logger.Info("lobby updated",
+		zap.String("game", p.Game),
+		zap.String("lobby", p.Lobby),
+		zap.String("peer", p.ID),
+		zap.Any("customData", lobbyInfo.CustomData),
+		zap.Bool("public", lobbyInfo.Public),
+		zap.String("canUpdateBy", lobbyInfo.CanUpdateBy),
+		zap.Int("maxPlayers", lobbyInfo.MaxPlayers),
+	)
+	go metrics.Record(ctx, "lobby", "updated", p.Game, p.ID, p.Lobby)
 
 	data, err := json.Marshal(LobbyUpdatedPacket{
 		// Include the request ID for the peer that requested the update.

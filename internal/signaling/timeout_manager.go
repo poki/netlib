@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/koenbollen/logging"
+	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"go.uber.org/zap"
 )
@@ -63,6 +64,8 @@ func (manager *TimeoutManager) RunOnce(ctx context.Context) {
 						logger.Error("failed to do leader election", zap.Error(err), zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
 					}
 				}
+
+				go metrics.Record(ctx, "client", "timeout", gameID, peerID, lobbyCode)
 			}
 		}
 	}

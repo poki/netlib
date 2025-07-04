@@ -202,6 +202,14 @@ When('{string} disconnects', async function (this: World, playerName: string) {
   player.network.close()
 })
 
+When('{string} leaves the lobby', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  await player.network.leave()
+})
+
 When('{string} requests all lobbies', async function (this: World, playerName: string) {
   const player = this.players.get(playerName)
   if (player == null) {

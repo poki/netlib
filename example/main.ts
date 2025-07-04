@@ -55,6 +55,12 @@ n.on('ready', () => {
     }
   })
 
+  document.querySelector('a[data-action="leave"]')?.addEventListener('click', () => {
+    if (n.currentLobby !== undefined) {
+      void n.leave()
+    }
+  })
+
   const queryLobbies = (): void => {
     console.log('querying lobbies...')
     let filter = {}
@@ -98,6 +104,10 @@ n.on('ready', () => {
 
 n.on('lobby', code => {
   log(`lobby code ready: ${code} (and you are ${n.id})`)
+})
+
+n.on('leave', () => {
+  log('left lobby')
 })
 
 n.on('signalingerror', console.error.bind(console.error))

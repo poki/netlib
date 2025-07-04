@@ -66,3 +66,12 @@ Feature: Players can create and connect a network of players
     Then "yellow" receives the network event "close"
     Then "blue" receives the network event "disconnected" with the argument "[Peer: h5yzwyizlwao]"
     Then "green" receives the network event "disconnected" with the argument "[Peer: h5yzwyizlwao]"
+
+  Scenario: A player leaves the lobby but stays connected
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+
+    Given "blue,yellow" are joined in a lobby
+    When "yellow" leaves the lobby
+    Then "yellow" receives the network event "leave"
+    Then "blue" receives the network event "disconnected" with the argument "[Peer: h5yzwyizlwao]"

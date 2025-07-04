@@ -38,6 +38,9 @@ interface LobbyOptions {
 ##### `join(code: string, password?: string): Promise<void>`
 Joins an existing lobby.
 
+##### `leave(): Promise<void>`
+Leaves the current lobby without closing the network.
+
 ##### `list(filter?: object): Promise<Lobby[]>`
 Lists available lobbies with optional MongoDB-style filtering.
 ```typescript

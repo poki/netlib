@@ -94,6 +94,16 @@ type LobbyUpdatedPacket struct {
 	LobbyInfo stores.Lobby `json:"lobbyInfo"`
 }
 
+type LeaveLobbyPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+}
+
+type LeftLobbyPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+}
+
 type ConnectPacket struct {
 	Type string `json:"type"`
 

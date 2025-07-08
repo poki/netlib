@@ -106,7 +106,7 @@ n.on('lobby', code => {
   log(`lobby code ready: ${code} (and you are ${n.id})`)
 })
 
-n.on('leave', () => {
+n.on('left', () => {
   log('left lobby')
 })
 

@@ -85,7 +85,7 @@ Subscribe to events using `network.on(eventName, callback)`:
 
 #### Lobby Events
 - `'lobby'`: Lobby created/joined
-- `'leave'`: Left lobby
+- `'left'`: Left lobby
 - `'update'`: Lobby settings updated
 
 #### Communication Events

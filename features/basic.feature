@@ -73,5 +73,5 @@ Feature: Players can create and connect a network of players
 
     Given "blue,yellow" are joined in a lobby
     When "yellow" leaves the lobby
-    Then "yellow" receives the network event "leave"
+    Then "yellow" receives the network event "left"
     Then "blue" receives the network event "disconnected" with the argument "[Peer: h5yzwyizlwao]"

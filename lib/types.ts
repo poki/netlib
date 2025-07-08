@@ -129,11 +129,11 @@ export interface LobbyUpdatedPacket extends Base {
 }
 
 export interface LeaveLobbyPacket extends Base {
-  type: 'leaveLobby'
+  type: 'leave'
 }
 
 export interface LeftLobbyPacket extends Base {
-  type: 'leftLobby'
+  type: 'left'
 }
 
 export interface ClosePacket extends Base {

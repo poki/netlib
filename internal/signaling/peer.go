@@ -96,8 +96,6 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "leave": // legacy, backwards compatibility
-		fallthrough
 	case "close":
 		packet := ClosePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
@@ -108,7 +106,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "leaveLobby":
+	case "leave":
 		packet := LeaveLobbyPacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
 			return fmt.Errorf("unable to unmarshal json: %w", err)
@@ -157,8 +155,6 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 		if err != nil {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
-
-	// case "leave":
 
 	case "connected": // TODO: Do we want to keep track of connections between peers?
 	case "disconnected": // TODO: Do we want to keep track of connections between peers?
@@ -349,7 +345,7 @@ func (p *Peer) HandleLeaveLobbyPacket(ctx context.Context, packet LeaveLobbyPack
 
 	p.Lobby = ""
 
-	return p.Send(ctx, LeftLobbyPacket{RequestID: packet.RequestID, Type: "leftLobby"})
+	return p.Send(ctx, LeftLobbyPacket{RequestID: packet.RequestID, Type: "left"})
 }
 
 func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {

@@ -101,7 +101,7 @@ n.on('lobby', code => {
 })
 
 n.on('signalingerror', console.error.bind(console.error))
-n.on('rtcerror', console.error.bind(console.error))
+n.on('rtcerror', (e: RTCErrorEvent) => console.error(e))
 
 n.on('connecting', peer => { log(`peer connecting ${peer.id}`) })
 n.on('disconnected', peer => {

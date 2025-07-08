@@ -235,7 +235,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			p.Lobby = lobbyID
 			p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby)
+			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby, "version", packet.Version)
 
 			// We just reconnected, and we might be the only peer in the lobby.
 			// So do an election to make sure we then become the leader.
@@ -264,7 +264,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			}
 		}
 	} else {
-		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby)
+		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby, "version", packet.Version)
 	}
 
 	return nil

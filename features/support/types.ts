@@ -29,10 +29,18 @@ export class Player {
     network.on('rtcerror', _ => {})
   }
 
+  // findEvent finds the first event matching the eventName and matchArguments.
   findEvent (eventName: string, matchArguments: any[] = []): RecordedEvent | undefined {
     return this.events.find(e => matchEvent(e, eventName, matchArguments))
   }
 
+  // findRecentEvent finds events starting after the last consumed event.
+  findNewEvent (eventName: string, matchArguments: any[] = []): RecordedEvent | undefined {
+    return this.events.slice(this.scanIndex).find(e => matchEvent(e, eventName, matchArguments))
+  }
+
+  // waitForEvent waits for an event to be received, matching the eventName and matchArguments.
+  // If consume is true, the event will be consumed and the scanIndex will be incremented.
   async waitForEvent (eventName: string, matchArguments: any[] = [], consume: boolean = true): Promise<RecordedEvent> {
     if (!allEvents.includes(eventName)) {
       throw new Error(`Event type ${eventName} not tracked, add to allEvents in types.ts`)

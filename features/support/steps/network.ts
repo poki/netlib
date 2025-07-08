@@ -324,13 +324,27 @@ Then('{string} should have received only these lobbies:', function (this: World,
   }
 })
 
-When('{string} has not seen the {string} event', function (this: World, playerName: string, eventName: string) {
+// "has not seen any" checks all events ever received.
+When('{string} has not seen any {string} event', function (this: World, playerName: string, eventName: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
-  if (player.findEvent(eventName) !== undefined) {
-    throw new Error(`${playerName} has recieved a ${eventName} event`)
+  const event = player.findEvent(eventName)
+  if (event !== undefined) {
+    throw new Error(`${playerName} has recieved a ${eventName} event: ${event.eventPayload[0] as string}`)
+  }
+})
+
+// "has not seen a new" only checks new events since the last "receives the network event".
+When('{string} has not seen a new {string} event', function (this: World, playerName: string, eventName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const event = player.findNewEvent(eventName)
+  if (event !== undefined) {
+    throw new Error(`${playerName} has recieved a ${eventName} event: ${event.eventPayload[0] as string}`)
   }
 })
 

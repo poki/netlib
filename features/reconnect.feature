@@ -22,7 +22,7 @@ Feature: Players can create and connect a network of players
 
     And "blue" boardcasts "Hello, world!" over the reliable channel
     And "yellow" receives the network event "message" with the arguments "[Peer: 1u8fw4aph5ypt]", "reliable" and "Hello, world!"
-    And "yellow" has not seen the "reconnecting" event
+    And "yellow" has not seen any "reconnecting" event
 
 
   Scenario: Connections are reconnected when rtc is disconnected

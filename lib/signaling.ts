@@ -245,6 +245,13 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           this.network.emit('lobbyUpdated', packet.lobbyInfo.code, packet.lobbyInfo)
           break
 
+        case 'left':
+          this.currentLobby = undefined
+          this.currentLeader = undefined
+          this.currentLobbyInfo = undefined
+          this.network.emit('left')
+          break
+
         case 'connect':
           if (this.receivedID === packet.id) {
             return // Skip self

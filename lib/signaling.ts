@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3'
 import Network from './network'
 import Peer from './peer'
 import { LobbyListEntry, SignalingPacketTypes } from './types'
-import { version as libVersion } from '../package.json'
+import { version } from '../package.json'
 
 interface SignalingListeners {
   credentials: (data: SignalingPacketTypes) => void | Promise<void>
@@ -52,7 +52,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         game: this.network.gameID,
         id: this.receivedID,
         secret: this.receivedSecret,
-        version: libVersion
+        version
       })
     }
     const onError = (e: Event): void => {

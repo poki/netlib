@@ -25,6 +25,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 
   private readonly requests: Map<string, RequestHandler> = new Map()
 
+  private pingInterval?: ReturnType<typeof setInterval>
+
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
     super()
 
@@ -36,7 +38,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 
     // Send a ping every 5 seconds to keep the connection alive,
     // and to detect when the connection is lost.
-    setInterval(() => {
+    this.pingInterval = setInterval(() => {
       this.ping()
     }, 5000)
   }
@@ -122,6 +124,10 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   }
 
   close (): void {
+    if (this.pingInterval !== undefined) {
+      clearInterval(this.pingInterval)
+      this.pingInterval = undefined
+    }
     this.ws.close()
   }
 

@@ -52,8 +52,8 @@ export type SignalingPacketTypes =
 | LeaderPacket
 | LobbyUpdatePacket
 | LobbyUpdatedPacket
-| LeaveLobbyPacket
-| LeftLobbyPacket
+| LeavePacket
+| LeftPacket
 | ListPacket
 | LobbiesPacket
 | PingPacket
@@ -128,11 +128,11 @@ export interface LobbyUpdatedPacket extends Base {
   lobbyInfo: LobbyListEntry
 }
 
-export interface LeaveLobbyPacket extends Base {
+export interface LeavePacket extends Base {
   type: 'leave'
 }
 
-export interface LeftLobbyPacket extends Base {
+export interface LeftPacket extends Base {
   type: 'left'
 }
 

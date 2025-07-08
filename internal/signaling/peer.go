@@ -107,7 +107,7 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 		}
 
 	case "leave":
-		packet := LeaveLobbyPacket{}
+		packet := LeavePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
 			return fmt.Errorf("unable to unmarshal json: %w", err)
 		}
@@ -317,7 +317,7 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 	return nil
 }
 
-func (p *Peer) HandleLeaveLobbyPacket(ctx context.Context, packet LeaveLobbyPacket) error {
+func (p *Peer) HandleLeaveLobbyPacket(ctx context.Context, packet LeavePacket) error {
 	logger := logging.GetLogger(ctx)
 
 	if p.ID == "" {
@@ -345,7 +345,7 @@ func (p *Peer) HandleLeaveLobbyPacket(ctx context.Context, packet LeaveLobbyPack
 
 	p.Lobby = ""
 
-	return p.Send(ctx, LeftLobbyPacket{RequestID: packet.RequestID, Type: "left"})
+	return p.Send(ctx, LeftPacket{RequestID: packet.RequestID, Type: "left"})
 }
 
 func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {

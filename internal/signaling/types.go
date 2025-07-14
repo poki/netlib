@@ -15,9 +15,10 @@ type PingPacket struct {
 type HelloPacket struct {
 	Type string `json:"type"`
 
-	Game   string `json:"game"`
-	ID     string `json:"id"`
-	Secret string `json:"secret"`
+	Game    string `json:"game"`
+	ID      string `json:"id"`
+	Secret  string `json:"secret"`
+	Version string `json:"version"`
 }
 
 type WelcomePacket struct {
@@ -92,6 +93,16 @@ type LobbyUpdatedPacket struct {
 	Type      string `json:"type"`
 
 	LobbyInfo stores.Lobby `json:"lobbyInfo"`
+}
+
+type LeavePacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+}
+
+type LeftPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
 }
 
 type ConnectPacket struct {

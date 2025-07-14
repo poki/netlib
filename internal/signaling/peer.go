@@ -96,14 +96,22 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "leave": // legacy, backwards compatibility
-		fallthrough
 	case "close":
 		packet := ClosePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
 			return fmt.Errorf("unable to unmarshal json: %w", err)
 		}
 		err = p.HandleClosePacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
+	case "leave":
+		packet := LeavePacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleLeaveLobbyPacket(ctx, packet)
 		if err != nil {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
@@ -147,8 +155,6 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 		if err != nil {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
-
-	// case "leave":
 
 	case "connected": // TODO: Do we want to keep track of connections between peers?
 	case "disconnected": // TODO: Do we want to keep track of connections between peers?
@@ -309,6 +315,37 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 	}
 
 	return nil
+}
+
+func (p *Peer) HandleLeaveLobbyPacket(ctx context.Context, packet LeavePacket) error {
+	logger := logging.GetLogger(ctx)
+
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	if p.Lobby == "" {
+		return fmt.Errorf("not in a lobby")
+	}
+
+	err := p.store.LeaveLobby(ctx, p.Game, p.Lobby, p.ID)
+	if err != nil {
+		return err
+	}
+	disc := DisconnectPacket{Type: "disconnect", ID: p.ID}
+	data, err := json.Marshal(disc)
+	if err == nil {
+		if err := p.store.Publish(ctx, p.Game+p.Lobby, data); err != nil {
+			logger.Error("failed to publish disconnect packet", zap.Error(err))
+		}
+	}
+	_, err = p.doLeaderElectionAndPublish(ctx)
+	if err != nil {
+		return err
+	}
+
+	p.Lobby = ""
+
+	return p.Send(ctx, LeftPacket{RequestID: packet.RequestID, Type: "left"})
 }
 
 func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {

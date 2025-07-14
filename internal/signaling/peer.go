@@ -193,14 +193,14 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	hasReconnected := false
 	var reconnectingLobbies []string
 	if packet.ID != "" && packet.Secret != "" {
-		logger.Info("peer reconnecting", zap.String("game", packet.Game), zap.String("peer", packet.ID))
+		logger.Info("peer reconnecting", zap.String("game", packet.Game), zap.String("peer", packet.ID), zap.String("version", packet.Version))
 		var err error
 		hasReconnected, reconnectingLobbies, err = p.retrievedIDCallback(ctx, packet.ID, packet.Secret, packet.Game)
 		if err != nil {
 			return fmt.Errorf("unable to reconnect: %w", err)
 		}
 		if !hasReconnected {
-			logger.Info("peer failed reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID))
+			logger.Info("peer failed reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("version", packet.Version))
 
 			err := fmt.Errorf("failed to reconnect, missing pid or invalid secret")
 			err = util.ErrorWithCode(err, "reconnect-failed")
@@ -219,7 +219,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		p.Game = packet.Game
 		p.ID = util.GeneratePeerID(ctx)
 		p.Secret = util.GenerateSecret(ctx)
-		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID))
+		logger.Info("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("version", packet.Version))
 
 		if err := p.store.CreatePeer(ctx, p.ID, p.Secret, p.Game); err != nil {
 			return fmt.Errorf("unable to create peer: %w", err)
@@ -237,11 +237,11 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 
 	if hasReconnected {
 		for _, lobbyID := range reconnectingLobbies {
-			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby))
+			logger.Info("peer rejoining lobby", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("lobby", p.Lobby), zap.String("version", packet.Version))
 			p.Lobby = lobbyID
 			p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby)
+			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby, "version", packet.Version)
 
 			// We just reconnected, and we might be the only peer in the lobby.
 			// So do an election to make sure we then become the leader.
@@ -270,7 +270,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			}
 		}
 	} else {
-		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby)
+		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby, "version", packet.Version)
 	}
 
 	return nil

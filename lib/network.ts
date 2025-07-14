@@ -9,6 +9,7 @@ import Credentials from './credentials'
 interface NetworkListeners {
   ready: () => void | Promise<void>
   lobby: (code: string, lobbyInfo: LobbyListEntry) => void | Promise<void>
+  left: () => void | Promise<void>
   leader: (leader: string) => void | Promise<void>
   lobbyUpdated: (code: string, settings: LobbySettings) => void | Promise<void>
   connecting: (peer: Peer) => void | Promise<void>
@@ -100,6 +101,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
       ...settings
     })
     return true
+  }
+
+  async leave (): Promise<void> {
+    if (this._closing || this.signaling.receivedID === undefined || this.signaling.currentLobby === undefined) {
+      return
+    }
+    await this.signaling.request({ type: 'leave' })
+    this.peers.forEach(peer => peer.close('left lobby'))
   }
 
   close (reason?: string): void {

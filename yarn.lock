@@ -40,14 +40,14 @@
   dependencies:
     regexp-match-indices "1.0.2"
 
-"@cucumber/cucumber@^12.0.0":
-  version "12.0.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.0.0.tgz#c5a556599b0ee91672208cb7591c1cb960633671"
-  integrity sha512-cfNIbOlaqR+jbH6EH+JTb8wiA2ANge7P3DleKaEl2HPzYZat3jIuEjtSpIcXl3NREgWyREkwVE3meA/rRAtZIw==
+"@cucumber/cucumber@^12.1.0":
+  version "12.1.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.1.0.tgz#216daba34b6d67c0b55e3affcb8fd791c77ee3e2"
+  integrity sha512-F72uKHUtHFFn4OAw6r6MoS+PWSMomQoIpW4+W/dcwNYY9oAKVAGyGJkEPIDXX00YtZY+EH3RUcNPlkD+f+dI0Q==
   dependencies:
     "@cucumber/ci-environment" "10.0.1"
     "@cucumber/cucumber-expressions" "18.0.1"
-    "@cucumber/gherkin" "32.1.2"
+    "@cucumber/gherkin" "32.2.0"
     "@cucumber/gherkin-streams" "5.0.1"
     "@cucumber/gherkin-utils" "9.2.0"
     "@cucumber/html-formatter" "21.13.0"
@@ -104,10 +104,10 @@
     commander "13.1.0"
     source-map-support "^0.5.21"
 
-"@cucumber/gherkin@32.1.2":
-  version "32.1.2"
-  resolved "https://registry.yarnpkg.com/@cucumber/gherkin/-/gherkin-32.1.2.tgz#c03ecc77f6ec55c363111c0deb3d0cd1f4908c42"
-  integrity sha512-hj1DcaiIpXJg+mo58zpQyP8c6YsUY/NIOK8oWg1XxbXAWkuYNWr9kkM+i8Xxg1yT6YEzn1loLBG6GjL6SPYOZQ==
+"@cucumber/gherkin@32.2.0":
+  version "32.2.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/gherkin/-/gherkin-32.2.0.tgz#d9f0975a11815e8e091cf0faf70e4292c1e3b5a3"
+  integrity sha512-X8xuVhSIqlUjxSRifRJ7t0TycVWyX58fygJH3wDNmHINLg9sYEkvQT0SO2G5YlRZnYc11TIFr4YPenscvdlBIw==
   dependencies:
     "@cucumber/messages" ">=19.1.4 <28"
 

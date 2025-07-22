@@ -624,10 +624,7 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 		return nil, err
 	}
 
-	needNewLeader := false
-	if currentLeader == "" {
-		needNewLeader = true
-	}
+	needNewLeader := currentLeader == ""
 
 	if !needNewLeader {
 		found := slices.Contains(peers, currentLeader)

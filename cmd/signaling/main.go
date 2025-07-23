@@ -18,6 +18,7 @@ import (
 	"github.com/poki/netlib/internal/util"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -32,7 +33,9 @@ func main() {
 
 	store, flushed, err := stores.FromEnv(ctx)
 	if err != nil {
-		logger.Panic("failed setup store", zap.Error(err))
+		// Don't print a stacktrace here, it's confusing for users.
+		logger.WithOptions(zap.AddStacktrace(zapcore.InvalidLevel)).Error("failed to setup store", zap.Error(err))
+		return
 	}
 
 	if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "test" {

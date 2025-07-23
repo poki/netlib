@@ -1,9 +1,12 @@
 package stores
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +34,7 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		}
 		return store, nil, nil
 
-	} else if _, hasDocker := os.LookupEnv("DOCKER_HOST"); hasDocker {
+	} else if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "test" {
 		pool, err := dockertest.NewPool("")
 		if err != nil {
 			return nil, nil, err
@@ -66,7 +69,17 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 				return nil, nil, err
 			}
 		}
-		databaseUrl := fmt.Sprintf("postgres://test:test@%s/test?sslmode=disable", resource.GetHostPort("5432/tcp"))
+
+		hostPort := resource.GetHostPort("5432/tcp")
+
+		// If we are running in Docker, we need to replace localhost with host.docker.internal.
+		// This allows us to connect to the postgres dockertest just started inside our container.
+		// localhost will not work in this case as it refers to the container itself.
+		if runningInDocker() {
+			hostPort = strings.ReplaceAll(hostPort, "localhost", "host.docker.internal")
+		}
+
+		databaseUrl := fmt.Sprintf("postgres://test:test@%s/test?sslmode=disable", hostPort)
 
 		// This log message is used by the test suite to pass the database URL to the testproxy.
 		logger.Info("using database", zap.String("url", databaseUrl))
@@ -95,5 +108,21 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		}
 		return store, flushed, nil
 	}
-	return nil, nil, fmt.Errorf("no database configured export DATABASE_URL or DOCKER_HOST to run locally")
+	return nil, nil, fmt.Errorf("no database configured, set DATABASE_URL in production, or ENV=local to automatically start a temporary database")
+}
+
+// runningInDocker returns true if the code is running inside a Docker container.
+func runningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	if b, err := os.ReadFile("/proc/1/cgroup"); err == nil {
+		return bytes.Contains(b, []byte("docker")) ||
+			bytes.Contains(b, []byte("kubepods")) ||
+			bytes.Contains(b, []byte("containerd"))
+	}
+
+	_, err := net.LookupHost("host.docker.internal")
+	return err == nil
 }

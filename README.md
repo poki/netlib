@@ -122,9 +122,21 @@ UDP Transport
 
 While Poki provides hosted STUN/TURN and signaling services for free, you can also self-host these components:
 
-1. Set up your own signaling server using the provided Docker image
-2. Configure your own STUN/TURN servers
-3. Initialize the network with custom endpoints:
+1. Set up your own signaling server
+
+    Using the provided Docker image:
+    ```sh
+    $ docker build -t netlib .
+    $ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 -e ENV=local netlib
+    ```
+    Or by running the signaling server binary directly:
+    ```sh
+    $ go build -o signaling cmd/signaling/main.go
+    $ ENV=local ./signaling
+    ```
+2. For persistent storage remove `ENV=local` and set `DATABASE_URL` to your PostgreSQL database URL.
+3. Configure your own STUN/TURN servers.
+4. Initialize the network with custom endpoints:
 ```js
 const network = new Network('<game-id>', {
   signalingServer: 'wss://your-server.com',

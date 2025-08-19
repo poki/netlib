@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const timeout = 5 * time.Second
+const timeout = 10 * time.Second
 const maxIdleConnsPerHost = 32
 const maxConnsPerHost = 32
 const maxRetries = 5
@@ -103,14 +103,14 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 	idempotency := xid.New().String()
 	logger = logger.With(zap.String("idempotency", idempotency))
 
-	// Use a new context, we want to record events of users that are already disconnected.
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
 	for i := range maxRetries {
 		if i > 0 {
 			time.Sleep(time.Duration(rand.Int63n(backoffRange)*int64(i)) * time.Millisecond)
 		}
+
+		// Use a new context, we want to record events of users that are already disconnected.
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(payload))
 		if err != nil {

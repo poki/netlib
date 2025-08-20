@@ -5,7 +5,7 @@
 => `{"type": "hello", "game": "GameUUID", "id?": "previousPeerID", "lobby?": "previousLobby"}`
 
 ## Server responds with:
-<= `{"type": "welcome", "id": "newPeerID"}`
+<= `{"type": "welcome", "id": "newPeerID", "secret": "peerSecret", "protocolVersion": "1.0.0", "warnings?": ["optional warning messages"]}`
 
 ## Then the connection idles until client calls create() or join('lobby')
 

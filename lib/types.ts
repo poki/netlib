@@ -82,6 +82,8 @@ export interface WelcomePacket extends Base {
   type: 'welcome'
   id: string
   secret: string
+  protocolVersion: string
+  warnings?: string[]
 }
 
 export interface ListPacket extends Base {

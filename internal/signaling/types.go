@@ -8,6 +8,10 @@ import (
 	"github.com/poki/netlib/internal/signaling/stores"
 )
 
+// ProtocolVersion defines the current protocol version
+// This should be incremented when backwards incompatible changes are made
+const ProtocolVersion = "1.0.0"
+
 type PingPacket struct {
 	Type string `json:"type"`
 }
@@ -24,8 +28,10 @@ type HelloPacket struct {
 type WelcomePacket struct {
 	Type string `json:"type"`
 
-	ID     string `json:"id"`
-	Secret string `json:"secret"`
+	ID              string   `json:"id"`
+	Secret          string   `json:"secret"`
+	ProtocolVersion string   `json:"protocolVersion"`
+	Warnings        []string `json:"warnings,omitempty"`
 }
 
 type ListPacket struct {

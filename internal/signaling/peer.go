@@ -226,11 +226,37 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		}
 	}
 
-	err := p.Send(ctx, WelcomePacket{
-		Type:   "welcome",
-		ID:     p.ID,
-		Secret: p.Secret,
-	})
+	// Prepare warnings based on client version or other conditions
+	var warnings []string
+	
+	// Example: warn about deprecated features or compatibility issues
+	// This demonstrates how to use the warnings field in the future
+	if packet.Version != "" {
+		// Example logic for version-based warnings
+		// In a real scenario, you might parse semantic versions and compare properly
+		// For now, just demonstrate the capability without complex version parsing
+		_ = packet.Version // acknowledge we're using the version field
+	}
+	
+	// Future examples of when warnings might be added:
+	// - Protocol version mismatches
+	// - Deprecated game features
+	// - Server maintenance notifications
+	// - Feature flags that might affect client behavior
+
+	welcomePacket := WelcomePacket{
+		Type:            "welcome",
+		ID:              p.ID,
+		Secret:          p.Secret,
+		ProtocolVersion: ProtocolVersion,
+	}
+	
+	// Only include warnings if there are any
+	if len(warnings) > 0 {
+		welcomePacket.Warnings = warnings
+	}
+
+	err := p.Send(ctx, welcomePacket)
 	if err != nil {
 		return err
 	}

@@ -26,6 +26,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 	}
 	go manager.Run(ctx)
 
+	// Create rate limiter for password attempts: 5 attempts per 15 minutes per IP
+	passwordRateLimiter := util.NewPasswordRateLimiter(5, 15*time.Minute)
+
 	go func() {
 		logger := logging.GetLogger(ctx)
 		ticker := time.NewTicker(LobbyCleanInterval)
@@ -43,11 +46,23 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		}
 	}()
 
+	// Close rate limiter when context is done
+	go func() {
+		<-ctx.Done()
+		passwordRateLimiter.Close()
+	}()
+
 	wg := &sync.WaitGroup{}
 	return wg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		logger := logging.GetLogger(ctx)
 		logger.Debug("upgrading connection")
+
+		// Extract remote address for rate limiting
+		remoteAddr := r.RemoteAddr
+		if r.Header.Get("X-Forwarded-For") != "" {
+			remoteAddr = strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0])
+		}
 
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -69,6 +84,8 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			conn:  conn,
 
 			retrievedIDCallback: manager.Reconnected,
+			rateLimiter:         passwordRateLimiter,
+			remoteAddr:          remoteAddr,
 		}
 		defer func() {
 			logger.Info("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))

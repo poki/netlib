@@ -26,6 +26,8 @@ type Peer struct {
 	closedPacketReceived bool
 
 	retrievedIDCallback func(context.Context, string, string, string) (bool, []string, error)
+	rateLimiter         *util.PasswordRateLimiter
+	remoteAddr          string
 
 	ID     string
 	Secret string
@@ -460,12 +462,27 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return fmt.Errorf("lobby code too long")
 	}
 
+	// Check rate limit for password attempts if rate limiter is available
+	if p.rateLimiter != nil {
+		logger.Debug("checking rate limit", zap.String("remote_addr", p.remoteAddr))
+		if !p.rateLimiter.IsAllowed(ctx, p.remoteAddr) {
+			logger.Warn("rate limit exceeded for password attempt", zap.String("remote_addr", p.remoteAddr))
+			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("too many password attempts"), "rate-limited"))
+			return nil
+		}
+	}
+
 	err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID, packet.Password)
 	if err != nil {
 		if err == stores.ErrNotFound {
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "lobby-not-found"))
 			return nil
 		} else if err == stores.ErrInvalidPassword {
+			// Record failed password attempt for rate limiting
+			if p.rateLimiter != nil {
+				logger.Debug("recording failed password attempt", zap.String("remote_addr", p.remoteAddr))
+				p.rateLimiter.RecordFailedAttempt(ctx, p.remoteAddr)
+			}
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
 			return nil
 		} else if err == stores.ErrLobbyIsFull {

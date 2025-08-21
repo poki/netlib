@@ -27,7 +27,6 @@ type Peer struct {
 
 	retrievedIDCallback func(context.Context, string, string, string) (bool, []string, error)
 	rateLimiter         *util.PasswordRateLimiter
-	remoteAddr          string
 
 	ID     string
 	Secret string
@@ -464,9 +463,8 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 
 	// Check rate limit for password attempts if rate limiter is available
 	if p.rateLimiter != nil {
-		logger.Debug("checking rate limit", zap.String("remote_addr", p.remoteAddr))
-		if !p.rateLimiter.IsAllowed(ctx, p.remoteAddr) {
-			logger.Warn("rate limit exceeded for password attempt", zap.String("remote_addr", p.remoteAddr))
+		if !p.rateLimiter.IsAllowed(ctx, "") {
+			logger.Warn("rate limit exceeded for password attempt")
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(fmt.Errorf("too many password attempts"), "rate-limited"))
 			return nil
 		}
@@ -480,8 +478,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		} else if err == stores.ErrInvalidPassword {
 			// Record failed password attempt for rate limiting
 			if p.rateLimiter != nil {
-				logger.Debug("recording failed password attempt", zap.String("remote_addr", p.remoteAddr))
-				p.rateLimiter.RecordFailedAttempt(ctx, p.remoteAddr)
+				p.rateLimiter.RecordFailedAttempt(ctx, "")
 			}
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
 			return nil

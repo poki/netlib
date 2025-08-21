@@ -6,13 +6,14 @@ import (
 	"time"
 )
 
-// GetRemoteAddr extracts the remote IP address from context 
-// This duplicates the logic from metrics package to avoid circular imports
-func GetRemoteAddr(ctx context.Context) string {
-	// Use the same context key pattern as metrics package
-	type metricsContextKey int
-	remoteAddrKey := metricsContextKey(1)
-	
+// metricsContextKey matches the key type used in metrics package to avoid import cycle
+type metricsContextKey int
+
+const remoteAddrKey = metricsContextKey(1)
+
+// getRemoteAddr extracts the remote IP address from context
+// This matches the implementation in metrics package to avoid circular imports
+func getRemoteAddr(ctx context.Context) string {
 	if addr, ok := ctx.Value(remoteAddrKey).(string); ok {
 		return addr
 	}
@@ -48,8 +49,12 @@ func NewPasswordRateLimiter(maxAttempts int, windowSize time.Duration) *Password
 }
 
 // IsAllowed checks if a password attempt from the given IP is allowed
+// If remoteAddr is empty, it will be extracted from the context
 // Returns true if attempt is allowed, false if rate limited
 func (rl *PasswordRateLimiter) IsAllowed(ctx context.Context, remoteAddr string) bool {
+	if remoteAddr == "" {
+		remoteAddr = getRemoteAddr(ctx)
+	}
 	if remoteAddr == "" {
 		return true // Allow if we can't determine IP
 	}
@@ -77,7 +82,11 @@ func (rl *PasswordRateLimiter) IsAllowed(ctx context.Context, remoteAddr string)
 }
 
 // RecordFailedAttempt records a failed password attempt for the given IP
+// If remoteAddr is empty, it will be extracted from the context
 func (rl *PasswordRateLimiter) RecordFailedAttempt(ctx context.Context, remoteAddr string) {
+	if remoteAddr == "" {
+		remoteAddr = getRemoteAddr(ctx)
+	}
 	if remoteAddr == "" {
 		return // Nothing to record if we can't determine IP
 	}

@@ -58,12 +58,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		logger := logging.GetLogger(ctx)
 		logger.Debug("upgrading connection")
 
-		// Extract remote address for rate limiting
-		remoteAddr := r.RemoteAddr
-		if r.Header.Get("X-Forwarded-For") != "" {
-			remoteAddr = strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0])
-		}
-
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -85,7 +79,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 			retrievedIDCallback: manager.Reconnected,
 			rateLimiter:         passwordRateLimiter,
-			remoteAddr:          remoteAddr,
 		}
 		defer func() {
 			logger.Info("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))

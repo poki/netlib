@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: '1.24.0'
     - run: yarn install --frozen-lockfile
@@ -56,7 +56,7 @@ jobs:
         credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
     - name: 'Set up Cloud SDK'
       uses: google-github-actions/setup-gcloud@v3
-    - uses: google-github-actions/get-gke-credentials@v2
+    - uses: google-github-actions/get-gke-credentials@v3
       with:
         cluster_name: production-eu-west-4
         location: europe-west4-a

@@ -72,7 +72,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		}
 		defer func() {
 			logger.Info("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
-			conn.Close(websocket.StatusInternalError, "unexpected closure")
+			conn.Close(websocket.StatusInternalError, "unexpected closure") // nolint:errcheck
 
 			if !peer.closedPacketReceived {
 				// At this point ctx has already been cancelled, so we create a new one to use for the disconnect.
@@ -82,8 +82,8 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 		}()
 
-		go func() { // Sending ping packet every 30 to check if the tcp connection is still alive.
-			ticker := time.NewTicker(30 * time.Second)
+		go func() { // Sending ping packet every 2 seconds to check if the tcp connection is still alive.
+			ticker := time.NewTicker(2 * time.Second)
 			defer ticker.Stop()
 			for {
 				select {

@@ -8,6 +8,8 @@ updates:
       github-actions:
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -16,6 +18,8 @@ updates:
       gomod:
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
@@ -24,6 +28,8 @@ updates:
       docker:
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -32,3 +38,5 @@ updates:
       npm:
         patterns:
           - "*"
+    cooldown:
+      default-days: 5

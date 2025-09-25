@@ -210,21 +210,25 @@ When('{string} leaves the lobby', async function (this: World, playerName: strin
   await player.network.leave()
 })
 
-When('{string} requests all lobbies', async function (this: World, playerName: string) {
+When('{string} requests lobbies with:', async function (this: World, playerName: string, payload: string | DataTable) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
-  const lobbies = await player.network.list()
-  player.lastReceivedLobbies = lobbies
-})
+  let filter: any
+  let sort: Record<string, 1 | -1> | undefined
+  let limit: number | undefined
 
-When('{string} requests lobbies with this filter:', async function (this: World, playerName: string, filter: string) {
-  const player = this.players.get(playerName)
-  if (player == null) {
-    throw new Error('no such player')
+  if (typeof payload !== 'string') {
+    const argsHash = payload.rowsHash()
+    filter = argsHash.filter != null ? JSON.parse(argsHash.filter) : undefined
+    sort = argsHash.sort != null ? JSON.parse(argsHash.sort) : undefined
+    limit = argsHash.limit != null ? parseInt(argsHash.limit, 10) : undefined
+  } else {
+    filter = JSON.parse(payload)
   }
-  const lobbies = await player.network.list(JSON.parse(filter))
+
+  const lobbies = await player.network.list(filter, sort, limit)
   player.lastReceivedLobbies = lobbies
 })
 

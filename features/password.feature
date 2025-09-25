@@ -62,7 +62,7 @@ Feature: Lobbies can be password protected
       """
     And "yellow" receives the network event "lobby" with the argument "h5yzwyizlwao"
 
-    When "yellow" requests lobbies with this filter:
+    When "yellow" requests lobbies with:
       """json
       {}
       """
@@ -76,7 +76,7 @@ Feature: Lobbies can be password protected
         "password": ""
       }
       """
-    And "yellow" requests lobbies with this filter:
+    And "yellow" requests lobbies with:
       """json
       {}
       """

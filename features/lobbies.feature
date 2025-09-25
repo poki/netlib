@@ -6,7 +6,10 @@ Feature: Lobby Discovery
 
   Scenario: List empty lobby set
     Given "green" is connected as "1u8fw4aph5ypt" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
-    When "green" requests all lobbies
+    When "green" requests lobbies with:
+      """json
+      {}
+      """
     Then "green" should receive 0 lobbies
 
   Scenario: Don't list lobbies from a different game
@@ -14,7 +17,10 @@ Feature: Lobby Discovery
     And "blue" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "yellow" is connected as "19yrzmetd2bn7" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "blue,yellow" are joined in a lobby
-    When "green" requests all lobbies
+    When "green" requests lobbies with:
+      """json
+      {}
+      """
     Then "green" should receive 0 lobbies
 
   Scenario: List lobbies that exist
@@ -29,7 +35,10 @@ Feature: Lobby Discovery
       """
     And "blue" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
-    When "green" requests all lobbies
+    When "green" requests lobbies with:
+      """json
+      {}
+      """
     Then "green" should have received only these lobbies:
       | code          | playerCount |
       | 19yrzmetd2bn7 | 1           |
@@ -54,7 +63,10 @@ Feature: Lobby Discovery
       """
     And "yellow" receives the network event "lobby" with the argument "prb67ouj837u"
 
-    When "green" requests all lobbies
+    When "green" requests lobbies with:
+      """json
+      {}
+      """
     Then "green" should have received only these lobbies:
       | code         | playerCount | public |
       | 3t3cfgcqup9e | 1           | true   |
@@ -74,7 +86,7 @@ Feature: Lobby Discovery
       | 8qva9vyurwbbl | 54fa57d5-b4bd-401d-981d-2c13de99be27 | 9           | true   |
       | 9qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 10          | true   |
 
-    When "green" requests lobbies with this filter:
+    When "green" requests lobbies with:
       """json
       {
         "playerCount": {
@@ -97,7 +109,7 @@ Feature: Lobby Discovery
       | 1qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_dust"} | true   | 2020-01-02 |
       | 2qva9vyurwbbl | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | {"map": "de_nuke"} | true   | 2020-01-03 |
 
-    When "green" requests lobbies with this filter:
+    When "green" requests lobbies with:
       """json
       {
         "map": "de_nuke",
@@ -126,7 +138,10 @@ Feature: Lobby Discovery
     When "blue" disconnects
     Then "blue" receives the network event "close"
 
-    When "green" requests all lobbies
+    When "green" requests lobbies with:
+      """json
+      {}
+      """
     Then "green" should have received only these lobbies:
       | code | playerCount |
       | HC6Y | 0           |
@@ -152,7 +167,7 @@ Feature: Lobby Discovery
       """
     And "green" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
-    When "blue" requests lobbies with this filter:
+    When "blue" requests lobbies with:
       """json
       {
         "map": "de_nuke"
@@ -162,3 +177,20 @@ Feature: Lobby Discovery
       | code          |
       | 19yrzmetd2bn7 |
       | 3qva9vyurwbb  |
+
+  Scenario: Sort lobbies with a custom order
+    Given "green" is connected as "1u8fw4aph5ypt" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And these lobbies exist:
+      | code         | game                                 | playerCount | public | created_at |
+      | 1qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 1           | true   | 2020-01-03 |
+      | 2qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 3           | true   | 2020-01-02 |
+      | 3qva9vyurwbb | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 5           | true   | 2020-01-01 |
+
+    When "green" requests lobbies with:
+      | filter | {}                    |
+      | sort   | { "playerCount": -1 } |
+      | limit  | 2                     |
+    Then "green" should have received only these lobbies:
+      | code         | playerCount |
+      | 3qva9vyurwbb | 5           |
+      | 2qva9vyurwbb | 3           |

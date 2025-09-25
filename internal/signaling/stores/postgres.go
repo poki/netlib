@@ -312,17 +312,36 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
-func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([]Lobby, error) {
+func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {
 		filter = "{}"
 	}
 
-	where, values, err := s.filterConverter.Convert([]byte(filter), 2)
+	where, values, err := s.filterConverter.Convert([]byte(filter), 3)
 	if err != nil {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("failed to convert filter", zap.String("filter", filter), zap.Error(err))
 		return nil, fmt.Errorf("invalid filter: %w", err)
+	}
+
+	var order string
+	if sort != "" {
+		order, err = s.filterConverter.ConvertOrderBy([]byte(sort))
+		if err != nil {
+			logger := logging.GetLogger(ctx)
+			logger.Warn("failed to convert order", zap.String("sort", sort), zap.Error(err))
+			return nil, fmt.Errorf("invalid order: %w", err)
+		}
+	}
+	if order == "" {
+		order = `"createdAt" DESC, "code" ASC`
+	} else {
+		order += `, "createdAt" DESC, "code" ASC`
+	}
+
+	if limit <= 0 {
+		limit = 50
 	}
 
 	var lobbies []Lobby
@@ -348,9 +367,9 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter string) ([
 		SELECT *
 		FROM lobbies
 		WHERE `+where+`
-		ORDER BY "createdAt" DESC
-		LIMIT 50
-	`, append([]any{game}, values...)...)
+		ORDER BY `+order+`
+		LIMIT $2
+	`, append([]any{game, limit}, values...)...)
 	if err != nil {
 		return nil, err
 	}

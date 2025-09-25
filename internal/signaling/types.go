@@ -33,6 +33,8 @@ type ListPacket struct {
 	Type      string `json:"type"`
 
 	Filter string `json:"filter"`
+	Sort   string `json:"sort"`
+	Limit  int    `json:"limit"`
 }
 
 type LobbiesPacket struct {

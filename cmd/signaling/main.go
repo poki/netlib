@@ -57,6 +57,7 @@ func main() {
 	corsHandler := cors.Default()
 	handler := corsHandler.Handler(mux)
 	handler = util.NoStoreMiddleware(handler)
+	handler = util.NoLogServedMiddleware(handler)
 	handler = logging.Middleware(handler, logger)
 
 	if metricsURL, ok := os.LookupEnv("METRICS_URL"); ok {

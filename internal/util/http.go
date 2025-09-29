@@ -160,3 +160,13 @@ func NoStoreMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// NoLogServedMiddleware is an HTTP middleware that marks the request to be ignored by the logging middleware.
+// This prevents "served" messages from being logged.
+func NoLogServedMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logging.IgnoreRequest(r)
+
+		next.ServeHTTP(w, r)
+	})
+}

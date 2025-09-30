@@ -43,7 +43,7 @@ Feature: Lobbies can have a maximum number of players
       """
     And "yellow" receives the network event "lobby" with the argument "h5yzwyizlwao"
 
-    When "yellow" requests lobbies with this filter:
+    When "yellow" requests lobbies with:
       """json
       {}
       """
@@ -58,7 +58,7 @@ Feature: Lobbies can have a maximum number of players
       }
       """
 
-    When "yellow" requests lobbies with this filter:
+    When "yellow" requests lobbies with:
       """json
       {}
       """

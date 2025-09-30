@@ -85,7 +85,7 @@ Feature: customData on lobbies can be used for filtering and extra information
       """
     And "yellow" receives the network event "lobby" with the argument "19yrzmetd2bn7"
 
-    When "blue" requests lobbies with this filter:
+    When "blue" requests lobbies with:
       """json
       {
         "status": "open"
@@ -104,7 +104,7 @@ Feature: customData on lobbies can be used for filtering and extra information
       }
       """
 
-    When "blue" requests lobbies with this filter:
+    When "blue" requests lobbies with:
       """json
       {
         "status": "open"

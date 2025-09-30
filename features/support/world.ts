@@ -7,6 +7,7 @@ import ws from 'ws'
 import wrtc from '@roamhq/wrtc'
 
 import { Player } from './types'
+import { PeerConfiguration } from '../../lib/types'
 
 import { Network } from '../../lib'
 
@@ -35,6 +36,7 @@ export class World extends CucumberWorld {
   public testproxyURL?: string
   public useTestProxy: boolean = false
   public databaseURL?: string
+  public latencyVector: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
   public players: Map<string, Player> = new Map<string, Player>()
   public lastError: Map<string, Error> = new Map<string, Error>()
@@ -49,7 +51,13 @@ export class World extends CucumberWorld {
 
   public async createPlayer (playerName: string, gameID: string): Promise<Player> {
     return await new Promise((resolve) => {
-      const config = this.useTestProxy ? { testproxyURL: this.testproxyURL } : undefined
+      const config: PeerConfiguration = {}
+      if (this.useTestProxy) {
+        config.testproxyURL = this.testproxyURL
+      }
+      config.testLatency = {
+        vector: this.latencyVector
+      }
       const network = new Network(gameID, config, this.signalingURL)
       const player = new Player(playerName, network)
       this.players.set(playerName, player)
@@ -100,6 +108,7 @@ AfterAll(function () {
 
 Before(function (this: World) {
   this.scenarioRunning = true
+  this.latencyVector = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 })
 After(function (this: World, { result }) {
   this.scenarioRunning = false

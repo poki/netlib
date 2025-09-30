@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
+	"github.com/pgvector/pgvector-go"
 	"github.com/poki/mongodb-filter-to-postgres/filter"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
@@ -38,7 +39,7 @@ type PostgresStore struct {
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	filterConverter, err := filter.NewConverter(
-		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "latency"),
 		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 	)
 	if err != nil {
@@ -312,13 +313,24 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
-func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort string, limit int) ([]Lobby, error) {
+func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []float32, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {
 		filter = "{}"
 	}
 
-	where, values, err := s.filterConverter.Convert([]byte(filter), 3)
+	if limit <= 0 {
+		limit = 50
+	}
+
+	var latencyVector any
+	if len(latency) == 11 {
+		latencyVector = pgvector.NewVector(latency)
+	}
+
+	preValues := []any{game, latencyVector, limit}
+
+	where, values, err := s.filterConverter.Convert([]byte(filter), len(preValues)+1)
 	if err != nil {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("failed to convert filter", zap.String("filter", filter), zap.Error(err))
@@ -340,10 +352,6 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort stri
 		order += `, "createdAt" DESC, "code" ASC`
 	}
 
-	if limit <= 0 {
-		limit = 50
-	}
-
 	var lobbies []Lobby
 	rows, err := s.DB.Query(ctx, `
 		WITH lobbies AS (
@@ -359,17 +367,26 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort stri
 				can_update_by,
 				creator,
 				password IS NOT NULL,
-				max_players
+				max_players,
+				lobby_latency_estimate(
+					$2,
+					ARRAY(
+						SELECT p.latency_vector
+						FROM peers p
+						WHERE p.peer = ANY (lobbies.peers)
+							AND p.latency_vector IS NOT NULL
+					)
+				) AS latency
 			FROM lobbies
 			WHERE game = $1
-			AND public = true
+			  AND public = true
 		)
 		SELECT *
 		FROM lobbies
 		WHERE `+where+`
 		ORDER BY `+order+`
-		LIMIT $2
-	`, append([]any{game, limit}, values...)...)
+		LIMIT $3
+	`, append(preValues, values...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +394,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort stri
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.Latency)
 		if err != nil {
 			return nil, err
 		}
@@ -405,6 +422,36 @@ func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID s
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *PostgresStore) UpdatePeerLatency(ctx context.Context, peerID string, latency []float32) error {
+	now := util.NowUTC(ctx)
+
+	if len(latency) == 0 {
+		_, err := s.DB.Exec(ctx, `
+			UPDATE peers
+			SET
+				latency_vector = NULL,
+				updated_at = $1
+			WHERE peer = $2
+		`, now, peerID)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := s.DB.Exec(ctx, `
+			UPDATE peers
+			SET
+				latency_vector = $1,
+				updated_at = $2
+			WHERE peer = $3
+		`, pgvector.NewVector(latency), now, peerID)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

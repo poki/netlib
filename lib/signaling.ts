@@ -1,8 +1,9 @@
 import { EventEmitter } from 'eventemitter3'
 import Network from './network'
 import Peer from './peer'
-import { LobbyListEntry, SignalingPacketTypes } from './types'
+import { LobbyListEntry, SignalingPacketTypes, LatencyConfiguration } from './types'
 import { version } from '../package.json'
+import { getLatencyVector } from './network-latency'
 
 interface SignalingListeners {
   credentials: (data: SignalingPacketTypes) => void | Promise<void>
@@ -28,12 +29,16 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 
   private pingInterval?: ReturnType<typeof setInterval>
 
-  constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
+  private readonly latencyVectorPromise: Promise<number[]>
+
+  constructor (private readonly network: Network, peers: Map<string, Peer>, url: string, testLatency?: LatencyConfiguration) {
     super()
 
     this.url = url
     this.connections = peers
     this.replayQueue = new Map()
+
+    this.latencyVectorPromise = testLatency?.vector !== undefined ? Promise.resolve(testLatency.vector) : getLatencyVector(testLatency?.max ?? 1000, testLatency?.pings ?? 3)
 
     this.ws = this.connect()
 
@@ -47,14 +52,17 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   private connect (): WebSocket {
     const ws = new WebSocket(this.url)
     const onOpen = (): void => {
-      this.reconnectAttempt = 0
-      this.reconnecting = false
-      this.send({
-        type: 'hello',
-        game: this.network.gameID,
-        id: this.receivedID,
-        secret: this.receivedSecret,
-        version
+      void this.latencyVectorPromise.then(latencyVector => {
+        this.reconnectAttempt = 0
+        this.reconnecting = false
+        this.send({
+          type: 'hello',
+          game: this.network.gameID,
+          id: this.receivedID,
+          secret: this.receivedSecret,
+          version,
+          latencyVector
+        })
       })
     }
     const onError = (e: Event): void => {

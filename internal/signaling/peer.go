@@ -27,10 +27,11 @@ type Peer struct {
 
 	retrievedIDCallback func(context.Context, string, string, string) (bool, []string, error)
 
-	ID     string
-	Secret string
-	Game   string
-	Lobby  string
+	ID            string
+	Secret        string
+	Game          string
+	Lobby         string
+	LatencyVector []float32
 }
 
 func (p *Peer) Send(ctx context.Context, packet any) error {
@@ -226,6 +227,14 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		}
 	}
 
+	if len(packet.LatencyVector) == 11 {
+		p.LatencyVector = packet.LatencyVector
+
+		if err := p.store.UpdatePeerLatency(ctx, p.ID, p.LatencyVector); err != nil {
+			logger.Warn("failed to persist peer latency", zap.Error(err))
+		}
+	}
+
 	err := p.Send(ctx, WelcomePacket{
 		Type:   "welcome",
 		ID:     p.ID,
@@ -352,7 +361,7 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter, packet.Sort, packet.Limit)
+	lobbies, err := p.store.ListLobbies(ctx, p.Game, p.LatencyVector, packet.Filter, packet.Sort, packet.Limit)
 	if err != nil {
 		return err
 	}

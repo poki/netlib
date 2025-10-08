@@ -352,7 +352,7 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter)
+	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter, packet.Sort, packet.Limit)
 	if err != nil {
 		return err
 	}
@@ -462,13 +462,14 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 
 	err := p.store.JoinLobby(ctx, p.Game, packet.Lobby, p.ID, packet.Password)
 	if err != nil {
-		if err == stores.ErrNotFound {
+		switch err {
+		case stores.ErrNotFound:
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "lobby-not-found"))
 			return nil
-		} else if err == stores.ErrInvalidPassword {
+		case stores.ErrInvalidPassword:
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "invalid-password"))
 			return nil
-		} else if err == stores.ErrLobbyIsFull {
+		case stores.ErrLobbyIsFull:
 			util.ReplyError(ctx, p.conn, util.ErrorWithCode(err, "lobby-is-full"))
 			return nil
 		}

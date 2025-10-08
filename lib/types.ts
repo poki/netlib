@@ -87,6 +87,8 @@ export interface WelcomePacket extends Base {
 export interface ListPacket extends Base {
   type: 'list'
   filter?: string
+  sort?: string
+  limit?: number
 }
 
 export interface LobbiesPacket extends Base {

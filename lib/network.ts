@@ -48,14 +48,17 @@ export default class Network extends EventEmitter<NetworkListeners> {
     }
   }
 
-  async list (filter?: object): Promise<LobbyListEntry[]> {
+  async list (filter?: object, sort?: object, limit?: number): Promise<LobbyListEntry[]> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return []
     }
     const filterString = (filter != null) ? JSON.stringify(filter) : undefined
+    const sortString = (sort != null) ? JSON.stringify(sort) : undefined
     const reply = await this.signaling.request({
       type: 'list',
-      filter: filterString
+      filter: filterString,
+      sort: sortString,
+      limit
     })
     if (reply.type === 'lobbies') {
       return reply.lobbies

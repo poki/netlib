@@ -200,7 +200,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			return fmt.Errorf("unable to reconnect: %w", err)
 		}
 		if !hasReconnected {
-			logger.Debug("peer failed reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("version", packet.Version))
+			logger.Info("peer failed reconnecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("version", packet.Version))
 
 			err := fmt.Errorf("failed to reconnect, missing pid or invalid secret")
 			err = util.ErrorWithCode(err, "reconnect-failed")

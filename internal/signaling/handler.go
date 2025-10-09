@@ -33,7 +33,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		for {
 			select {
 			case <-ticker.C:
-				logger.Info("cleaning empty lobbies")
+				logger.Debug("cleaning empty lobbies")
 				if err := store.CleanEmptyLobbies(ctx, util.NowUTC(ctx).Add(-LobbyCleanThreshold)); err != nil {
 					logger.Error("failed to clean empty lobbies", zap.Error(err))
 				}
@@ -71,7 +71,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			retrievedIDCallback: manager.Reconnected,
 		}
 		defer func() {
-			logger.Info("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
 			conn.Close(websocket.StatusInternalError, "unexpected closure") // nolint:errcheck
 
 			if !peer.closedPacketReceived {

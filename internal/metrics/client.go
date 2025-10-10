@@ -104,6 +104,8 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 	logger = logger.With(zap.String("idempotency", idempotency))
 
 	for i := range maxRetries {
+		lastAttempt := i == maxRetries-1
+
 		if i > 0 {
 			time.Sleep(time.Duration(rand.Int63n(backoffRange)*int64(i)) * time.Millisecond)
 		}
@@ -124,7 +126,7 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 
 		resp, err := c.client.Do(req)
 		if err != nil {
-			if i < maxRetries-1 {
+			if !lastAttempt {
 				logger.Warn("failed execute metrics request, retrying", zap.Int("attempt", i), zap.Error(err))
 			} else {
 				logger.Error("failed execute metrics request", zap.Error(err))
@@ -135,7 +137,9 @@ func (c *Client) RecordEvent(ctx context.Context, params EventParams) {
 		resp.Body.Close()              //nolint:errcheck
 
 		if resp.StatusCode != http.StatusNoContent {
-			logger.Error("unexpected status code from metrics endpoint", zap.Int("status", resp.StatusCode))
+			if lastAttempt {
+				logger.Error("unexpected status code from metrics endpoint", zap.Int("status", resp.StatusCode))
+			}
 			if resp.StatusCode/100 == 5 {
 				continue
 			}

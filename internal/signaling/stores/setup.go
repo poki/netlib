@@ -7,21 +7,52 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/poki/netlib/migrations"
 	"go.uber.org/zap"
+
+	pgxvec "github.com/pgvector/pgvector-go/pgx"
 )
+
+func getConfig(url string) (*pgxpool.Config, error) {
+	cfg, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse database URL: %w", err)
+	}
+
+	// Ensure the vector extension is created only once, not on every new connection.
+	// It needs to be create before we call pgxvec.RegisterTypes.
+	var createExtensionOnce sync.Once
+
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		createExtensionOnce.Do(func() {
+			if _, err := conn.Exec(ctx, "CREATE EXTENSION IF NOT EXISTS vector"); err != nil {
+				panic(err)
+			}
+		})
+
+		return pgxvec.RegisterTypes(ctx, conn)
+	}
+
+	return cfg, nil
+}
 
 func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 	logger := logging.GetLogger(ctx)
 
 	if url, ok := os.LookupEnv("DATABASE_URL"); ok {
-		db, err := pgxpool.New(ctx, url)
+		cfg, err := getConfig(url)
+		if err != nil {
+			return nil, nil, err
+		}
+		db, err := pgxpool.NewWithConfig(ctx, cfg)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to connect: %w", err)
 		}
@@ -40,8 +71,8 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 			return nil, nil, err
 		}
 		resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-			Repository: "postgres",
-			Tag:        "15-alpine",
+			Repository: "pgvector/pgvector",
+			Tag:        "pg15",
 			Env: []string{
 				"POSTGRES_PASSWORD=test",
 				"POSTGRES_USER=test",
@@ -84,12 +115,17 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		// This log message is used by the test suite to pass the database URL to the testproxy.
 		logger.Info("using database", zap.String("url", databaseUrl))
 
+		cfg, err := getConfig(databaseUrl)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		var db *pgxpool.Pool
 		pool.MaxWait = 120 * time.Second
 		if err = pool.Retry(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
-			db, err = pgxpool.New(ctx, databaseUrl)
+			db, err = pgxpool.NewWithConfig(ctx, cfg)
 			if err != nil {
 				return err
 			}

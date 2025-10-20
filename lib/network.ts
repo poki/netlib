@@ -36,10 +36,10 @@ export default class Network extends EventEmitter<NetworkListeners> {
 
   private readonly unloadListener: () => void
 
-  constructor (public readonly gameID: string, private readonly rtcConfig: PeerConfiguration = DefaultRTCConfiguration, signalingURL: string = DefaultSignalingURL) {
+  constructor (public readonly gameID: string, private readonly peerConfig: PeerConfiguration = DefaultRTCConfiguration, signalingURL: string = DefaultSignalingURL) {
     super()
     this.peers = new Map<string, Peer>()
-    this.signaling = new Signaling(this, this.peers, signalingURL)
+    this.signaling = new Signaling(this, this.peers, signalingURL, peerConfig.testLatency)
     this.credentials = new Credentials(this.signaling)
 
     this.unloadListener = () => this.close()
@@ -157,7 +157,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
    * @internal
    */
   async _addPeer (id: string, polite: boolean): Promise<void> {
-    const config = await this.credentials.fillCredentials(this.rtcConfig)
+    const config = await this.credentials.fillCredentials(this.peerConfig)
 
     config.iceServers = config.iceServers?.filter(server => !(server.urls.includes('turn:') && server.username === undefined))
 
@@ -176,7 +176,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
    * @internal
    */
   _prefetchTURNCredentials (): void {
-    this.credentials.fillCredentials(this.rtcConfig).catch(() => {})
+    this.credentials.fillCredentials(this.peerConfig).catch(() => {})
   }
 
   /**

@@ -19,6 +19,8 @@ import (
 
 const LobbyCleanInterval = 30 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
+const peerPingDuration = 2 * time.Second
+const peerActiveUpdateInterval = 30 * time.Second
 
 func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) (*sync.WaitGroup, http.HandlerFunc) {
 	manager := &TimeoutManager{
@@ -82,9 +84,10 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 		}()
 
-		go func() { // Sending ping packet every 2 seconds to check if the tcp connection is still alive.
-			ticker := time.NewTicker(2 * time.Second)
+		go func() { // Sending ping packet every X to check if the tcp connection is still alive.
+			ticker := time.NewTicker(peerPingDuration)
 			defer ticker.Stop()
+			var lastActiveUpdate time.Time
 			for {
 				select {
 				case <-ticker.C:
@@ -100,7 +103,11 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
 						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.
 						if peer.ID != "" {
-							manager.MarkPeerAsActive(ctx, peer.ID)
+							now := util.NowUTC(ctx)
+							if lastActiveUpdate.IsZero() || now.Sub(lastActiveUpdate) >= peerActiveUpdateInterval {
+								manager.MarkPeerAsActive(ctx, peer.ID)
+								lastActiveUpdate = now
+							}
 						}
 					}
 				case <-ctx.Done():

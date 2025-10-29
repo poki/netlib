@@ -97,6 +97,7 @@ func (c *CredentialsClient) fetchCredentials(ctx context.Context) (*Credentials,
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode/100 != 2 {
 		return nil, fmt.Errorf("unexpected error from Cloudflare: %s", resp.Status)

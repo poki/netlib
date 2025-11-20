@@ -30,7 +30,7 @@ export async function getLatencyVector (max: number, pings: number): Promise<num
       latency += Math.round((performance.now() - start) / 2) // Divide by 2 to estimate one-way latency.
     }
 
-    return Math.round(latency / pings) // Average of two measurements.
+    return Math.round(latency / pings) // Average of multiple measurements.
   }))
   return measurements
 }

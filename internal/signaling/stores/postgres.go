@@ -354,7 +354,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 
 	var lobbies []Lobby
 	rows, err := s.DB.Query(ctx, `
-		WITH lobbies AS (
+		WITH game_lobbies AS (
 			SELECT
 				code,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
@@ -382,7 +382,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 			  AND public = true
 		)
 		SELECT *
-		FROM lobbies
+		FROM game_lobbies
 		WHERE `+where+`
 		ORDER BY `+order+`
 		LIMIT $3
@@ -428,28 +428,20 @@ func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID s
 func (s *PostgresStore) UpdatePeerLatency(ctx context.Context, peerID string, latency []float32) error {
 	now := util.NowUTC(ctx)
 
-	if len(latency) == 0 {
-		_, err := s.DB.Exec(ctx, `
-			UPDATE peers
-			SET
-				latency_vector = NULL,
-				updated_at = $1
-			WHERE peer = $2
-		`, now, peerID)
-		if err != nil {
-			return err
-		}
-	} else {
-		_, err := s.DB.Exec(ctx, `
-			UPDATE peers
-			SET
-				latency_vector = $1,
-				updated_at = $2
-			WHERE peer = $3
-		`, pgvector.NewVector(latency), now, peerID)
-		if err != nil {
-			return err
-		}
+	var vec *pgvector.Vector
+	if len(latency) > 0 {
+		v := pgvector.NewVector(latency)
+		vec = &v
+	}
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			latency_vector = $1,
+			updated_at = $2
+		WHERE peer = $3
+	`, vec, now, peerID)
+	if err != nil {
+		return err
 	}
 
 	return nil

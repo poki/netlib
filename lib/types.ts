@@ -4,6 +4,25 @@ export interface PeerConfiguration extends RTCConfiguration {
    * @internal
    */
   testproxyURL?: string
+
+  /**
+   * @internal
+   */
+  testLatency?: LatencyConfiguration
+}
+
+/**
+ * @internal
+ *
+ * This configuration is used to for our feature tests and exposes
+ * `max` and `pings` so we can start experimenting with these in
+ * a production environment.
+ */
+export interface LatencyConfiguration {
+  vector?: number[]
+
+  max?: number
+  pings?: number
 }
 
 export interface LobbySettings {
@@ -27,6 +46,7 @@ export interface LobbyListEntry {
   term: number
   createdAt: string
   updatedAt: string
+  latency?: number
 }
 
 interface Base {
@@ -76,6 +96,7 @@ export interface HelloPacket extends Base {
   id?: string
   secret?: string
   version?: string
+  latencyVector?: number[]
 }
 
 export interface WelcomePacket extends Base {

@@ -19,7 +19,7 @@ Given('{string} is connected as {string} and ready for game {string}', async fun
   }
 })
 
-async function areJoinedInALobby (this: World, playerNamesRaw: string): Promise<void> {
+async function areJoinedInALobby (this: World, playerNamesRaw: string, publc: boolean): Promise<void> {
   const playerNames = playerNamesRaw.split(',').map(s => s.trim())
   if (playerNames.length < 2) {
     throw new Error('need at least 2 players to join a lobby')
@@ -29,7 +29,9 @@ async function areJoinedInALobby (this: World, playerNamesRaw: string): Promise<
     throw new Error(`player ${playerNames[0]} not found`)
   }
 
-  void first.network.create()
+  void first.network.create({
+    public: publc
+  })
   const lobbyEvent = await first.waitForEvent('lobby')
   const lobbyCode = lobbyEvent.eventPayload[0] as string
 
@@ -55,7 +57,13 @@ async function areJoinedInALobby (this: World, playerNamesRaw: string): Promise<
   }
 }
 
-Given('{string} are joined in a lobby', areJoinedInALobby)
+Given('{string} are joined in a lobby', async function (this: World, playerNamesRaw: string) {
+  await areJoinedInALobby.call(this, playerNamesRaw, false)
+})
+
+Given('{string} are joined in a public lobby', async function (this: World, playerNamesRaw: string) {
+  await areJoinedInALobby.call(this, playerNamesRaw, true)
+})
 
 Given('{string} are joined in a lobby for game {string}', async function (this: World, playerNamesRaw: string, gameID: string) {
   const playerNames = playerNamesRaw.split(',').map(s => s.trim())
@@ -72,7 +80,7 @@ Given('{string} are joined in a lobby for game {string}', async function (this: 
     }
   }
 
-  await areJoinedInALobby.call(this, playerNamesRaw)
+  await areJoinedInALobby.call(this, playerNamesRaw, false)
 })
 
 Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
@@ -120,6 +128,41 @@ Given('these lobbies exist:', async function (this: World, lobbies: DataTable) {
   await fetch(`${this.testproxyURL}/sql`, {
     method: 'POST',
     body: 'INSERT INTO lobbies (' + columns.join(', ') + ') VALUES ' + values.join(', ')
+  })
+})
+
+Given('these peers exist:', async function (this: World, peers: DataTable) {
+  if (this.testproxyURL === undefined) {
+    throw new Error('testproxy not active')
+  }
+
+  const columns: string[] = []
+  const values: string[] = []
+
+  peers.hashes().forEach(row => {
+    const v: string[] = []
+
+    Object.keys(row).forEach(key => {
+      const value = row[key]
+      if (!columns.includes(key)) {
+        columns.push(key)
+      }
+
+      if (value === 'null') {
+        v.push('NULL')
+      } else if (key === 'latency_vector') {
+        v.push(`ARRAY[${value.substring(1, value.length - 1)}]::vector(11)`)
+      } else {
+        v.push(`'${value}'`)
+      }
+    })
+
+    values.push(`(${v.join(', ')})`)
+  })
+
+  await fetch(`${this.testproxyURL}/sql`, {
+    method: 'POST',
+    body: 'INSERT INTO peers (' + columns.join(', ') + ') VALUES ' + values.join(', ')
   })
 })
 
@@ -307,7 +350,7 @@ Then('{string} should have received only these lobbies:', function (this: World,
   expectedLobbies.hashes().forEach(row => {
     const correctCodeLobby = player.lastReceivedLobbies.filter(lobby => lobby.code === row.code)
     if (correctCodeLobby.length !== 1) {
-      throw new Error(`expected to find one lobby with code ${row.code} but found ${correctCodeLobby.length}`)
+      throw new Error(`expected to find one lobby with code ${row.code} but found ${correctCodeLobby.length} in [${player.lastReceivedLobbies.map(l => l.code).join(', ')}]`)
     }
     const lobby = correctCodeLobby[0] as any
     Object.keys(lobby).forEach(key => {
@@ -318,8 +361,14 @@ Then('{string} should have received only these lobbies:', function (this: World,
     })
     const want = row as any
     Object.keys(row).forEach(key => {
-      if (`${lobby[key] as string}` !== `${want[key] as string}`) {
-        throw new Error(`expected ${key} to be ${want[key] as string} but got ${lobby[key] as string}`)
+      if (typeof lobby[key] === 'object') {
+        if (JSON.stringify(lobby[key]) !== `${want[key] as string}`) {
+          throw new Error(`expected ${key} to be ${want[key] as string} but got ${JSON.stringify(lobby[key])}`)
+        }
+      } else {
+        if (`${lobby[key] as string}` !== `${want[key] as string}`) {
+          throw new Error(`expected ${key} to be ${want[key] as string} but got ${lobby[key] as string}`)
+        }
       }
     })
   })
@@ -434,4 +483,17 @@ Then('{string} failed to join the lobby', function (playerName: string) {
   if (player.network.currentLobby !== undefined) {
     throw new Error(`player is in lobby ${player.network.currentLobby as string}`)
   }
+})
+
+When('the next peer\'s latency vector is set to:', function (latencies: string) {
+  if (latencies === 'null') {
+    this.latencyVector = null
+    return
+  }
+
+  const lv = latencies.split(',').map(s => parseInt(s.trim(), 10))
+  if (lv.length !== 11) {
+    throw new Error('latency vector must have 11 elements')
+  }
+  this.latencyVector = lv
 })

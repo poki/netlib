@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: actions/setup-go@v6
       with:
         go-version: '1.24.0'
@@ -49,7 +49,7 @@ jobs:
     timeout-minutes: 30
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: GCP auth
       uses: google-github-actions/auth@v3
       with:

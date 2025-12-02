@@ -29,13 +29,14 @@ type Store interface {
 	JoinLobby(ctx context.Context, game, lobby, id, password string) error
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
-	ListLobbies(ctx context.Context, game string, latency []float32, filter, sort string, limit int) ([]Lobby, error)
+	ListLobbies(ctx context.Context, game string, latency []float32, lat, lon *float64, filter, sort string, limit int) ([]Lobby, error)
 
 	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
 	CreatePeer(ctx context.Context, peerID, secret, gameID string) error
 	UpdatePeerLatency(ctx context.Context, peerID string, latency []float32) error
+	UpdatePeerLatLon(ctx context.Context, peerID string, lat, lon *float64) error
 	MarkPeerAsActive(ctx context.Context, peerID string) error
 	MarkPeerAsDisconnected(ctx context.Context, peerID string) error
 	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
@@ -60,7 +61,7 @@ const (
 
 type Lobby struct {
 	Code        string   `json:"code"`
-	Peers       []string `json:"peers"`
+	Peers       []string `json:"peers,omitempty"`
 	PlayerCount int      `json:"playerCount"`
 	Creator     string   `json:"creator"`
 
@@ -73,7 +74,8 @@ type Lobby struct {
 	Leader string `json:"leader,omitempty"`
 	Term   int    `json:"term"`
 
-	Latency *float32 `json:"latency,omitempty"`
+	Latency  *float32 `json:"latency,omitempty"`
+	Latency2 *float32 `json:"latency2,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

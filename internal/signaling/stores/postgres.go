@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,7 +40,7 @@ type PostgresStore struct {
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	filterConverter, err := filter.NewConverter(
-		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "latency"),
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "latency", "latency2"),
 		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 	)
 	if err != nil {
@@ -313,7 +314,7 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
-func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []float32, filter, sort string, limit int) ([]Lobby, error) {
+func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []float32, lat, lon *float64, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {
 		filter = "{}"
@@ -328,7 +329,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 		latencyVector = pgvector.NewVector(latency)
 	}
 
-	preValues := []any{game, latencyVector, limit}
+	preValues := []any{game, latencyVector, lat, lon, limit}
 
 	where, values, err := s.filterConverter.Convert([]byte(filter), len(preValues)+1)
 	if err != nil {
@@ -374,9 +375,19 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 						SELECT p.latency_vector
 						FROM peers p
 						WHERE p.peer = ANY (lobbies.peers)
-							AND p.latency_vector IS NOT NULL
+						  AND p.latency_vector IS NOT NULL
 					)
-				) AS latency
+				) AS latency,
+				CASE
+					WHEN $3::double precision IS NULL OR $4::double precision IS NULL THEN NULL
+					ELSE (
+						SELECT ROUND(AVG(est_rtt_ms_earth($3::double precision, $4::double precision, p.lat, p.lon)))
+						FROM peers p
+						WHERE p.peer = ANY (lobbies.peers)
+							AND p.lat IS NOT NULL
+							AND p.lon IS NOT NULL
+					)
+				END AS latency2
 			FROM lobbies
 			WHERE game = $1
 			  AND public = true
@@ -385,7 +396,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 		FROM game_lobbies
 		WHERE `+where+`
 		ORDER BY `+order+`
-		LIMIT $3
+		LIMIT $`+strconv.Itoa(len(preValues))+`
 	`, append(preValues, values...)...)
 	if err != nil {
 		return nil, err
@@ -394,7 +405,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.Latency)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.Latency, &lobby.Latency2)
 		if err != nil {
 			return nil, err
 		}
@@ -445,6 +456,20 @@ func (s *PostgresStore) UpdatePeerLatency(ctx context.Context, peerID string, la
 	}
 
 	return nil
+}
+
+func (s *PostgresStore) UpdatePeerLatLon(ctx context.Context, peerID string, lat, lon *float64) error {
+	now := util.NowUTC(ctx)
+
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			lat = $1,
+			lon = $2,
+			updated_at = $3
+		WHERE peer = $4
+	`, lat, lon, now, peerID)
+	return err
 }
 
 func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) error {

@@ -49,7 +49,7 @@ export class World extends CucumberWorld {
     }
   }
 
-  public async createPlayer (playerName: string, gameID: string): Promise<Player> {
+  public async createPlayer (playerName: string, gameID: string, lat?: number, lon?: number): Promise<Player> {
     return await new Promise((resolve) => {
       const config: PeerConfiguration = {}
       if (this.useTestProxy) {
@@ -58,7 +58,16 @@ export class World extends CucumberWorld {
       config.testLatency = {
         vector: this.latencyVector
       }
-      const network = new Network(gameID, config, this.signalingURL)
+
+      let signalingURL = this.signalingURL
+      if (lat !== undefined && lon !== undefined && signalingURL !== undefined) {
+        const url = new URL(signalingURL)
+        url.searchParams.set('lat', lat.toString())
+        url.searchParams.set('lon', lon.toString())
+        signalingURL = url.toString()
+      }
+
+      const network = new Network(gameID, config, signalingURL)
       const player = new Player(playerName, network)
       this.players.set(playerName, player)
 

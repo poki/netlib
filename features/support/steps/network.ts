@@ -8,8 +8,8 @@ After(async function (this: World) {
   this.players.clear()
 })
 
-Given('{string} is connected as {string} and ready for game {string}', async function (this: World, playerName: string, peerID: string, gameID: string) {
-  const player = await this.createPlayer(playerName, gameID)
+async function playerIsConnectedAndReadyForGame (this: World, playerName: string, peerID: string, gameID: string, lat?: number, lon?: number): Promise<void> {
+  const player = await this.createPlayer(playerName, gameID, lat, lon)
   const event = await player.waitForEvent('ready')
   if (event == null) {
     throw new Error(`unable to add player ${playerName} to network`)
@@ -17,6 +17,14 @@ Given('{string} is connected as {string} and ready for game {string}', async fun
   if (player.network.id !== peerID) {
     throw new Error(`expected peer ID ${peerID} but got ${player.network.id}`)
   }
+}
+
+Given('{string} is connected as {string} and ready for game {string}', async function (this: World, playerName: string, peerID: string, gameID: string) {
+  await playerIsConnectedAndReadyForGame.call(this, playerName, peerID, gameID)
+})
+
+Given('{string} is connected as {string} with lat,lon as {float},{float} and ready for game {string}', async function (this: World, playerName: string, peerID: string, lat: number, lon: number, gameID: string) {
+  await playerIsConnectedAndReadyForGame.call(this, playerName, peerID, gameID, lat, lon)
 })
 
 async function areJoinedInALobby (this: World, playerNamesRaw: string, publc: boolean): Promise<void> {

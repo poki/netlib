@@ -3,7 +3,9 @@ package signaling
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -66,11 +68,31 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		wg.Add(1)
 		defer wg.Done()
 
+		lat := parseLatLon(r.Header.Get("X-Geo-Lat"), -90, 90)
+		lon := parseLatLon(r.Header.Get("X-Geo-Lon"), -180, 180)
+		if lat == nil || lon == nil {
+			// Allow lat/lon to be passed as query parameters as a fallback.
+			// This is mainly for testing purposes, but can also be used
+			// in the `signalingURL` argument to `new Network()` when deploying
+			// in environments that can't set the headers.
+			// In production on Poki, Cloudflare will set the headers.
+			q := r.URL.Query()
+			if lat == nil {
+				lat = parseLatLon(q.Get("lat"), -90, 90)
+			}
+			if lon == nil {
+				lon = parseLatLon(q.Get("lon"), -180, 180)
+			}
+		}
+
 		peer := &Peer{
 			store: store,
 			conn:  conn,
 
 			retrievedIDCallback: manager.Reconnected,
+
+			Lat: lat,
+			Lon: lon,
 		}
 		defer func() {
 			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
@@ -162,6 +184,14 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				if err := json.Unmarshal(raw, &params); err != nil {
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
+
+				// Add lat/lon to event data of the avg-latency-at-10s event.
+				// We want to use this data to build a latency world map.
+				if params.Action == "avg-latency-at-10s" && peer != nil && peer.Lat != nil && peer.Lon != nil {
+					params.Data["lat"] = strconv.FormatFloat(*peer.Lat, 'f', -1, 64)
+					params.Data["lon"] = strconv.FormatFloat(*peer.Lon, 'f', -1, 64)
+				}
+
 				go metrics.RecordEvent(ctx, params)
 
 			case "ping", "pong":
@@ -178,4 +208,21 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 		}
 	})
+}
+
+func parseLatLon(value string, min, max float64) *float64 {
+	if value == "" {
+		return nil
+	}
+	v, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return nil
+	}
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return nil
+	}
+	if v < min || v > max {
+		return nil
+	}
+	return &v
 }

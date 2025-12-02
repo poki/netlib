@@ -238,7 +238,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	}
 
 	if p.Lat != nil && p.Lon != nil {
-		if err := p.store.UpdatePeerLatLon(ctx, p.ID, p.Lat, p.Lon); err != nil {
+		if err := p.store.UpdatePeerGeo(ctx, p.ID, p.Lat, p.Lon); err != nil {
 			logger.Warn("failed to persist peer geolocation", zap.Error(err))
 		}
 	}

@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE "peers"
+    DROP COLUMN IF EXISTS "geo";
+
+COMMIT;

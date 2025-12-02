@@ -381,11 +381,10 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 				CASE
 					WHEN $3::double precision IS NULL OR $4::double precision IS NULL THEN NULL
 					ELSE (
-						SELECT ROUND(AVG(est_rtt_ms_earth($3::double precision, $4::double precision, p.lat, p.lon)))
+						SELECT ROUND(AVG(earth_distance(ll_to_earth($3::double precision, $4::double precision), p.geo) / 1000.0 * 0.015 + 5.0))
 						FROM peers p
 						WHERE p.peer = ANY (lobbies.peers)
-							AND p.lat IS NOT NULL
-							AND p.lon IS NOT NULL
+							AND p.geo IS NOT NULL
 					)
 				END AS latency2
 			FROM lobbies
@@ -458,7 +457,7 @@ func (s *PostgresStore) UpdatePeerLatency(ctx context.Context, peerID string, la
 	return nil
 }
 
-func (s *PostgresStore) UpdatePeerLatLon(ctx context.Context, peerID string, lat, lon *float64) error {
+func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, lat, lon *float64) error {
 	now := util.NowUTC(ctx)
 
 	_, err := s.DB.Exec(ctx, `
@@ -466,6 +465,10 @@ func (s *PostgresStore) UpdatePeerLatLon(ctx context.Context, peerID string, lat
 		SET
 			lat = $1,
 			lon = $2,
+			geo = CASE
+				WHEN $1 IS NOT NULL AND $2 IS NOT NULL THEN ll_to_earth($1, $2)
+				ELSE NULL
+			END,
 			updated_at = $3
 		WHERE peer = $4
 	`, lat, lon, now, peerID)

@@ -160,6 +160,8 @@ Given('these peers exist:', async function (this: World, peers: DataTable) {
         v.push('NULL')
       } else if (key === 'latency_vector') {
         v.push(`ARRAY[${value.substring(1, value.length - 1)}]::vector(11)`)
+      } else if (key === 'geo') {
+        v.push(`ll_to_earth(${value})`)
       } else {
         v.push(`'${value}'`)
       }

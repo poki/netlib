@@ -36,7 +36,7 @@ type Store interface {
 
 	CreatePeer(ctx context.Context, peerID, secret, gameID string) error
 	UpdatePeerLatency(ctx context.Context, peerID string, latency []float32) error
-	UpdatePeerLatLon(ctx context.Context, peerID string, lat, lon *float64) error
+	UpdatePeerGeo(ctx context.Context, peerID string, lat, lon *float64) error
 	MarkPeerAsActive(ctx context.Context, peerID string) error
 	MarkPeerAsDisconnected(ctx context.Context, peerID string) error
 	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)

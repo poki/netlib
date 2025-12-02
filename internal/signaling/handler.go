@@ -187,9 +187,10 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 				// Add lat/lon to event data of the avg-latency-at-10s event.
 				// We want to use this data to build a latency world map.
-				if params.Action == "avg-latency-at-10s" && peer != nil && peer.Lat != nil && peer.Lon != nil {
-					params.Data["lat"] = strconv.FormatFloat(*peer.Lat, 'f', -1, 64)
-					params.Data["lon"] = strconv.FormatFloat(*peer.Lon, 'f', -1, 64)
+				if params.Action == "avg-latency-at-10s" && params.Data != nil && peer != nil && peer.Lat != nil && peer.Lon != nil {
+					// Round to 2 decimal places to reduce precision for privacy reasons.
+					params.Data["lat"] = strconv.FormatFloat(*peer.Lat, 'f', 2, 64)
+					params.Data["lon"] = strconv.FormatFloat(*peer.Lon, 'f', 2, 64)
 				}
 
 				go metrics.RecordEvent(ctx, params)

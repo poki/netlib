@@ -9,10 +9,8 @@ type Event struct {
 	Category string `json:"category"`
 	Action   string `json:"action"`
 
-	Peer  string  `json:"peer"`
-	Lobby string  `json:"lobby,omitempty"`
-	Lat   float64 `json:"lat,omitempty"`
-	Lon   float64 `json:"lon,omitempty"`
+	Peer  string `json:"peer"`
+	Lobby string `json:"lobby,omitempty"`
 
 	Data map[string]string `json:"data,omitempty"`
 }

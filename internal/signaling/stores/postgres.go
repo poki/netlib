@@ -463,8 +463,6 @@ func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, lat, l
 	_, err := s.DB.Exec(ctx, `
 		UPDATE peers
 		SET
-			lat = $1,
-			lon = $2,
 			geo = CASE
 				WHEN $1 IS NOT NULL AND $2 IS NOT NULL THEN ll_to_earth($1, $2)
 				ELSE NULL

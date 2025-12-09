@@ -466,7 +466,7 @@ func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, lat, l
 			lat = $1,
 			lon = $2,
 			geo = CASE
-				WHEN $1 IS NOT NULL AND $2 IS NOT NULL THEN ll_to_earth($1, $2)
+				WHEN $1 IS NOT NULL AND $2 IS NOT NULL THEN ll_to_earth($1::float8, $2::float8)
 				ELSE NULL
 			END,
 			updated_at = $3

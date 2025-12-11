@@ -154,6 +154,11 @@ func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) 
 	}
 	totalLength := base64.StdEncoding.EncodedLen(len(data)) + len(topic) + 1
 	if totalLength > 8000 {
+		// debug a Poki specific topic to understand why the payload gets so large in some cases
+		if topic == "2c23b92e-cc51-45f2-8ece-bff5d9b2e2d6" {
+			logger := logging.GetLogger(ctx)
+			logger.Warn("data is too long", zap.String("topic", topic), zap.Int("length", totalLength), zap.String("data", string(data)))
+		}
 		return fmt.Errorf("data too long for topic %q: %d", topic, totalLength)
 	}
 	encoded := base64.StdEncoding.EncodeToString(data)

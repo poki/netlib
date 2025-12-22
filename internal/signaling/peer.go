@@ -34,6 +34,8 @@ type Peer struct {
 	LatencyVector []float32
 	Lat           *float64
 	Lon           *float64
+	Country       string
+	Region        string
 }
 
 func (p *Peer) Send(ctx context.Context, packet any) error {

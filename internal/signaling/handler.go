@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +24,20 @@ const LobbyCleanInterval = 30 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
 const peerPingDuration = 2 * time.Second
 const peerActiveUpdateInterval = 30 * time.Second
+
+// Countries to track states/regions for the avg-latency-at-10s event.
+// United States
+// Canada
+// Australia
+// Brazil
+// India
+// Mexico
+// Argentina
+// Chile
+// China
+// Russia
+// Indonesia
+var countriesToTrackStates = []string{"US", "CA", "AU", "BR", "IN", "MX", "AR", "CL", "CN", "RU", "ID"}
 
 func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) (*sync.WaitGroup, http.HandlerFunc) {
 	manager := &TimeoutManager{
@@ -84,6 +99,8 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				lon = parseLatLon(q.Get("lon"), -180, 180)
 			}
 		}
+		country := r.Header.Get("CF-IPCountry")
+		region := r.Header.Get("X-Geo-Region")
 
 		peer := &Peer{
 			store: store,
@@ -91,8 +108,10 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 			retrievedIDCallback: manager.Reconnected,
 
-			Lat: lat,
-			Lon: lon,
+			Lat:     lat,
+			Lon:     lon,
+			Country: country,
+			Region:  region,
 		}
 		defer func() {
 			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
@@ -191,6 +210,14 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					// Round to 2 decimal places to reduce precision for privacy reasons.
 					params.Data["lat"] = strconv.FormatFloat(*peer.Lat, 'f', 2, 64)
 					params.Data["lon"] = strconv.FormatFloat(*peer.Lon, 'f', 2, 64)
+					params.Data["country"] = peer.Country
+
+					// For big countries, also track the region/state so we can try and use this to
+					// estimate latencies more accurately. We only do this for a select set of countries
+					// to limit the amount of data we collect.
+					if slices.Contains(countriesToTrackStates, peer.Country) {
+						params.Data["region"] = peer.Region
+					}
 				}
 
 				go metrics.RecordEvent(ctx, params)

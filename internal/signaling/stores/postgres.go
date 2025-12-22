@@ -97,16 +97,9 @@ func (s *PostgresStore) listen(ctx context.Context) error {
 		}
 		rawCompressed = rawCompressed[:l]
 
-		var raw []byte
-		if util.IsGzipCompressed(rawCompressed) {
-			raw, err = util.GzipDecompress(rawCompressed)
-			if err != nil {
-				return fmt.Errorf("failed to decompress payload: %w", err)
-			}
-		} else {
-			logger := logging.GetLogger(ctx)
-			logger.Warn("received uncompressed notification", zap.String("topic", topic))
-			raw = rawCompressed
+		raw, err := util.GzipDecompress(rawCompressed)
+		if err != nil {
+			return fmt.Errorf("failed to decompress payload: %w", err)
 		}
 
 		s.notify(ctx, topic, raw)

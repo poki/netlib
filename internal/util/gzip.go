@@ -6,11 +6,6 @@ import (
 	"io"
 )
 
-func IsGzipCompressed(data []byte) bool {
-	// Gzip magic bytes: 0x1f 0x8b
-	return len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b
-}
-
 func GzipCompress(input []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	writer, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)

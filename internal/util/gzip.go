@@ -28,11 +28,15 @@ func GzipCompress(input []byte) ([]byte, error) {
 func GzipDecompress(compressedInput []byte) ([]byte, error) {
 	reader, err := gzip.NewReader(bytes.NewReader(compressedInput))
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
-	defer reader.Close()
 
 	decompressed, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	err = reader.Close()
 	if err != nil {
 		return nil, err
 	}

@@ -90,18 +90,12 @@ func (s *PostgresStore) listen(ctx context.Context) error {
 		if !ok {
 			continue
 		}
-		rawCompressed := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
-		l, err := base64.StdEncoding.Decode(rawCompressed, []byte(data))
+		raw := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
+		l, err := base64.StdEncoding.Decode(raw, []byte(data))
 		if err != nil {
 			return fmt.Errorf("failed to decode payload: %w", err)
 		}
-		rawCompressed = rawCompressed[:l]
-
-		raw, err := util.GzipDecompress(rawCompressed)
-		if err != nil {
-			return fmt.Errorf("failed to decompress payload: %w", err)
-		}
-
+		raw = raw[:l]
 		s.notify(ctx, topic, raw)
 	}
 }
@@ -158,19 +152,18 @@ func (s *PostgresStore) Publish(ctx context.Context, topic string, data []byte) 
 	if !topicRegexp.MatchString(topic) {
 		return fmt.Errorf("topic %q is invalid", topic)
 	}
-
-	compressedData, err := util.GzipCompress(data)
-	if err != nil {
-		return fmt.Errorf("failed to gzip data: %w", err)
-	}
-
-	totalLength := base64.StdEncoding.EncodedLen(len(compressedData)) + len(topic) + 1
+	totalLength := base64.StdEncoding.EncodedLen(len(data)) + len(topic) + 1
 	if totalLength > 8000 {
+		// debug a Poki specific topic to understand why the payload gets so large in some cases
+		if topic == "2c23b92e-cc51-45f2-8ece-bff5d9b2e2d6" {
+			logger := logging.GetLogger(ctx)
+			logger.Warn("data is too long", zap.String("topic", topic), zap.Int("length", totalLength), zap.String("data", string(data)))
+		}
 		return fmt.Errorf("data too long for topic %q: %d", topic, totalLength)
 	}
-	encoded := base64.StdEncoding.EncodeToString(compressedData)
+	encoded := base64.StdEncoding.EncodeToString(data)
 	payload := topic + ":" + encoded
-	_, err = s.DB.Exec(ctx, `NOTIFY lobbies, '`+payload+`'`)
+	_, err := s.DB.Exec(ctx, `NOTIFY lobbies, '`+payload+`'`)
 	if err != nil {
 		return fmt.Errorf("failed to publish to lobbies: %w", err)
 	}

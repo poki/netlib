@@ -134,7 +134,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				case <-ticker.C:
 					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil {
 						if !util.ShouldIgnoreNetworkError(err) {
-							if strings.Contains(err.Error(), "write: broken pipe") {
+							if strings.Contains(err.Error(), "write: broken pipe") || strings.Contains(err.Error(), "connection reset by peer") {
 								logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
 							} else {
 								logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))

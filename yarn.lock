@@ -40,20 +40,20 @@
   dependencies:
     regexp-match-indices "1.0.2"
 
-"@cucumber/cucumber@^12.4.0":
-  version "12.4.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.4.0.tgz#5084f7fd7b47032e6092b57f943e09f67fcc84b4"
-  integrity sha512-zGtGIx4Q/+AMbZclgCOvlbJzQxFd35/gpnB+bbpRGarsQks8nL4MxoHz9qn/sYzqBiFPgnv29wcL8r4nOb8r3g==
+"@cucumber/cucumber@^12.5.0":
+  version "12.5.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.5.0.tgz#00d70f7f51887cc133e01cb2bafa65ff0b079fae"
+  integrity sha512-+VWxkIIpm5EWFfaF3grP1GlHobzlDBIF54FqJutdYmfpx3LJc+IS8uWdIN97m6zxizo5CPrUopTWkxzwVswUzg==
   dependencies:
     "@cucumber/ci-environment" "12.0.0"
     "@cucumber/cucumber-expressions" "18.0.1"
-    "@cucumber/gherkin" "37.0.0"
+    "@cucumber/gherkin" "37.0.1"
     "@cucumber/gherkin-streams" "6.0.0"
     "@cucumber/gherkin-utils" "10.0.0"
-    "@cucumber/html-formatter" "22.2.0"
+    "@cucumber/html-formatter" "22.3.0"
     "@cucumber/junit-xml-formatter" "0.9.0"
     "@cucumber/message-streams" "4.0.1"
-    "@cucumber/messages" "31.0.0"
+    "@cucumber/messages" "31.1.0"
     "@cucumber/pretty-formatter" "1.0.1"
     "@cucumber/tag-expressions" "8.1.0"
     assertion-error-formatter "^3.0.0"
@@ -105,10 +105,10 @@
     commander "14.0.0"
     source-map-support "^0.5.21"
 
-"@cucumber/gherkin@37.0.0":
-  version "37.0.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/gherkin/-/gherkin-37.0.0.tgz#df64db07e3a31a0444497351cfb490838d48331c"
-  integrity sha512-vKJVJ6h4HCktG870wgYUUskNpFxbFI0WmAkVLPTz1LlLwJX7/KOBqFcr2/L3u0pPoHjbLRW+IpbiXLT2T13/wg==
+"@cucumber/gherkin@37.0.1":
+  version "37.0.1"
+  resolved "https://registry.yarnpkg.com/@cucumber/gherkin/-/gherkin-37.0.1.tgz#53eb330a32cdbf9276a7341df3c22929a2fea53f"
+  integrity sha512-VmX+PKa9vqKZiycZoQKYlCsA0N7gAfiOfrcHSjK+suEVUwvKEH2sjO47NznrFFLmVWYTRmw3DLHQnpBAznkYEA==
   dependencies:
     "@cucumber/messages" ">=31.0.0 <32"
 
@@ -119,10 +119,10 @@
   dependencies:
     "@cucumber/messages" ">=19.1.4 <29"
 
-"@cucumber/html-formatter@22.2.0":
-  version "22.2.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/html-formatter/-/html-formatter-22.2.0.tgz#032be6919259a91cb60f14ce51eb0aecb1302ed0"
-  integrity sha512-fUNC/KngTIz+hAQ2Yr4XjdYq+MO60PwK9SidxBQ54jNI1Vw7erlgsPq0TOWneCIvdjU3qp+YDqYG1hw3zuUuDA==
+"@cucumber/html-formatter@22.3.0":
+  version "22.3.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/html-formatter/-/html-formatter-22.3.0.tgz#b624c6904c63c571183493b1667b6b4b5d10304d"
+  integrity sha512-0s3G7kznCRDiiesQ4K0yBdswGqU9E0j2AWUug41NpedBzhaY+Hn192ANRF597GZtuWrCjE53aFb3fOyOsT8B+g==
 
 "@cucumber/junit-xml-formatter@0.9.0":
   version "0.9.0"
@@ -139,10 +139,10 @@
   resolved "https://registry.yarnpkg.com/@cucumber/message-streams/-/message-streams-4.0.1.tgz#a5339d3504594bb2edb5732aaae94dddb24d0970"
   integrity sha512-Kxap9uP5jD8tHUZVjTWgzxemi/0uOsbGjd4LBOSxcJoOCRbESFwemUzilJuzNTB8pcTQUh8D5oudUyxfkJOKmA==
 
-"@cucumber/messages@31.0.0", "@cucumber/messages@>=31.0.0 <32":
-  version "31.0.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/messages/-/messages-31.0.0.tgz#8378fe53183390490b516e3b617137dfbe5a3cab"
-  integrity sha512-Dqhatp4AjMsH9SREfWz3Q8nlGuwJMTW7YAW5L3OzRId86ZUEu/a8vIL1RO2c0agQefuBS2SVH9fEZ66ovrMYRA==
+"@cucumber/messages@31.1.0", "@cucumber/messages@>=31.0.0 <32":
+  version "31.1.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/messages/-/messages-31.1.0.tgz#98a22c664cd9567a2cde2c07228cbd0e06d810be"
+  integrity sha512-BViwUQ9YMjcGL98Ww2QHMgu3S4JLUjbTz+Jo/jsq+8ZjS47/2v3IszpD6e12Y6IzZoGfrZriauZHPQ4PAmN9XA==
   dependencies:
     class-transformer "0.5.1"
     reflect-metadata "0.2.2"

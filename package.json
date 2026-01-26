@@ -37,7 +37,7 @@
     "watch": "parcel --no-hmr example/index.html"
   },
   "dependencies": {
-    "eventemitter3": "^5.0.1"
+    "eventemitter3": "^5.0.4"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.5.0",

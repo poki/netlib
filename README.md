@@ -10,6 +10,11 @@ The Poki Networking Library is a peer-to-peer networking library for web games, 
 
 ## Features
 
+- **Flexible Network Topologies**
+  - **Mesh Mode** (default): Direct peer-to-peer connections between all players
+  - **Star Mode**: Client-server style where one player (the leader) acts as a relay hub
+  - Choose the topology that best fits your game's needs
+
 - **True Peer-to-Peer (P2P) Networking**
   - Direct client-to-client connections without a central game server
   - Lower latency for geographically close players
@@ -135,6 +140,10 @@ While Poki provides hosted STUN/TURN and signaling services for free, you can al
     $ ENV=local ./signaling
     ```
 2. For persistent storage remove `ENV=local` and set `DATABASE_URL` to your PostgreSQL database URL.
+
+    **Server Environment Variables:**
+    - `DATABASE_URL`: PostgreSQL connection string for persistent storage
+    - `TOPOLOGY_MODE`: Network topology mode - `mesh` (default) or `star`
 3. Configure your own STUN/TURN servers.
 4. Initialize the network with custom endpoints:
 ```js

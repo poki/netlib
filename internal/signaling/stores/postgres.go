@@ -786,6 +786,52 @@ func (s *PostgresStore) DoLeaderElection(ctx context.Context, gameID, lobbyCode 
 	}, nil
 }
 
+func (s *PostgresStore) SetLeader(ctx context.Context, gameID, lobbyCode, peerID string) (*ElectionResult, error) {
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(context.Background()) //nolint:errcheck
+
+	var currentTerm int
+	err = tx.QueryRow(ctx, `
+		SELECT term
+		FROM lobbies
+		WHERE game = $1
+		AND code = $2
+		FOR UPDATE
+	`, gameID, lobbyCode).Scan(&currentTerm)
+	if err != nil {
+		return nil, err
+	}
+
+	newTerm := currentTerm + 1
+	now := util.NowUTC(ctx)
+
+	_, err = tx.Exec(ctx, `
+		UPDATE lobbies
+		SET
+			leader = $1,
+			term = $2,
+			updated_at = $3
+		WHERE game = $4
+		AND code = $5
+	`, peerID, newTerm, now, gameID, lobbyCode)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ElectionResult{
+		Leader: peerID,
+		Term:   newTerm,
+	}, nil
+}
+
 func (s *PostgresStore) UpdateLobby(ctx context.Context, game, lobbyCode, peerID string, options LobbyOptions) error {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {

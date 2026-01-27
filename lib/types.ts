@@ -121,12 +121,14 @@ export interface LobbiesPacket extends Base {
 export interface CreatePacket extends Base {
   type: 'create'
   settings?: LobbySettings
+  leader?: boolean // In star topology, if true this peer becomes the leader
 }
 
 export interface JoinPacket extends Base {
   type: 'join'
   lobby: string
   password?: string
+  leader?: boolean // In star topology, if true this peer becomes the leader
 }
 
 export interface JoinedPacket extends Base {
@@ -171,6 +173,7 @@ export interface ConnectPacket extends Base {
   type: 'connect'
   id: string
   polite: boolean
+  isLeader?: boolean // In star topology, true if the peer being connected to is the leader
 }
 
 export interface DisconnectPacket extends Base {

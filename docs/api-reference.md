@@ -23,7 +23,7 @@ new Network(gameId: string, options?: NetworkOptions)
 
 #### Lobby Management
 
-##### `create(options?: LobbyOptions): Promise<void>`
+##### `create(options?: LobbyOptions, joinOptions?: JoinOptions): Promise<void>`
 Creates a new lobby.
 ```typescript
 interface LobbyOptions {
@@ -33,10 +33,19 @@ interface LobbyOptions {
   customData?: any;              // Custom lobby data
   canUpdateBy?: 'anyone' | 'leader' | 'creator'; // Who can update lobby settings
 }
+
+interface JoinOptions {
+  leader?: boolean;              // In star topology, become the leader (relay hub)
+}
 ```
 
-##### `join(code: string, password?: string): Promise<void>`
+##### `join(code: string, password?: string, options?: JoinOptions): Promise<void>`
 Joins an existing lobby.
+```typescript
+interface JoinOptions {
+  leader?: boolean;              // In star topology, become the leader (relay hub)
+}
+```
 
 ##### `leave(): Promise<void>`
 Leaves the current lobby without closing the network.
@@ -96,6 +105,7 @@ Subscribe to events using `network.on(eventName, callback)`:
 ```typescript
 interface Peer {
   id: string;          // Unique peer identifier
+  isLeader: boolean;   // In star topology, true if this peer is the leader (relay hub)
   latency?: {
     last: number;      // Most recent latency measurement (in ms)
     average: number;   // Average latency over time
@@ -105,3 +115,12 @@ interface Peer {
   };
 }
 ```
+
+## Server Configuration
+
+The signaling server supports the following environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | (in-memory) | PostgreSQL connection string for persistent storage |
+| `TOPOLOGY_MODE` | `mesh` | Network topology: `mesh` (all peers connect to all) or `star` (peers connect only to leader) |

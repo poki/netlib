@@ -272,7 +272,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
           if (this.receivedID === packet.id) {
             return // Skip self
           }
-          await this.network._addPeer(packet.id, packet.polite)
+          await this.network._addPeer(packet.id, packet.polite, packet.isLeader ?? false)
           for (const p of this.replayQueue.get(packet.id) ?? []) {
             await this.connections.get(packet.id)?._onSignalingMessage(p)
           }

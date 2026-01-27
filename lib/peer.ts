@@ -32,9 +32,15 @@ export default class Peer {
   private readonly testSessionWrapper?: (desc: RTCSessionDescription, config: PeerConfiguration, selfID: string, otherID: string) => Promise<void>
 
   /**
+   * In star topology, this is true if this peer is the leader (the relay hub).
+   */
+  public readonly isLeader: boolean
+
+  /**
    * @internal
    */
-  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, public readonly config: PeerConfiguration, private readonly polite: boolean) {
+  constructor (private readonly network: Network, private readonly signaling: Signaling, public readonly id: string, public readonly config: PeerConfiguration, private readonly polite: boolean, isLeader: boolean = false) {
+    this.isLeader = isLeader
     this.channels = {}
     this.network.log('creating peer')
 

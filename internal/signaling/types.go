@@ -55,6 +55,7 @@ type CreatePacket struct {
 	MaxPlayers  *int           `json:"maxPlayers"`
 	CustomData  map[string]any `json:"customData"`
 	CanUpdateBy string         `json:"canUpdateBy"`
+	Leader      bool           `json:"leader"` // In star topology, if true this peer becomes the leader
 }
 
 type JoinPacket struct {
@@ -63,6 +64,7 @@ type JoinPacket struct {
 
 	Lobby    string `json:"lobby"`
 	Password string `json:"password"`
+	Leader   bool   `json:"leader"` // In star topology, if true this peer becomes the leader
 }
 
 type JoinedPacket struct {
@@ -111,8 +113,9 @@ type LeftPacket struct {
 type ConnectPacket struct {
 	Type string `json:"type"`
 
-	ID     string `json:"id"`
-	Polite bool   `json:"polite"`
+	ID       string `json:"id"`
+	Polite   bool   `json:"polite"`
+	IsLeader bool   `json:"isLeader,omitempty"` // In star topology, true if the peer being connected to is the leader
 }
 
 type DisconnectPacket struct {

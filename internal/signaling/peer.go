@@ -42,16 +42,55 @@ func (p *Peer) Send(ctx context.Context, packet any) error {
 	return wsjson.Write(ctx, p.conn, packet)
 }
 
-func (p *Peer) RequestConnection(ctx context.Context, otherID string) error {
+func (p *Peer) RequestConnection(ctx context.Context, otherID string, otherIsLeader bool) error {
 	toMe := ConnectPacket{
-		Type:   "connect",
-		ID:     otherID,
-		Polite: true,
+		Type:     "connect",
+		ID:       otherID,
+		Polite:   true,
+		IsLeader: otherIsLeader,
 	}
 	toThem := ConnectPacket{
-		Type:   "connect",
-		ID:     p.ID,
-		Polite: false,
+		Type:     "connect",
+		ID:       p.ID,
+		Polite:   false,
+		IsLeader: false, // The peer we're notifying is not connecting to the leader (they're connecting to us)
+	}
+
+	err := wsjson.Write(ctx, p.conn, toMe)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(toThem)
+	if err != nil {
+		return err
+	}
+
+	err = p.store.Publish(ctx, p.Game+p.Lobby+otherID, data)
+	if err != nil {
+		return err
+	}
+
+	go metrics.Record(ctx, "rtc", "attempt", p.Game, p.ID, p.Lobby, "target", otherID)
+	go metrics.Record(ctx, "rtc", "attempt", p.Game, otherID, p.Lobby, "target", p.ID)
+
+	return nil
+}
+
+// RequestConnectionAsLeader is used in star topology when the leader needs to connect to a peer.
+// The peer receives isLeader=true to know they're connecting to the leader.
+func (p *Peer) RequestConnectionAsLeader(ctx context.Context, otherID string) error {
+	toMe := ConnectPacket{
+		Type:     "connect",
+		ID:       otherID,
+		Polite:   true,
+		IsLeader: false, // The other peer is not the leader
+	}
+	toThem := ConnectPacket{
+		Type:     "connect",
+		ID:       p.ID,
+		Polite:   false,
+		IsLeader: true, // Tell the other peer that they're connecting to the leader (us)
 	}
 
 	err := wsjson.Write(ctx, p.conn, toMe)
@@ -499,10 +538,34 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	p.Lobby = packet.Lobby
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-	// Lobby might be empty when joining, then you need to become the leader.
-	_, err = p.doLeaderElectionAndPublish(ctx)
-	if err != nil {
-		return err
+	isStarTopology := util.IsStarTopology()
+
+	// Handle leader flag in star topology - force this peer to become the leader
+	if isStarTopology && packet.Leader {
+		result, err := p.store.SetLeader(ctx, p.Game, p.Lobby, p.ID)
+		if err != nil {
+			return err
+		}
+		// Publish the new leader to all peers
+		leaderPacket := LeaderPacket{
+			Type:   "leader",
+			Leader: result.Leader,
+			Term:   result.Term,
+		}
+		data, err := json.Marshal(leaderPacket)
+		if err != nil {
+			return err
+		}
+		err = p.store.Publish(ctx, p.Game+p.Lobby, data)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Lobby might be empty when joining, then you need to become the leader.
+		_, err = p.doLeaderElectionAndPublish(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	lobby, err := p.store.GetLobby(ctx, p.Game, p.Lobby)
@@ -520,14 +583,38 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return err
 	}
 
-	for _, otherID := range lobby.Peers {
-		if otherID == p.ID {
-			continue
+	// Request connections based on topology mode
+	if isStarTopology {
+		// Star topology: only connect to/from leader
+		if packet.Leader || lobby.Leader == p.ID {
+			// We are the leader - connect to all other peers
+			for _, otherID := range lobby.Peers {
+				if otherID == p.ID {
+					continue
+				}
+				err := p.RequestConnectionAsLeader(ctx, otherID)
+				if err != nil {
+					return err
+				}
+			}
+		} else if lobby.Leader != "" {
+			// We are not the leader - only connect to the leader
+			err := p.RequestConnection(ctx, lobby.Leader, true)
+			if err != nil {
+				return err
+			}
 		}
-
-		err := p.RequestConnection(ctx, otherID)
-		if err != nil {
-			return err
+		// If no leader exists yet, don't connect to anyone (wait for leader to join)
+	} else {
+		// Mesh topology: connect to all peers
+		for _, otherID := range lobby.Peers {
+			if otherID == p.ID {
+				continue
+			}
+			err := p.RequestConnection(ctx, otherID, lobby.Leader == otherID)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -535,7 +622,9 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		zap.String("game", p.Game),
 		zap.String("lobby", p.Lobby),
 		zap.String("peer", p.ID),
-		zap.Strings("peers", lobby.Peers))
+		zap.Strings("peers", lobby.Peers),
+		zap.Bool("starTopology", isStarTopology),
+		zap.Bool("isLeader", lobby.Leader == p.ID))
 	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
 
 	return nil

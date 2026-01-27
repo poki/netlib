@@ -49,6 +49,10 @@ type Store interface {
 	// If no leader can be elected, it will return an ElectionResult with a nil leader.
 	DoLeaderElection(ctx context.Context, gameID, lobbyCode string) (*ElectionResult, error)
 
+	// SetLeader forces a specific peer to become the leader, incrementing the term.
+	// Used in star topology when a new peer joins with leader flag set.
+	SetLeader(ctx context.Context, gameID, lobbyCode, peerID string) (*ElectionResult, error)
+
 	UpdateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 }
 

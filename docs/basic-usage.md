@@ -145,6 +145,71 @@ Each lobby in the result includes:
 - `hasPassword`: Whether the lobby has a password
 - `maxPlayers`: Maximum number of players allowed in the lobby
 
+## Network Topologies
+
+The library supports two network topology modes, configured on the server via the `TOPOLOGY_MODE` environment variable.
+
+### Mesh Mode (Default)
+In mesh mode, all peers connect directly to each other. This is ideal for small groups where low latency between all players is important.
+
+```
+    A ←→ B
+    ↑ ╲ ↗ ↑
+    ↓  ╳  ↓
+    ↓ ╱ ╲ ↓
+    C ←→ D
+```
+
+### Star Mode
+In star mode, one peer acts as the **leader** (relay hub), and all other peers connect only to the leader. The leader is responsible for forwarding messages between peers. This is useful for:
+- Games with a dedicated host player
+- Scenarios where you want centralized game state management
+- Reducing the number of peer connections in larger lobbies
+
+```
+      B
+      ↑
+      ↓
+A ←→ Leader ←→ C
+      ↑
+      ↓
+      D
+```
+
+#### Using Star Mode
+
+When the server is configured with `TOPOLOGY_MODE=star`, use the `leader` option when creating or joining:
+
+```js
+// Create a lobby as the leader (host)
+network.on('ready', () => {
+  network.create({ public: true }, { leader: true })
+})
+
+// Join as a regular peer (connects only to the leader)
+network.on('ready', () => {
+  network.join('ABC123')
+})
+
+// Join and take over as the new leader
+network.on('ready', () => {
+  network.join('ABC123', undefined, { leader: true })
+})
+```
+
+#### Identifying the Leader
+You can check if a connected peer is the leader:
+
+```js
+network.on('connected', peer => {
+  if (peer.isLeader) {
+    console.log('Connected to the leader/host')
+  }
+})
+```
+
+The leader is responsible for implementing message forwarding logic in their game code.
+
 ## Best Practices
 
 1. **Error Handling**

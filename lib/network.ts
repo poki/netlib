@@ -66,13 +66,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     return []
   }
 
-  async create (settings?: LobbySettings): Promise<string> {
+  async create (settings?: LobbySettings, options?: { leader?: boolean }): Promise<string> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return ''
     }
     const reply = await this.signaling.request({
       type: 'create',
-      ...settings
+      ...settings,
+      leader: options?.leader
     })
     if (reply.type === 'joined') {
       return reply.lobbyInfo.code
@@ -80,14 +81,15 @@ export default class Network extends EventEmitter<NetworkListeners> {
     return ''
   }
 
-  async join (lobby: string, password?: string): Promise<LobbyListEntry | undefined> {
+  async join (lobby: string, password?: string, options?: { leader?: boolean }): Promise<LobbyListEntry | undefined> {
     if (this._closing || this.signaling.receivedID === undefined) {
       return undefined
     }
     const reply = await this.signaling.request({
       type: 'join',
       lobby,
-      password
+      password,
+      leader: options?.leader
     })
     if (reply.type === 'joined') {
       return reply.lobbyInfo
@@ -156,12 +158,12 @@ export default class Network extends EventEmitter<NetworkListeners> {
   /**
    * @internal
    */
-  async _addPeer (id: string, polite: boolean): Promise<void> {
+  async _addPeer (id: string, polite: boolean, isLeader: boolean = false): Promise<void> {
     const config = await this.credentials.fillCredentials(this.peerConfig)
 
     config.iceServers = config.iceServers?.filter(server => !(server.urls.includes('turn:') && server.username === undefined))
 
-    const peer = new Peer(this, this.signaling, id, config, polite)
+    const peer = new Peer(this, this.signaling, id, config, polite, isLeader)
     this.peers.set(id, peer)
   }
 

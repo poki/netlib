@@ -82,6 +82,7 @@ Subscribe to events using `network.on(eventName, callback)`:
 - `'error'`: Network error occurred
 - `'connected'`: New peer connected
 - `'disconnected'`: Peer disconnected
+- `'rtcerror'`: WebRTC error occurred (callback receives `RTCErrorEvent`)
 
 #### Lobby Events
 - `'lobby'`: Lobby created/joined

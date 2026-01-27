@@ -216,7 +216,7 @@ export default class Peer {
     }
   }
 
-  private onError (e: Event): void {
+  private onError (e: RTCErrorEvent): void {
     this.network.emit('rtcerror', e)
     if (this.network.listenerCount('rtcerror') === 0) {
       console.error('rtcerror not handled:', e)

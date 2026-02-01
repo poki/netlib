@@ -39,7 +39,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   constructor (public readonly gameID: string, private readonly peerConfig: PeerConfiguration = DefaultRTCConfiguration, signalingURL: string = DefaultSignalingURL) {
     super()
     this.peers = new Map<string, Peer>()
-    this.signaling = new Signaling(this, this.peers, signalingURL, peerConfig.testLatency)
+    this.signaling = new Signaling(this, this.peers, signalingURL)
     this.credentials = new Credentials(this.signaling)
 
     this.unloadListener = () => this.close()

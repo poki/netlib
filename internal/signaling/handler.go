@@ -3,10 +3,8 @@ package signaling
 import (
 	"context"
 	"encoding/json"
-	"math"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -83,22 +81,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		wg.Add(1)
 		defer wg.Done()
 
-		lat := parseLatLon(r.Header.Get("X-Geo-Lat"), -90, 90)
-		lon := parseLatLon(r.Header.Get("X-Geo-Lon"), -180, 180)
-		if lat == nil || lon == nil {
-			// Allow lat/lon to be passed as query parameters as a fallback.
-			// This is mainly for testing purposes, but can also be used
-			// in the `signalingURL` argument to `new Network()` when deploying
-			// in environments that can't set the headers.
-			// In production on Poki, Cloudflare will set the headers.
-			q := r.URL.Query()
-			if lat == nil {
-				lat = parseLatLon(q.Get("lat"), -90, 90)
-			}
-			if lon == nil {
-				lon = parseLatLon(q.Get("lon"), -180, 180)
-			}
-		}
 		country := r.Header.Get("CF-IPCountry")
 		region := r.Header.Get("X-Geo-Region")
 
@@ -108,8 +90,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 			retrievedIDCallback: manager.Reconnected,
 
-			Lat:     lat,
-			Lon:     lon,
 			Country: country,
 			Region:  region,
 		}
@@ -204,12 +184,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					util.ErrorAndDisconnect(ctx, conn, err)
 				}
 
-				// Add lat/lon to event data of the avg-latency-at-10s event.
+				// Add country and region to event data of the avg-latency-at-10s event.
 				// We want to use this data to build a latency world map.
-				if params.Action == "avg-latency-at-10s" && params.Data != nil && peer != nil && peer.Lat != nil && peer.Lon != nil {
-					// Round to 2 decimal places to reduce precision for privacy reasons.
-					params.Data["lat"] = strconv.FormatFloat(*peer.Lat, 'f', 2, 64)
-					params.Data["lon"] = strconv.FormatFloat(*peer.Lon, 'f', 2, 64)
+				if params.Action == "avg-latency-at-10s" && params.Data != nil && peer != nil {
 					params.Data["country"] = peer.Country
 
 					// For big countries, also track the region/state so we can try and use this to
@@ -236,21 +213,4 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 		}
 	})
-}
-
-func parseLatLon(value string, min, max float64) *float64 {
-	if value == "" {
-		return nil
-	}
-	v, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return nil
-	}
-	if math.IsNaN(v) || math.IsInf(v, 0) {
-		return nil
-	}
-	if v < min || v > max {
-		return nil
-	}
-	return &v
 }

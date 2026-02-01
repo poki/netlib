@@ -1,30 +1,18 @@
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS vector;
-
+CREATE EXTENSION IF NOT EXISTS cube;
+CREATE EXTENSION IF NOT EXISTS earthdistance;
 
 ALTER TABLE "peers"
-    ADD COLUMN IF NOT EXISTS "latency_vector" vector(11);
+    ADD COLUMN IF NOT EXISTS "geo" earth;
 
-
--- Index to speed up lobby queries that now join on peers to get latency_vector.
-CREATE INDEX "peers_peer_with_latency_idx"
-    ON "peers" ("peer") INCLUDE ("latency_vector")
-    WHERE "latency_vector" IS NOT NULL;
-
-
--- Estimates lobby latency for a new peer by averaging network triangulation with existing peers.
---
--- See: https://www.wisdom.weizmann.ac.il/~robi/papers/K-triangulation-SPAA07.pdf
---
--- for each peer, compute a Chebyshev distance lower bound (max |peer[i]-peers[i]|)
--- and a robust upper bound as the mean of the k smallest (peer[i] + peers[i]) and blend them by w (clamped),
--- (to prevent triangle inequality violations from producing estimates below the lower bound)
--- then return the average of those per-peer estimates.
---
--- k = number of smallest sums.
--- w (0..1) biases toward the upper bound (more w = more bias toward upper bound).
--- eps is used to model measurement noise (higher eps = more noise = more bias toward lower bound).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
+        EXECUTE 'CREATE EXTENSION IF NOT EXISTS vector';
+        EXECUTE 'ALTER TABLE "peers" ADD COLUMN IF NOT EXISTS "latency_vector" vector(11)';
+        EXECUTE 'CREATE INDEX "peers_peer_with_latency_idx" ON "peers" ("peer") INCLUDE ("latency_vector") WHERE "latency_vector" IS NOT NULL';
+        EXECUTE $fn$
 CREATE OR REPLACE FUNCTION lobby_latency_estimate(
     peer_vector  vector(11),
     peers_vector vector(11)[],
@@ -34,7 +22,7 @@ CREATE OR REPLACE FUNCTION lobby_latency_estimate(
 ) RETURNS float8
 LANGUAGE sql
 IMMUTABLE
-AS $$
+AS $body$
 WITH peer AS (
     SELECT (peer_vector)::real[] AS pv
 ),
@@ -75,6 +63,10 @@ per_peer_estimate AS (
 )
 SELECT ROUND(AVG(estimate))
 FROM per_peer_estimate;
+$body$;
+$fn$;
+    END IF;
+END
 $$;
 
 COMMIT;

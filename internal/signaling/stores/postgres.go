@@ -18,7 +18,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
-	"github.com/pgvector/pgvector-go"
 	"github.com/poki/mongodb-filter-to-postgres/filter"
 	"github.com/poki/netlib/internal/util"
 	"go.uber.org/zap"
@@ -40,7 +39,7 @@ type PostgresStore struct {
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	filterConverter, err := filter.NewConverter(
-		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "latency", "latency2"),
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
 		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 	)
 	if err != nil {
@@ -326,7 +325,7 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
-func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []float32, lat, lon *float64, filter, sort string, limit int) ([]Lobby, error) {
+func (s *PostgresStore) ListLobbies(ctx context.Context, game string, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {
 		filter = "{}"
@@ -336,12 +335,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 		limit = 50
 	}
 
-	var latencyVector any
-	if len(latency) == 11 {
-		latencyVector = pgvector.NewVector(latency)
-	}
-
-	preValues := []any{game, latencyVector, lat, lon, limit}
+	preValues := []any{game, limit}
 
 	where, values, err := s.filterConverter.Convert([]byte(filter), len(preValues)+1)
 	if err != nil {
@@ -380,25 +374,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 				can_update_by,
 				creator,
 				password IS NOT NULL,
-				max_players,
-				lobby_latency_estimate(
-					$2,
-					ARRAY(
-						SELECT p.latency_vector
-						FROM peers p
-						WHERE p.peer = ANY (lobbies.peers)
-						  AND p.latency_vector IS NOT NULL
-					)
-				) AS latency,
-				CASE
-					WHEN $3::double precision IS NULL OR $4::double precision IS NULL THEN NULL
-					ELSE (
-						SELECT ROUND(AVG(earth_distance(ll_to_earth($3::double precision, $4::double precision), p.geo) / 1000.0 * 0.015 + 5.0))
-						FROM peers p
-						WHERE p.peer = ANY (lobbies.peers)
-							AND p.geo IS NOT NULL
-					)
-				END AS latency2
+				max_players
 			FROM lobbies
 			WHERE game = $1
 			  AND public = true
@@ -416,7 +392,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, latency []
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.Latency, &lobby.Latency2)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
 		if err != nil {
 			return nil, err
 		}
@@ -445,44 +421,6 @@ func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID s
 		return err
 	}
 	return nil
-}
-
-func (s *PostgresStore) UpdatePeerLatency(ctx context.Context, peerID string, latency []float32) error {
-	now := util.NowUTC(ctx)
-
-	var vec *pgvector.Vector
-	if len(latency) > 0 {
-		v := pgvector.NewVector(latency)
-		vec = &v
-	}
-	_, err := s.DB.Exec(ctx, `
-		UPDATE peers
-		SET
-			latency_vector = $1,
-			updated_at = $2
-		WHERE peer = $3
-	`, vec, now, peerID)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, lat, lon *float64) error {
-	now := util.NowUTC(ctx)
-
-	_, err := s.DB.Exec(ctx, `
-		UPDATE peers
-		SET
-			geo = CASE
-				WHEN $1::float8 IS NOT NULL AND $2::float8 IS NOT NULL THEN ll_to_earth($1::float8, $2::float8)
-				ELSE NULL
-			END,
-			updated_at = $3
-		WHERE peer = $4
-	`, lat, lon, now, peerID)
-	return err
 }
 
 func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) error {

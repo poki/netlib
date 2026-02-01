@@ -27,15 +27,12 @@ type Peer struct {
 
 	retrievedIDCallback func(context.Context, string, string, string) (bool, []string, error)
 
-	ID            string
-	Secret        string
-	Game          string
-	Lobby         string
-	LatencyVector []float32
-	Lat           *float64
-	Lon           *float64
-	Country       string
-	Region        string
+	ID      string
+	Secret  string
+	Game    string
+	Lobby   string
+	Country string
+	Region  string
 }
 
 func (p *Peer) Send(ctx context.Context, packet any) error {
@@ -231,20 +228,6 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		}
 	}
 
-	if len(packet.LatencyVector) == 11 {
-		p.LatencyVector = packet.LatencyVector
-
-		if err := p.store.UpdatePeerLatency(ctx, p.ID, p.LatencyVector); err != nil {
-			logger.Warn("failed to persist peer latency", zap.Error(err))
-		}
-	}
-
-	if p.Lat != nil && p.Lon != nil {
-		if err := p.store.UpdatePeerGeo(ctx, p.ID, p.Lat, p.Lon); err != nil {
-			logger.Warn("failed to persist peer geolocation", zap.Error(err))
-		}
-	}
-
 	err := p.Send(ctx, WelcomePacket{
 		Type:   "welcome",
 		ID:     p.ID,
@@ -371,7 +354,7 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	lobbies, err := p.store.ListLobbies(ctx, p.Game, p.LatencyVector, p.Lat, p.Lon, packet.Filter, packet.Sort, packet.Limit)
+	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter, packet.Sort, packet.Limit)
 	if err != nil {
 		return err
 	}

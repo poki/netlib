@@ -35,7 +35,8 @@ const peerActiveUpdateInterval = 30 * time.Second
 // China
 // Russia
 // Indonesia
-var countriesToTrackStates = []string{"US", "CA", "AU", "BR", "IN", "MX", "AR", "CL", "CN", "RU", "ID"}
+// Japan
+var countriesToTrackStates = []string{"US", "CA", "AU", "BR", "IN", "MX", "AR", "CL", "CN", "RU", "ID", "JP"}
 
 func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.CredentialsClient) (*sync.WaitGroup, http.HandlerFunc) {
 	manager := &TimeoutManager{
@@ -83,6 +84,15 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 		country := r.Header.Get("CF-IPCountry")
 		region := r.Header.Get("X-Geo-Region")
+		if country == "" || region == "" {
+			q := r.URL.Query()
+			if country == "" {
+				country = q.Get("country")
+			}
+			if region == "" {
+				region = q.Get("region")
+			}
+		}
 
 		peer := &Peer{
 			store: store,

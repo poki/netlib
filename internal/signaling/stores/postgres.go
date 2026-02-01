@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,7 +38,7 @@ type PostgresStore struct {
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	filterConverter, err := filter.NewConverter(
-		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "latency"),
 		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 	)
 	if err != nil {
@@ -325,7 +324,7 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
-func (s *PostgresStore) ListLobbies(ctx context.Context, game string, filter, sort string, limit int) ([]Lobby, error) {
+func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {
 		filter = "{}"
@@ -335,7 +334,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, filter, so
 		limit = 50
 	}
 
-	preValues := []any{game, limit}
+	preValues := []any{game, country, region, limit}
 
 	where, values, err := s.filterConverter.Convert([]byte(filter), len(preValues)+1)
 	if err != nil {
@@ -374,7 +373,8 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, filter, so
 				can_update_by,
 				creator,
 				password IS NOT NULL,
-				max_players
+				max_players,
+				lobby_latency_estimate(peers, $2, $3) AS latency
 			FROM lobbies
 			WHERE game = $1
 			  AND public = true
@@ -383,7 +383,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, filter, so
 		FROM game_lobbies
 		WHERE `+where+`
 		ORDER BY `+order+`
-		LIMIT $`+strconv.Itoa(len(preValues))+`
+		LIMIT $4
 	`, append(preValues, values...)...)
 	if err != nil {
 		return nil, err
@@ -392,7 +392,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, filter, so
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.Latency)
 		if err != nil {
 			return nil, err
 		}
@@ -421,6 +421,23 @@ func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID s
 		return err
 	}
 	return nil
+}
+
+func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, country, region string) error {
+	now := util.NowUTC(ctx)
+
+	_, err := s.DB.Exec(ctx, `
+		UPDATE peers
+		SET
+			country = CASE
+				WHEN $1 = '' OR $1 = 'XX' THEN NULL
+				ELSE $1
+			END,
+			region = NULLIF($2, ''),
+			updated_at = $3
+		WHERE peer = $4
+	`, country, region, now, peerID)
+	return err
 }
 
 func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) error {

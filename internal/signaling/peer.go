@@ -228,6 +228,12 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		}
 	}
 
+	if p.Country != "" || p.Region != "" {
+		if err := p.store.UpdatePeerGeo(ctx, p.ID, p.Country, p.Region); err != nil {
+			logger.Warn("failed to persist peer geolocation", zap.Error(err))
+		}
+	}
+
 	err := p.Send(ctx, WelcomePacket{
 		Type:   "welcome",
 		ID:     p.ID,
@@ -354,7 +360,7 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter, packet.Sort, packet.Limit)
+	lobbies, err := p.store.ListLobbies(ctx, p.Game, p.Country, p.Region, packet.Filter, packet.Sort, packet.Limit)
 	if err != nil {
 		return err
 	}

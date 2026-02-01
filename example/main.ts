@@ -80,7 +80,7 @@ n.on('ready', () => {
           lobbies.forEach(lobby => {
             const li = document.createElement('li')
             li.id = lobby.code
-            li.innerHTML = `<a href="javascript:void(0)" class="code">${lobby.code}</a> - <span class="map_name">${lobby.customData?.map as string ?? 'unknown map'}</span>  - <span class="players">${lobby.playerCount}</span> players`
+            li.innerHTML = `<a href="javascript:void(0)" class="code">${lobby.code}</a> - <span class="map_name">${lobby.customData?.map as string ?? 'unknown map'}</span>  - <span class="players">${lobby.playerCount}</span> players (${lobby.latency ?? '<unknown>'}ms)`
             el.appendChild(li)
             if (n.currentLobby === undefined) {
               li.querySelector('a.code')?.addEventListener('click', () => {

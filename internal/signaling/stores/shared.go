@@ -29,12 +29,13 @@ type Store interface {
 	JoinLobby(ctx context.Context, game, lobby, id, password string) error
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
-	ListLobbies(ctx context.Context, game string, filter, sort string, limit int) ([]Lobby, error)
+	ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error)
 
 	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
 	CreatePeer(ctx context.Context, peerID, secret, gameID string) error
+	UpdatePeerGeo(ctx context.Context, peerID string, country, region string) error
 	MarkPeerAsActive(ctx context.Context, peerID string) error
 	MarkPeerAsDisconnected(ctx context.Context, peerID string) error
 	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
@@ -71,6 +72,8 @@ type Lobby struct {
 
 	Leader string `json:"leader,omitempty"`
 	Term   int    `json:"term"`
+
+	Latency *float32 `json:"latency,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

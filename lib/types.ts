@@ -27,6 +27,7 @@ export interface LobbyListEntry {
   term: number
   createdAt: string
   updatedAt: string
+  latency?: number
 }
 
 interface Base {

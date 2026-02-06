@@ -13,6 +13,7 @@ import (
 	"github.com/koenbollen/logging"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/poki/netlib/internal/signaling/latencydata"
 	"github.com/poki/netlib/migrations"
 	"go.uber.org/zap"
 )
@@ -40,6 +41,9 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		}
 		if err := migrations.Up(db.Config().ConnConfig); err != nil {
 			return nil, nil, fmt.Errorf("failed to migrate: %w", err)
+		}
+		if err := latencydata.EnsureLatencyData(ctx, db); err != nil {
+			return nil, nil, fmt.Errorf("failed to load latency data: %w", err)
 		}
 		store, err := NewPostgresStore(ctx, db)
 		if err != nil {
@@ -118,6 +122,9 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 
 		if err := migrations.Up(db.Config().ConnConfig); err != nil {
 			return nil, nil, fmt.Errorf("failed to migrate: %w", err)
+		}
+		if err := latencydata.EnsureLatencyData(ctx, db); err != nil {
+			return nil, nil, fmt.Errorf("failed to load latency data: %w", err)
 		}
 
 		store, err := NewPostgresStore(ctx, db)

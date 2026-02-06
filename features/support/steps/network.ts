@@ -8,8 +8,8 @@ After(async function (this: World) {
   this.players.clear()
 })
 
-async function playerIsConnectedAndReadyForGame (this: World, playerName: string, peerID: string, gameID: string, lat?: number, lon?: number): Promise<void> {
-  const player = await this.createPlayer(playerName, gameID, lat, lon)
+async function playerIsConnectedAndReadyForGame (this: World, playerName: string, peerID: string, gameID: string): Promise<void> {
+  const player = await this.createPlayer(playerName, gameID)
   const event = await player.waitForEvent('ready')
   if (event == null) {
     throw new Error(`unable to add player ${playerName} to network`)
@@ -21,10 +21,6 @@ async function playerIsConnectedAndReadyForGame (this: World, playerName: string
 
 Given('{string} is connected as {string} and ready for game {string}', async function (this: World, playerName: string, peerID: string, gameID: string) {
   await playerIsConnectedAndReadyForGame.call(this, playerName, peerID, gameID)
-})
-
-Given('{string} is connected as {string} with lat,lon as {float},{float} and ready for game {string}', async function (this: World, playerName: string, peerID: string, lat: number, lon: number, gameID: string) {
-  await playerIsConnectedAndReadyForGame.call(this, playerName, peerID, gameID, lat, lon)
 })
 
 async function areJoinedInALobby (this: World, playerNamesRaw: string, publc: boolean): Promise<void> {
@@ -158,10 +154,6 @@ Given('these peers exist:', async function (this: World, peers: DataTable) {
 
       if (value === 'null') {
         v.push('NULL')
-      } else if (key === 'latency_vector') {
-        v.push(`ARRAY[${value.substring(1, value.length - 1)}]::vector(11)`)
-      } else if (key === 'geo') {
-        v.push(`ll_to_earth(${value})`)
       } else {
         v.push(`'${value}'`)
       }
@@ -493,17 +485,4 @@ Then('{string} failed to join the lobby', function (playerName: string) {
   if (player.network.currentLobby !== undefined) {
     throw new Error(`player is in lobby ${player.network.currentLobby as string}`)
   }
-})
-
-When('the next peer\'s latency vector is set to:', function (latencies: string) {
-  if (latencies === 'null') {
-    this.latencyVector = null
-    return
-  }
-
-  const lv = latencies.split(',').map(s => parseInt(s.trim(), 10))
-  if (lv.length !== 11) {
-    throw new Error('latency vector must have 11 elements')
-  }
-  this.latencyVector = lv
 })

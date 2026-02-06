@@ -33,27 +33,27 @@
   resolved "https://registry.yarnpkg.com/@cucumber/ci-environment/-/ci-environment-12.0.0.tgz#8a7f8a46a88b88fa78beda415fb2c64952208e20"
   integrity sha512-SqCEnbCNl3zCXCFpqGUuoaSNhLC0jLw4tKeFcAxTw9MD/QRlJjeAC/fyvVLFuXuSq0OunJlFfxLu+Z3HE+oLPg==
 
-"@cucumber/cucumber-expressions@18.0.1":
-  version "18.0.1"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber-expressions/-/cucumber-expressions-18.0.1.tgz#0899cbda2ed5546dbaa0e40f0c754b6e3bd1bb69"
-  integrity sha512-NSid6bI+7UlgMywl5octojY5NXnxR9uq+JisjOrO52VbFsQM6gTWuQFE8syI10KnIBEdPzuEUSVEeZ0VFzRnZA==
+"@cucumber/cucumber-expressions@18.1.0":
+  version "18.1.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber-expressions/-/cucumber-expressions-18.1.0.tgz#a7fb43ec458e178af1215c96b54e645c0a22f533"
+  integrity sha512-9yc+wForrn15FaqLWNjYb19iQ/gPXhcq1kc4X1Ex1lR7NcJpa5pGnCow3bc1HERVM5IoYH+gwwrcJogSMsf+Vw==
   dependencies:
     regexp-match-indices "1.0.2"
 
-"@cucumber/cucumber@^12.5.0":
-  version "12.5.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.5.0.tgz#00d70f7f51887cc133e01cb2bafa65ff0b079fae"
-  integrity sha512-+VWxkIIpm5EWFfaF3grP1GlHobzlDBIF54FqJutdYmfpx3LJc+IS8uWdIN97m6zxizo5CPrUopTWkxzwVswUzg==
+"@cucumber/cucumber@^12.6.0":
+  version "12.6.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.6.0.tgz#a77fd04c43da664443e309fbc9a3c67a5f5da178"
+  integrity sha512-z6XKBIcUnJebnR3W8+K7Q2jJKB+pKpoD1l3CygEa9ufq/aeGuS5LAlllNxrod8loepLJhNmp8J8aengGbkL4cg==
   dependencies:
     "@cucumber/ci-environment" "12.0.0"
-    "@cucumber/cucumber-expressions" "18.0.1"
+    "@cucumber/cucumber-expressions" "18.1.0"
     "@cucumber/gherkin" "37.0.1"
     "@cucumber/gherkin-streams" "6.0.0"
     "@cucumber/gherkin-utils" "10.0.0"
     "@cucumber/html-formatter" "22.3.0"
     "@cucumber/junit-xml-formatter" "0.9.0"
     "@cucumber/message-streams" "4.0.1"
-    "@cucumber/messages" "31.1.0"
+    "@cucumber/messages" "31.2.0"
     "@cucumber/pretty-formatter" "1.0.1"
     "@cucumber/tag-expressions" "8.1.0"
     assertion-error-formatter "^3.0.0"
@@ -139,10 +139,10 @@
   resolved "https://registry.yarnpkg.com/@cucumber/message-streams/-/message-streams-4.0.1.tgz#a5339d3504594bb2edb5732aaae94dddb24d0970"
   integrity sha512-Kxap9uP5jD8tHUZVjTWgzxemi/0uOsbGjd4LBOSxcJoOCRbESFwemUzilJuzNTB8pcTQUh8D5oudUyxfkJOKmA==
 
-"@cucumber/messages@31.1.0", "@cucumber/messages@>=31.0.0 <32":
-  version "31.1.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/messages/-/messages-31.1.0.tgz#98a22c664cd9567a2cde2c07228cbd0e06d810be"
-  integrity sha512-BViwUQ9YMjcGL98Ww2QHMgu3S4JLUjbTz+Jo/jsq+8ZjS47/2v3IszpD6e12Y6IzZoGfrZriauZHPQ4PAmN9XA==
+"@cucumber/messages@31.2.0", "@cucumber/messages@>=31.0.0 <32":
+  version "31.2.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/messages/-/messages-31.2.0.tgz#9d8fd71dd4a12878cf22abeb2832c8967f3b5198"
+  integrity sha512-3urzBNCwmU/YKrKR0b3XdioFcOFNuxlLwEImsxeP8rXnweLs+Ky04QURcbKpFom3T6a6v9zVioLCfHUuSQ72pg==
   dependencies:
     class-transformer "0.5.1"
     reflect-metadata "0.2.2"

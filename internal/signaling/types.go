@@ -15,11 +15,10 @@ type PingPacket struct {
 type HelloPacket struct {
 	Type string `json:"type"`
 
-	Game          string    `json:"game"`
-	ID            string    `json:"id"`
-	Secret        string    `json:"secret"`
-	Version       string    `json:"version"`
-	LatencyVector []float32 `json:"latencyVector"`
+	Game    string `json:"game"`
+	ID      string `json:"id"`
+	Secret  string `json:"secret"`
+	Version string `json:"version"`
 }
 
 type WelcomePacket struct {

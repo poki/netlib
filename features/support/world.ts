@@ -36,7 +36,6 @@ export class World extends CucumberWorld {
   public testproxyURL?: string
   public useTestProxy: boolean = false
   public databaseURL?: string
-  public latencyVector: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
   public players: Map<string, Player> = new Map<string, Player>()
   public lastError: Map<string, Error> = new Map<string, Error>()
@@ -49,21 +48,21 @@ export class World extends CucumberWorld {
     }
   }
 
-  public async createPlayer (playerName: string, gameID: string, lat?: number, lon?: number): Promise<Player> {
+  public async createPlayer (playerName: string, gameID: string, country?: string, region?: string): Promise<Player> {
     return await new Promise((resolve) => {
       const config: PeerConfiguration = {}
       if (this.useTestProxy) {
         config.testproxyURL = this.testproxyURL
       }
-      config.testLatency = {
-        vector: this.latencyVector
-      }
-
       let signalingURL = this.signalingURL
-      if (lat !== undefined && lon !== undefined && signalingURL !== undefined) {
+      if (signalingURL !== undefined && (country !== undefined || region !== undefined)) {
         const url = new URL(signalingURL)
-        url.searchParams.set('lat', lat.toString())
-        url.searchParams.set('lon', lon.toString())
+        if (country !== undefined) {
+          url.searchParams.set('country', country)
+        }
+        if (region !== undefined) {
+          url.searchParams.set('region', region)
+        }
         signalingURL = url.toString()
       }
 
@@ -117,7 +116,6 @@ AfterAll(function () {
 
 Before(function (this: World) {
   this.scenarioRunning = true
-  this.latencyVector = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 })
 After(function (this: World, { result }) {
   this.scenarioRunning = false

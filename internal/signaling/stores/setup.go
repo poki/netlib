@@ -7,38 +7,21 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/koenbollen/logging"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/poki/netlib/internal/signaling/latencydata"
 	"github.com/poki/netlib/migrations"
 	"go.uber.org/zap"
-
-	pgxvec "github.com/pgvector/pgvector-go/pgx"
 )
 
 func getConfig(url string) (*pgxpool.Config, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse database URL: %w", err)
-	}
-
-	// Ensure the vector extension is created only once, not on every new connection.
-	// It needs to be create before we call pgxvec.RegisterTypes.
-	var createExtensionOnce sync.Once
-
-	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		createExtensionOnce.Do(func() {
-			if _, err := conn.Exec(ctx, "CREATE EXTENSION IF NOT EXISTS vector"); err != nil {
-				panic(err)
-			}
-		})
-
-		return pgxvec.RegisterTypes(ctx, conn)
 	}
 
 	return cfg, nil
@@ -58,6 +41,9 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 		}
 		if err := migrations.Up(db.Config().ConnConfig); err != nil {
 			return nil, nil, fmt.Errorf("failed to migrate: %w", err)
+		}
+		if err := latencydata.EnsureLatencyData(ctx, db); err != nil {
+			return nil, nil, fmt.Errorf("failed to load latency data: %w", err)
 		}
 		store, err := NewPostgresStore(ctx, db)
 		if err != nil {
@@ -136,6 +122,9 @@ func FromEnv(ctx context.Context) (Store, chan struct{}, error) {
 
 		if err := migrations.Up(db.Config().ConnConfig); err != nil {
 			return nil, nil, fmt.Errorf("failed to migrate: %w", err)
+		}
+		if err := latencydata.EnsureLatencyData(ctx, db); err != nil {
+			return nil, nil, fmt.Errorf("failed to load latency data: %w", err)
 		}
 
 		store, err := NewPostgresStore(ctx, db)

@@ -145,6 +145,10 @@ const network = new Network('<game-id>', {
 })
 ```
 
+## Engine Integrations
+
+[Defold integration](https://github.com/indiesoftby/defold-poki-netlib) by [IndieSoft](https://github.com/indiesoftby).
+
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](./.github/CONTRIBUTING.md) for details. This project adheres to the [Poki Vulnerability Disclosure Policy](https://poki.com/en/c/vulnerability-disclosure-policy).

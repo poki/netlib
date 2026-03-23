@@ -62,9 +62,9 @@ jobs:
         location: europe-west4-a
     - name: Install SOPS
       run: |-
-        curl -LO https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
-        chmod +x sops-v3.8.1.linux.amd64
-        sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
+        curl -LO https://github.com/getsops/sops/releases/download/v3.12.2/sops-v3.12.2.linux.amd64
+        chmod +x sops-v3.12.2.linux.amd64
+        sudo mv sops-v3.12.2.linux.amd64 /usr/local/bin/sops
     - name: Apply secrets
       run: sops --decrypt "manifest/secrets.yaml" | kubectl apply --validate -f -
     - name: Deploy

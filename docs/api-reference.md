@@ -96,6 +96,7 @@ Subscribe to events using `network.on(eventName, callback)`:
 ```typescript
 interface Peer {
   id: string;          // Unique peer identifier
+  maxMessageSize: number | null; // Max bytes per data channel message for this peer
   latency?: {
     last: number;      // Most recent latency measurement (in ms)
     average: number;   // Average latency over time
@@ -105,3 +106,14 @@ interface Peer {
   };
 }
 ```
+
+##### `peer.maxMessageSize: number | null` (read-only)
+Maximum message size, in bytes, that can be sent in a single WebRTC data channel message to this peer.
+
+- `null`: the SCTP transport is not available yet or unsupported in the current environment.
+- `0`: no practical message size limit is reported by the transport.
+- `> 0`: maximum safe payload size in bytes.
+
+Notes:
+- This value is negotiated per peer and can differ across connections.
+- Use this to decide when to chunk large payloads.

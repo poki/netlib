@@ -289,6 +289,10 @@ export default class Peer {
     }
   }
 
+  get maxMessageSize (): number | null {
+    return this.conn.sctp?.maxMessageSize ?? null
+  }
+
   toString (): string {
     return `[Peer: ${this.id}]`
   }

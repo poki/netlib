@@ -104,14 +104,10 @@ network.on('disconnected', peer => {
 ```js
 network.on('connected', peer => {
   const limit = peer.maxMessageSize
-  if (limit === null) {
-    console.log(`No SCTP max message size available for ${peer.id} yet`)
-    return
-  }
 
-  if (limit === 0) {
-    console.log(`No practical message size limit reported for ${peer.id}`)
-    return
+  if (limit === null) {
+    limit = 16 * 1024
+    console.log(`No SCTP max message size available for ${peer.id} yet, using conservative limit of ${limit} bytes`)
   }
 
   console.log(`Max payload for ${peer.id}: ${limit} bytes`)

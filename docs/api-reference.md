@@ -117,3 +117,4 @@ Maximum message size, in bytes, that can be sent in a single WebRTC data channel
 Notes:
 - This value is negotiated per peer and can differ across connections.
 - Use this to decide when to chunk large payloads.
+- If this is `null` or `0` you should use a conservative message size such as `16 * 1024` bytes for large payloads.

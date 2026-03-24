@@ -100,6 +100,20 @@ network.on('disconnected', peer => {
 })
 ```
 
+##### Inspecting Message Size Limits
+```js
+network.on('connected', peer => {
+  const limit = peer.maxMessageSize
+
+  if (limit === null) {
+    limit = 16 * 1024
+    console.log(`No SCTP max message size available for ${peer.id} yet, using conservative limit of ${limit} bytes`)
+  }
+
+  console.log(`Max payload for ${peer.id}: ${limit} bytes`)
+})
+```
+
 #### 6. Listing Lobbies
 You can list available lobbies using the `list` function. This function supports filtering using MongoDB-style filters:
 

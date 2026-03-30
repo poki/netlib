@@ -50,8 +50,8 @@
     "parcel": "^2.16.4",
     "ts-node": "^10.9.2",
     "ts-standard": "^12.0.2",
-    "typescript": "^5.9.3",
-    "ws": "^8.19.0"
+    "typescript": "^6.0.2",
+    "ws": "^8.20.0"
   },
   "engines": {
     "node": ">=14"

@@ -161,8 +161,11 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
 
+			// Use a local variable for the request-scoped context to avoid
+			// a data race with the ping goroutine that also reads ctx.
+			reqCtx := ctx
 			if base.RequestID != "" {
-				ctx = util.WithRequestID(ctx, base.RequestID)
+				reqCtx = util.WithRequestID(reqCtx, base.RequestID)
 			}
 
 			if peer.closedPacketReceived {
@@ -174,24 +177,24 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 			switch base.Type {
 			case "credentials":
-				credentials, err := cloudflare.GetCredentials(ctx)
+				credentials, err := cloudflare.GetCredentials(reqCtx)
 				if err != nil {
-					util.ReplyError(ctx, conn, err)
+					util.ReplyError(reqCtx, conn, err)
 				} else {
 					packet := CredentialsPacket{
 						Type:        "credentials",
 						Credentials: *credentials,
 						RequestID:   base.RequestID,
 					}
-					if err := peer.Send(ctx, packet); err != nil {
-						util.ErrorAndDisconnect(ctx, conn, err)
+					if err := peer.Send(reqCtx, packet); err != nil {
+						util.ErrorAndDisconnect(reqCtx, conn, err)
 					}
 				}
 
 			case "event":
 				params := metrics.EventParams{}
 				if err := json.Unmarshal(raw, &params); err != nil {
-					util.ErrorAndDisconnect(ctx, conn, err)
+					util.ErrorAndDisconnect(reqCtx, conn, err)
 				}
 
 				// Add country and region to event data of the avg-latency-at-10s event.
@@ -207,17 +210,17 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					}
 				}
 
-				go metrics.RecordEvent(ctx, params)
+				go metrics.RecordEvent(reqCtx, params)
 
 			case "ping", "pong":
 				// ignore, ping/pong is just for the tcp keepalive.
 
 			default:
-				if err := peer.HandlePacket(ctx, base.Type, raw); err != nil {
+				if err := peer.HandlePacket(reqCtx, base.Type, raw); err != nil {
 					if err == ErrUnknownPacketType {
 						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
 					} else {
-						util.ErrorAndDisconnect(ctx, conn, err)
+						util.ErrorAndDisconnect(reqCtx, conn, err)
 					}
 				}
 			}

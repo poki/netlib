@@ -40,10 +40,10 @@
   dependencies:
     regexp-match-indices "1.0.2"
 
-"@cucumber/cucumber@^12.7.0":
-  version "12.7.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.7.0.tgz#ca90eaa64a992a47e9781e210b84039433f1f478"
-  integrity sha512-7A/9CJpJDxv1SQ7hAZU0zPn2yRxx6XMR+LO4T94Enm3cYNWsEEj+RGX38NLX4INT+H6w5raX3Csb/qs4vUBsOA==
+"@cucumber/cucumber@^12.8.1":
+  version "12.8.1"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.8.1.tgz#7873a1f7f60141d6077755bbbdc819e739fa6d4a"
+  integrity sha512-hCXxiStjbZsRVZlV+CMywkqBtJ6RZTQeXSBZGPHm1YoIOI6YB8pCo0KlnJMmxfKfoeUKagtQMNPnpJBXwhkUjQ==
   dependencies:
     "@cucumber/ci-environment" "13.0.0"
     "@cucumber/cucumber-expressions" "19.0.0"
@@ -51,9 +51,9 @@
     "@cucumber/gherkin-streams" "6.0.0"
     "@cucumber/gherkin-utils" "11.0.0"
     "@cucumber/html-formatter" "23.0.0"
-    "@cucumber/junit-xml-formatter" "0.9.0"
-    "@cucumber/message-streams" "4.0.1"
-    "@cucumber/messages" "32.0.1"
+    "@cucumber/junit-xml-formatter" "0.13.3"
+    "@cucumber/message-streams" "4.1.1"
+    "@cucumber/messages" "32.2.0"
     "@cucumber/pretty-formatter" "1.0.1"
     "@cucumber/tag-expressions" "9.1.0"
     assertion-error-formatter "^3.0.0"
@@ -73,7 +73,6 @@
     lodash.merge "^4.6.2"
     lodash.mergewith "^4.6.2"
     luxon "3.7.2"
-    mime "^3.0.0"
     mkdirp "^3.0.0"
     mz "^2.7.0"
     progress "^2.0.3"
@@ -117,30 +116,24 @@
   resolved "https://registry.yarnpkg.com/@cucumber/html-formatter/-/html-formatter-23.0.0.tgz#066f548f55274b58b67b4930836bd73579a9bf07"
   integrity sha512-WwcRzdM8Ixy4e53j+Frm3fKM5rNuIyWUfy4HajEN+Xk/YcjA6yW0ACGTFDReB++VDZz/iUtwYdTlPRY36NbqJg==
 
-"@cucumber/junit-xml-formatter@0.9.0":
-  version "0.9.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/junit-xml-formatter/-/junit-xml-formatter-0.9.0.tgz#a6c4867090748930d7739ff4168658d27cf8e7ad"
-  integrity sha512-WF+A7pBaXpKMD1i7K59Nk5519zj4extxY4+4nSgv5XLsGXHDf1gJnb84BkLUzevNtp2o2QzMG0vWLwSm8V5blw==
+"@cucumber/junit-xml-formatter@0.13.3":
+  version "0.13.3"
+  resolved "https://registry.yarnpkg.com/@cucumber/junit-xml-formatter/-/junit-xml-formatter-0.13.3.tgz#a6ee049caa4afe9160f1514b8c65f24a00e71f42"
+  integrity sha512-w9ujOxiuKDtU6fLzJz+wp4Sgp5Xu6ba7ls00LHJccVmQU0Ba7zs+AHnv3iIgPjKZAQe1w8x93dr8Gaubh7Vqkg==
   dependencies:
-    "@cucumber/query" "^14.0.1"
+    "@cucumber/query" "^15.0.1"
     "@teppeis/multimaps" "^3.0.0"
     luxon "^3.5.0"
     xmlbuilder "^15.1.1"
 
-"@cucumber/message-streams@4.0.1":
-  version "4.0.1"
-  resolved "https://registry.yarnpkg.com/@cucumber/message-streams/-/message-streams-4.0.1.tgz#a5339d3504594bb2edb5732aaae94dddb24d0970"
-  integrity sha512-Kxap9uP5jD8tHUZVjTWgzxemi/0uOsbGjd4LBOSxcJoOCRbESFwemUzilJuzNTB8pcTQUh8D5oudUyxfkJOKmA==
-
-"@cucumber/messages@32.0.1":
-  version "32.0.1"
-  resolved "https://registry.yarnpkg.com/@cucumber/messages/-/messages-32.0.1.tgz#500a8be56e89b02db5a217a26dd2ba80d4cca912"
-  integrity sha512-1OSoW+GQvFUNAl6tdP2CTBexTXMNJF0094goVUcvugtQeXtJ0K8sCP0xbq7GGoiezs/eJAAOD03+zAPT64orHQ==
+"@cucumber/message-streams@4.1.1":
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/@cucumber/message-streams/-/message-streams-4.1.1.tgz#d3a271e6f6c90a52d731fb3554a56c4c6b456d17"
+  integrity sha512-QCAntLajesWMyX+mZKrj63YghVAts7yKFlZe46XprLbdJZN0ddB+f/Mr9OnyWKC2DHhJ18jzCfKIFCaqpAmUxg==
   dependencies:
-    class-transformer "0.5.1"
-    reflect-metadata "0.2.2"
+    mime "^3.0.0"
 
-"@cucumber/messages@>=31.0.0 <33", "@cucumber/messages@^32.0.0":
+"@cucumber/messages@32.2.0", "@cucumber/messages@>=31.0.0 <33", "@cucumber/messages@^32.0.0":
   version "32.2.0"
   resolved "https://registry.yarnpkg.com/@cucumber/messages/-/messages-32.2.0.tgz#a6cff1646366af60e0202e934d6f43f8ccce877f"
   integrity sha512-oYp1dgL2TByYWL51Z+rNm+/mFtJhiPU9WS03goes9EALb8d9GFcXRbG1JluFLFaChF1YDqIzLac0kkC3tv1DjQ==
@@ -158,10 +151,10 @@
     figures "^3.2.0"
     ts-dedent "^2.0.0"
 
-"@cucumber/query@^14.0.1":
-  version "14.7.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/query/-/query-14.7.0.tgz#551ac7657e293ab57c661dfc0a7a7cbc9d6d9923"
-  integrity sha512-fiqZ4gMEgYjmbuWproF/YeCdD5y+gD2BqgBIGbpihOsx6UlNsyzoDSfO+Tny0q65DxfK+pHo2UkPyEl7dO7wmQ==
+"@cucumber/query@^15.0.1":
+  version "15.0.1"
+  resolved "https://registry.yarnpkg.com/@cucumber/query/-/query-15.0.1.tgz#91b701121ba95caf7d0e6d9de95041ec3396d297"
+  integrity sha512-FMfT3orJblRsOxvU2doECBvQmauizYlj+5JsM8atAKKPbnQTj7v2/OrnuykvQpfZNBf19DYbRq1e832vllRP/g==
   dependencies:
     "@teppeis/multimaps" "3.0.0"
     lodash.sortby "^4.7.0"

@@ -8,16 +8,16 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v6
     - uses: actions/setup-go@v6
       with:
-        go-version: '1.25.0'
+        go-version-file: go.mod
     - run: yarn install --frozen-lockfile
     - run: yarn lint
-    - run: yarn cucumber
+    - run: go test ./...
       env:
         DOCKER_HOST: unix:///var/run/docker.sock
   build:

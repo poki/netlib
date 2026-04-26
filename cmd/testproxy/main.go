@@ -39,12 +39,16 @@ func main() {
 	interrupts := make(map[string]bool)
 	http.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
 		id := r.FormValue("id")
+		host := r.FormValue("host")
+		if host == "" {
+			host = "127.0.0.1"
+		}
 		port := r.FormValue("port")
 		laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 		if err != nil {
 			panic(err)
 		}
-		raddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+port)
+		raddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(host, port))
 		if err != nil {
 			panic(err)
 		}
@@ -113,7 +117,7 @@ func main() {
 	addr := util.Getenv("ADDR", ":8080")
 	server := &http.Server{
 		Addr:    addr,
-		Handler: http.DefaultServeMux,
+		Handler: withCORS(http.DefaultServeMux),
 	}
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -129,4 +133,17 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Fatal("failed to shutdown server", zap.Error(err))
 	}
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

@@ -64,13 +64,8 @@ export default class Peer {
               return
             }
             this.makingOffer = true
-            if (process.env.NODE_ENV === 'test') {
-              // Running tests with node and the wrtc package causes the
-              // setLocalDescription to fail with undefined as argment.
-              await this.conn.setLocalDescription(await this.conn.createOffer())
-            } else {
-              await this.conn.setLocalDescription()
-            }
+            await this.conn.setLocalDescription()
+            await this.waitForTestProxyCandidates()
             const description = this.conn.localDescription
             if (description != null) {
               await this.testSessionWrapper?.(description, this.config, this.network.id, this.id)
@@ -225,6 +220,28 @@ export default class Peer {
     void this.signaling.event('rtc', 'error', { target: this.id, error: JSON.stringify(e) })
   }
 
+  private async waitForTestProxyCandidates (): Promise<void> {
+    if (this.testSessionWrapper === undefined || this.conn.iceGatheringState === 'complete') {
+      return
+    }
+
+    await new Promise<void>(resolve => {
+      const done = (): void => {
+        clearTimeout(timeout)
+        this.conn.removeEventListener('icegatheringstatechange', onStateChange)
+        resolve()
+      }
+      const onStateChange = (): void => {
+        if (this.conn.iceGatheringState === 'complete') {
+          done()
+        }
+      }
+      const timeout = setTimeout(done, 5000)
+      this.conn.addEventListener('icegatheringstatechange', onStateChange)
+      onStateChange()
+    })
+  }
+
   /**
    * @internal
    */
@@ -258,11 +275,8 @@ export default class Peer {
           await this.conn.setRemoteDescription(description)
           this.isSettingRemoteAnswerPending = false
           if (description.type === 'offer') {
-            if (process.env.NODE_ENV === 'test') {
-              await this.conn.setLocalDescription(await this.conn.createAnswer())
-            } else {
-              await this.conn.setLocalDescription()
-            }
+            await this.conn.setLocalDescription()
+            await this.waitForTestProxyCandidates()
             const description = this.conn.localDescription
             if (description != null) {
               await this.testSessionWrapper?.(description, this.config, this.network.id, this.id)
@@ -305,20 +319,39 @@ async function wrapSessionDescription (desc: RTCSessionDescription, config: Peer
 
   let lines = desc.sdp.split('\r\n')
   lines = lines.filter(l => {
-    return !l.startsWith('a=candidate') || (l.includes('127.0.0.1') && l.includes('udp'))
+    return !l.startsWith('a=candidate') || parseProxyableCandidate(l) !== undefined
   })
 
   for (let i = 0; i < lines.length; i++) {
-    const l = lines[i]
-    if (l.startsWith('a=candidate') && l.includes('127.0.0.1')) {
-      const orignalPort = l.split('127.0.0.1 ').pop()?.split(' ')[0] // find port
-      if (orignalPort != null) {
-        const resp = await fetch(`${config.testproxyURL}/create?id=${selfID + otherID}&port=${orignalPort}`)
-        const substitudePort = await resp.text()
-        lines[i] = l.replaceAll(` ${orignalPort} `, ` ${substitudePort} `)
-      }
+    const candidate = parseProxyableCandidate(lines[i])
+    if (candidate !== undefined) {
+      const params = new URLSearchParams({
+        id: selfID + otherID,
+        host: candidate.host,
+        port: candidate.port
+      })
+      const resp = await fetch(`${config.testproxyURL}/create?${params.toString()}`)
+      const substitudePort = await resp.text()
+      candidate.parts[4] = '127.0.0.1'
+      candidate.parts[5] = substitudePort
+      lines[i] = candidate.parts.join(' ')
     }
   }
 
   ;(desc as any).sdp = lines.join('\r\n')
+}
+
+function parseProxyableCandidate (line: string): { parts: string[], host: string, port: string } | undefined {
+  if (!line.startsWith('a=candidate')) {
+    return undefined
+  }
+  const parts = line.split(' ')
+  const protocol = parts[2]?.toLowerCase()
+  const host = parts[4]
+  const port = parts[5]
+  const typ = parts[7]
+  if (protocol !== 'udp' || typ !== 'host' || host === undefined || port === undefined || host.includes(':')) {
+    return undefined
+  }
+  return { parts, host, port }
 }

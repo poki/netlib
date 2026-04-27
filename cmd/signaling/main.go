@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -36,12 +35,6 @@ func main() {
 		// Don't print a stacktrace here, it's confusing for users.
 		logger.WithOptions(zap.AddStacktrace(zapcore.InvalidLevel)).Error("failed to setup store", zap.Error(err))
 		return
-	}
-
-	if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "test" {
-		rand.Seed(0)
-	} else {
-		rand.Seed(time.Now().UnixNano())
 	}
 
 	credentialsClient := cloudflare.NewCredentialsClient(

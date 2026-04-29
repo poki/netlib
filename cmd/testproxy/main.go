@@ -56,7 +56,7 @@ func main() {
 		_, lport, _ := net.SplitHostPort(conn.LocalAddr().String())
 		w.Write([]byte(lport)) //nolint:errcheck
 		go func() {
-			defer conn.Close()
+			defer conn.Close() // nolint:errcheck
 			buffer := make([]byte, 65_535)
 			var remote *net.UDPAddr
 			for {
@@ -93,7 +93,7 @@ func main() {
 		id := r.FormValue("id")
 		conn, ok := connections[id]
 		if ok {
-			conn.Close()
+			conn.Close() // nolint:errcheck
 			delete(connections, id)
 		}
 	})

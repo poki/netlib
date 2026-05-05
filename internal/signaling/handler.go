@@ -23,7 +23,7 @@ const LobbyCleanThreshold = 24 * time.Hour
 const peerPingDuration = 2 * time.Second
 const peerActiveUpdateInterval = 30 * time.Second
 
-// Countries to track states/regions for the avg-latency-at-10s event.
+// Countries to track states/regions for the avg-latency-at-Xs events.
 // United States
 // Canada
 // Australia
@@ -197,9 +197,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					util.ErrorAndDisconnect(reqCtx, conn, err)
 				}
 
-				// Add country and region to event data of the avg-latency-at-10s event.
+				// Add country and region to event data of the avg-latency-at-Xs events.
 				// We want to use this data to build a latency world map.
-				if params.Action == "avg-latency-at-10s" && params.Data != nil && peer != nil {
+				if strings.HasPrefix(params.Action, "avg-latency-at-") && strings.HasSuffix(params.Action, "s") && params.Data != nil && peer != nil {
 					params.Data["country"] = peer.Country
 
 					// For big countries, also track the region/state so we can try and use this to

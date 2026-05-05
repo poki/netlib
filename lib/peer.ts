@@ -5,6 +5,7 @@ import { PeerConfiguration, SignalingPacketTypes } from './types'
 
 const LatencyRestartIceThreshold = 1000 // ms
 const ReconnectionWindow = 8000 // ms
+const LatencyReportIntervals = [10, 25, 50, 75, 100] as const
 
 export default class Peer {
   public readonly conn: RTCPeerConnection
@@ -25,7 +26,7 @@ export default class Peer {
   private lastMessageReceivedAt: number = 0
 
   private politenessTimeout?: ReturnType<typeof setTimeout>
-  private reportLatencyEventTimeout?: ReturnType<typeof setTimeout>
+  private readonly reportLatencyEventTimeouts: Array<ReturnType<typeof setTimeout>> = []
   private readonly checkStateInterval: ReturnType<typeof setInterval>
   private readonly channels: { [name: string]: RTCDataChannel }
 
@@ -128,9 +129,11 @@ export default class Peer {
           this.opened = true
           this.network.emit('connected', this)
           void this.signaling.event('rtc', 'connected', { target: this.id })
-          this.reportLatencyEventTimeout = setTimeout(() => {
-            void this.signaling.event('rtc', 'avg-latency-at-10s', { target: this.id, latency: `${this.latency.average}` })
-          }, 10000)
+          for (const seconds of LatencyReportIntervals) {
+            this.reportLatencyEventTimeouts.push(setTimeout(() => {
+              void this.signaling.event('rtc', `avg-latency-at-${seconds}s`, { target: this.id, latency: `${this.latency.average}` })
+            }, seconds * 1000))
+          }
         }
       })
       chan.addEventListener('message', e => {
@@ -162,9 +165,10 @@ export default class Peer {
     if (this.checkStateInterval != null) {
       clearInterval(this.checkStateInterval)
     }
-    if (this.reportLatencyEventTimeout != null) {
-      clearTimeout(this.reportLatencyEventTimeout)
+    for (const reportLatencyEventTimeout of this.reportLatencyEventTimeouts) {
+      clearTimeout(reportLatencyEventTimeout)
     }
+    this.reportLatencyEventTimeouts.length = 0
 
     if (this.opened) {
       this.network.emit('disconnected', this)

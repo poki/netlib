@@ -59,7 +59,7 @@ export default class Peer {
     }
     this.conn.addEventListener('negotiationneeded', () => {
       this.politenessTimeout = setTimeout(() => {
-        void this.handleNegotiationNeeded().catch(_ => {})
+        void this.handleNegotiationNeeded()
       }, this.polite ? 100 : 0)
     })
 

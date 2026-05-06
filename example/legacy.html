@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Two-Browser Test</title>
+  <style>
+    body { font-family: sans-serif; margin: 16px; }
+    .row { margin-bottom: 10px; }
+    #log { width: 100%; min-height: 260px; }
+  </style>
+</head>
+<body>
+  <h1>Legacy Two-Browser Test</h1>
+  <p>
+    Open this page in two browsers/tabs. In browser A click Create Lobby.
+    Copy the lobby code and paste it in browser B, then click Join Lobby.
+  </p>
+
+  <div class="row">
+    <button id="create" type="button">Create Lobby</button>
+    <input id="code" placeholder="Lobby code (copy from other browser)">
+    <button id="join" type="button">Join Lobby</button>
+    <button id="leave" type="button">Leave</button>
+  </div>
+
+  <div class="row">
+    <strong>Your peer id:</strong> <span id="peer-id">(not ready)</span><br>
+    <strong>Current lobby:</strong> <span id="lobby">(none)</span>
+  </div>
+
+  <textarea id="log" readonly></textarea>
+
+  <!-- Note: this file is for us to test if the legacy bundle still works, we recommend using the npm approach. -->
+  <script src="../dist/legacy.js"></script>
+  <script>
+    const peerIdEl = document.getElementById('peer-id')
+    const lobbyEl = document.getElementById('lobby')
+    const logEl = document.getElementById('log')
+    const codeInput = document.getElementById('code')
+
+    const NETWORK_ID = 'd0fe1ca1-7fa0-47ed-9469-6c792f68bae0'
+    const network = new window.netlib.Network(NETWORK_ID)
+
+    function log(line) {
+      logEl.value += line + '\n'
+      logEl.scrollTop = logEl.scrollHeight
+    }
+
+    function updateHeader() {
+      peerIdEl.textContent = network.id || '(not ready)'
+      lobbyEl.textContent = network.currentLobby || '(none)'
+    }
+
+    network.on('ready', () => {
+      updateHeader()
+      log('ready')
+    })
+
+    network.on('lobby', (code) => {
+      updateHeader()
+      codeInput.value = code
+      log('lobby ready: ' + code)
+    })
+
+    network.on('left', () => {
+      updateHeader()
+      log('left lobby')
+    })
+
+    network.on('connecting', (peer) => {
+      log('connecting to peer ' + peer.id)
+    })
+
+    network.on('connected', (peer) => {
+      log('connected to peer ' + peer.id + ' (peers=' + network.size + ')')
+    })
+
+    network.on('disconnected', (peer) => {
+      log('disconnected from peer ' + peer.id + ' (peers=' + network.size + ')')
+    })
+
+    network.on('signalingerror', (err) => {
+      log('signalingerror: ' + String(err))
+      console.error(err)
+    })
+
+    network.on('rtcerror', (err) => {
+      log('rtcerror: ' + String(err))
+      console.error(err)
+    })
+
+    document.getElementById('create').addEventListener('click', () => {
+      if (network.currentLobby !== undefined) {
+        log('already in lobby ' + network.currentLobby)
+        return
+      }
+      log('creating lobby...')
+      void network.create({ codeFormat: 'short', public: false })
+    })
+
+    document.getElementById('join').addEventListener('click', () => {
+      const code = codeInput.value.trim()
+      if (code === '') {
+        log('enter a lobby code first')
+        return
+      }
+      if (network.currentLobby !== undefined) {
+        log('already in lobby ' + network.currentLobby + ', leave first')
+        return
+      }
+
+      log('joining lobby ' + code + '...')
+      void network.join(code).then((info) => {
+        if (info === undefined) {
+          log('join failed: lobby not found or unavailable')
+        } else {
+          updateHeader()
+          log('joined lobby ' + info.code)
+        }
+      })
+    })
+
+    document.getElementById('leave').addEventListener('click', () => {
+      if (network.currentLobby === undefined) {
+        log('not in a lobby')
+        return
+      }
+      log('leaving lobby...')
+      void network.leave()
+    })
+
+    updateHeader()
+  </script>
+</body>
+</html>

@@ -59,36 +59,7 @@ export default class Peer {
     }
     this.conn.addEventListener('negotiationneeded', () => {
       this.politenessTimeout = setTimeout(() => {
-        (async () => {
-          try {
-            if (this.closing) {
-              return
-            }
-            this.makingOffer = true
-            if (process.env.NODE_ENV === 'test') {
-              // Running tests with node and the wrtc package causes the
-              // setLocalDescription to fail with undefined as argment.
-              await this.conn.setLocalDescription(await this.conn.createOffer())
-            } else {
-              await this.conn.setLocalDescription()
-            }
-            const description = this.conn.localDescription
-            if (description != null) {
-              await this.testSessionWrapper?.(description, this.config, this.network.id, this.id)
-              this.signaling.send({
-                type: 'description',
-                source: this.network.id,
-                recipient: this.id,
-                description
-              })
-            }
-          } catch (e) {
-            const error = new SignalingError('unknown-error', e as string)
-            this.network._onSignalingError(error)
-          } finally {
-            this.makingOffer = false
-          }
-        })().catch(_ => {})
+        void this.handleNegotiationNeeded()
       }, this.polite ? 100 : 0)
     })
 
@@ -217,6 +188,37 @@ export default class Peer {
           this.conn.restartIce()
         }
       }
+    }
+  }
+
+  private async handleNegotiationNeeded (): Promise<void> {
+    try {
+      if (this.closing) {
+        return
+      }
+      this.makingOffer = true
+      if (process.env.NODE_ENV === 'test') {
+        // Running tests with node and the wrtc package causes the
+        // setLocalDescription to fail with undefined as argment.
+        await this.conn.setLocalDescription(await this.conn.createOffer())
+      } else {
+        await this.conn.setLocalDescription()
+      }
+      const description = this.conn.localDescription
+      if (description != null) {
+        await this.testSessionWrapper?.(description, this.config, this.network.id, this.id)
+        this.signaling.send({
+          type: 'description',
+          source: this.network.id,
+          recipient: this.id,
+          description
+        })
+      }
+    } catch (e) {
+      const error = new SignalingError('unknown-error', e as string)
+      this.network._onSignalingError(error)
+    } finally {
+      this.makingOffer = false
     }
   }
 

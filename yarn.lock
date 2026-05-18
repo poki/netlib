@@ -40,10 +40,10 @@
   dependencies:
     regexp-match-indices "1.0.2"
 
-"@cucumber/cucumber@^12.8.2":
-  version "12.8.2"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.8.2.tgz#6f8ffbfdd5b135ce6625b8047c461721dc0cb4ec"
-  integrity sha512-IvprstODr0JYTtVG7CQbphN6AGRpzzAQ1EjG7TSumuS15uvVt0inWm8/9uzX8oJwEv5ReU7JruDFim4938omog==
+"@cucumber/cucumber@^12.8.3":
+  version "12.8.3"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-12.8.3.tgz#e8d586767fab1d537ab4d8a9c5e8347dacda8ef9"
+  integrity sha512-4F6YAO0kuFhHvIlQLV7aDJ5mwdmiynecO0dqg3VQURA4PFljJ4QbM0I2+1n8WhIBFzJpNayKOY/FhKH4Cp9QHA==
   dependencies:
     "@cucumber/ci-environment" "13.0.0"
     "@cucumber/cucumber-expressions" "19.0.0"
@@ -4579,10 +4579,10 @@ wrappy@1:
   resolved "https://registry.yarnpkg.com/wrappy/-/wrappy-1.0.2.tgz#b5243d8f3ec1aa35f1364605bc0d1036e30ab69f"
   integrity sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==
 
-ws@^8.20.0:
-  version "8.20.0"
-  resolved "https://registry.yarnpkg.com/ws/-/ws-8.20.0.tgz#4cd9532358eba60bc863aad1623dfb045a4d4af8"
-  integrity sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==
+ws@^8.20.1:
+  version "8.20.1"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.20.1.tgz#91a9ae2b312ccf98e0a85ec499b48cef45ab0ddb"
+  integrity sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==
 
 xdg-basedir@^4.0.0:
   version "4.0.0"

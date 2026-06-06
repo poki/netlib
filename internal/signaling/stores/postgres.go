@@ -212,18 +212,18 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 	return nil
 }
 
-func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, password string) error {
+func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, password string) ([]string, error) {
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
-		return ErrInvalidPeerID
+		return nil, ErrInvalidPeerID
 	}
 
 	now := util.NowUTC(ctx)
 
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
@@ -239,21 +239,21 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 	`, lobbyCode, game).Scan(&peerlist, &lobbyPassword, &maxPlayers)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return nil, ErrNotFound
 		}
-		return err
+		return nil, err
 	}
 
 	if lobbyPassword != nil && bcrypt.CompareHashAndPassword(lobbyPassword, []byte(password)) != nil {
-		return ErrInvalidPassword
+		return nil, ErrInvalidPassword
 	}
 
 	if maxPlayers > 0 && len(peerlist) >= maxPlayers {
-		return ErrLobbyIsFull
+		return nil, ErrLobbyIsFull
 	}
 
 	if slices.Contains(peerlist, peerID) {
-		return ErrAlreadyInLobby
+		return nil, ErrAlreadyInLobby
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -265,15 +265,15 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 		AND game = $4
 	`, peerID, now, lobbyCode, game)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return peerlist, nil
 }
 
 func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) error {

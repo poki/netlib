@@ -14,7 +14,7 @@ export default class Peer {
   private makingOffer: boolean = false
   private ignoreOffer: boolean = false
   private isSettingRemoteAnswerPending: boolean = false
-  private readonly pendingCandidates: RTCIceCandidate[] = []
+  private readonly pendingRemoteCandidates: RTCIceCandidate[] = []
 
   // Connection state:
   private opened: boolean = false
@@ -243,7 +243,7 @@ export default class Peer {
   }
 
   private async drainPendingCandidates (): Promise<void> {
-    const candidates = this.pendingCandidates.splice(0)
+    const candidates = this.pendingRemoteCandidates.splice(0)
     for (const candidate of candidates) {
       await this.addIceCandidate(candidate)
     }
@@ -258,7 +258,7 @@ export default class Peer {
         if (packet.candidate != null) {
           if (this.conn.remoteDescription == null) {
             if (!this.ignoreOffer) {
-              this.pendingCandidates.push(packet.candidate)
+              this.pendingRemoteCandidates.push(packet.candidate)
             }
             return
           }

@@ -5,14 +5,14 @@ go 1.25.0
 require (
 	github.com/coder/websocket v1.8.14
 	github.com/golang-migrate/migrate/v4 v4.19.1
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/poki/mongodb-filter-to-postgres v1.0.8
 	github.com/rs/cors v1.11.1
 	github.com/rs/xid v1.6.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.52.0
+	golang.org/x/crypto v0.53.0
 )
 
 require (
@@ -57,7 +57,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.41.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 )

@@ -157,7 +157,15 @@ export default class Network extends EventEmitter<NetworkListeners> {
    * @internal
    */
   async _addPeer (id: string, polite: boolean): Promise<void> {
+    if (this.peers.has(id)) {
+      return
+    }
+
     const config = await this.credentials.fillCredentials(this.peerConfig)
+
+    if (this.peers.has(id)) {
+      return
+    }
 
     config.iceServers = config.iceServers?.filter(server => !(server.urls.includes('turn:') && server.username === undefined))
 

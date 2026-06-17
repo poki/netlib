@@ -14,6 +14,7 @@ export default class Peer {
   private makingOffer: boolean = false
   private ignoreOffer: boolean = false
   private isSettingRemoteAnswerPending: boolean = false
+  private readonly pendingRemoteCandidates: RTCIceCandidate[] = []
 
   // Connection state:
   private opened: boolean = false
@@ -231,6 +232,23 @@ export default class Peer {
     void this.signaling.event('rtc', 'error', { target: this.id, error: JSON.stringify(e) })
   }
 
+  private async addIceCandidate (candidate: RTCIceCandidate): Promise<void> {
+    try {
+      await this.conn.addIceCandidate(candidate)
+    } catch (e) {
+      if (!this.ignoreOffer) {
+        throw e
+      }
+    }
+  }
+
+  private async drainPendingCandidates (): Promise<void> {
+    const candidates = this.pendingRemoteCandidates.splice(0)
+    for (const candidate of candidates) {
+      await this.addIceCandidate(candidate)
+    }
+  }
+
   /**
    * @internal
    */
@@ -238,13 +256,13 @@ export default class Peer {
     switch (packet.type) {
       case 'candidate':
         if (packet.candidate != null) {
-          try {
-            await this.conn.addIceCandidate(packet.candidate)
-          } catch (e) {
+          if (this.conn.remoteDescription == null) {
             if (!this.ignoreOffer) {
-              throw e
+              this.pendingRemoteCandidates.push(packet.candidate)
             }
+            return
           }
+          await this.addIceCandidate(packet.candidate)
         }
         break
 
@@ -260,9 +278,17 @@ export default class Peer {
           if (this.ignoreOffer) {
             return
           }
+          if (description.type === 'answer' && this.conn.signalingState !== 'have-local-offer') {
+            this.network.log('ignoring stale remote answer from', this.id, 'in state', this.conn.signalingState)
+            return
+          }
           this.isSettingRemoteAnswerPending = description.type === 'answer'
-          await this.conn.setRemoteDescription(description)
-          this.isSettingRemoteAnswerPending = false
+          try {
+            await this.conn.setRemoteDescription(description)
+          } finally {
+            this.isSettingRemoteAnswerPending = false
+          }
+          await this.drainPendingCandidates()
           if (description.type === 'offer') {
             if (process.env.NODE_ENV === 'test') {
               await this.conn.setLocalDescription(await this.conn.createAnswer())

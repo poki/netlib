@@ -27,6 +27,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   private readonly requests: Map<string, RequestHandler> = new Map()
 
   private pingInterval?: ReturnType<typeof setInterval>
+  private messageQueue: Promise<void> = Promise.resolve()
 
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
     super()
@@ -75,9 +76,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         }, 100)
       }
     }
-    const onMessage = (ev: MessageEvent): void => {
-      this.handleSignalingMessage(ev.data).catch(_ => {})
-    }
+    const onMessage = (ev: MessageEvent): void => this.enqueueSignalingMessage(ev.data)
     const onClose = (): void => {
       if (!this.network.closing) {
         const error = new SignalingError('socket-error', 'signaling socket closed')
@@ -143,8 +142,8 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       packet.rid = rid
       this.network.log('requesting signaling packet:', packet.type)
       const data = JSON.stringify(packet)
+      this.requests.set(rid, { resolve, reject, type: packet.type })
       this.ws.send(data)
-      this.requests.set(rid, { resolve, reject })
     })
   }
 
@@ -169,19 +168,60 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
   }
 
-  private async handleSignalingMessage (data: string): Promise<void> {
+  private enqueueSignalingMessage (data: string): void {
+    const packet = this.parseSignalingPacket(data)
+    if (packet == null) {
+      return
+    }
+
+    this.resolveImmediateRequest(packet)
+    const handle = this.handleSignalingMessage.bind(this, packet)
+    this.messageQueue = this.messageQueue.then(handle, handle)
+    void this.messageQueue.catch(_ => {})
+  }
+
+  private parseSignalingPacket (data: string): SignalingPacketTypes | undefined {
     try {
       const packet = JSON.parse(data) as SignalingPacketTypes
       this.network.log('signaling packet received:', packet.type)
+      return packet
+    } catch (e) {
+      const error = new SignalingError('unknown-error', e as string)
+      this.network._onSignalingError(error)
+    }
+  }
+
+  private resolveImmediateRequest (packet: SignalingPacketTypes): void {
+    if (packet.rid === undefined) {
+      return
+    }
+
+    const request = this.requests.get(packet.rid)
+    // Only credential responses can resolve immediately: _addPeer waits for them
+    // while handling a queued connect packet, so queueing them would deadlock.
+    if (request?.type !== 'credentials') {
+      return
+    }
+
+    this.requests.delete(packet.rid)
+    this.resolveRequest(packet, request)
+  }
+
+  private resolveRequest (packet: SignalingPacketTypes, request: RequestHandler): void {
+    if (packet.type === 'error') {
+      request.reject(new SignalingError('server-error', packet.message, undefined, packet.code))
+    } else {
+      request.resolve(packet)
+    }
+  }
+
+  private async handleSignalingMessage (packet: SignalingPacketTypes): Promise<void> {
+    try {
       if (packet.rid !== undefined) {
         const request = this.requests.get(packet.rid)
         if (request != null) {
           this.requests.delete(packet.rid)
-          if (packet.type === 'error') {
-            request.reject(new SignalingError('server-error', packet.message, undefined, packet.code))
-          } else {
-            request.resolve(packet)
-          }
+          this.resolveRequest(packet, request)
         }
       }
       switch (packet.type) {
@@ -319,6 +359,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 interface RequestHandler {
   resolve: (data: SignalingPacketTypes) => void
   reject: (reason?: any) => void
+  type: string // Original request packet type; used to allow safe queue bypasses.
 }
 
 export class SignalingError {

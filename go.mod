@@ -3,7 +3,7 @@ module github.com/poki/netlib
 go 1.25.0
 
 require (
-	github.com/coder/websocket v1.8.14
+	github.com/coder/websocket v1.8.15
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/koenbollen/logging v0.0.0-20230520102501-e01d64214504

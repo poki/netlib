@@ -38,5 +38,10 @@ updates:
       npm:
         patterns:
           - "*"
+        applies-to: version-updates
+      npm-security:
+        patterns:
+          - "*"
+        applies-to: security-updates
     cooldown:
       default-days: 5

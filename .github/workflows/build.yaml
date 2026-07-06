@@ -8,13 +8,19 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: hetzner
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-go@v6
       with:
         go-version: '1.25.0'
+        cache: false # Use the persistent self-hosted runner Go cache.
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+    - name: Enable Corepack
+      run: corepack enable
     - run: yarn install --frozen-lockfile
     - run: yarn lint
     - run: yarn cucumber
@@ -22,18 +28,19 @@ jobs:
         DOCKER_HOST: unix:///var/run/docker.sock
   golangci-lint:
     name: golangci-lint
-    runs-on: ubuntu-latest
+    runs-on: hetzner
     steps:
     - uses: actions/setup-go@v6
       with:
         go-version: 1.26
+        cache: false # Use the persistent self-hosted runner Go cache.
     - uses: actions/checkout@v7
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v9.2.1
       with:
         version: v2.10.1
   build:
-    runs-on: ubuntu-latest
+    runs-on: hetzner
     timeout-minutes: 30
     steps:
     - name: Set up Docker Buildx
@@ -54,7 +61,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: hetzner
     needs:
     - build
     - test
@@ -73,11 +80,8 @@ jobs:
       with:
         cluster_name: production-eu-west-4
         location: europe-west4-a
-    - name: Install SOPS
-      run: |-
-        curl -LO https://github.com/getsops/sops/releases/download/v3.12.2/sops-v3.12.2.linux.amd64
-        chmod +x sops-v3.12.2.linux.amd64
-        sudo mv sops-v3.12.2.linux.amd64 /usr/local/bin/sops
+    - name: Verify SOPS
+      run: sops --version
     - name: Apply secrets
       run: sops --decrypt "manifest/secrets.yaml" | kubectl apply --validate -f -
     - name: Deploy

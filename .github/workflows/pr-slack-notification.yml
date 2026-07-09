@@ -17,6 +17,8 @@ jobs:
       - name: Send PR link
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TECH_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
@@ -27,5 +29,9 @@ jobs:
           curl --fail --silent --show-error \
             -X POST \
             -H 'Content-type: application/json' \
-            --data "$(jq -n --arg text "$PR_URL" '{text: $text}')" \
+            --data "$(jq -n \
+              --arg title "$PR_TITLE" \
+              --arg number "$PR_NUMBER" \
+              --arg url "$PR_URL" \
+              '{text: ("New PR: <" + $url + "|" + $title + " (#" + $number + ")>")}')" \
             "$SLACK_WEBHOOK_URL"

@@ -18,7 +18,6 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TECH_WEBHOOK_URL }}
           PR_REPO: ${{ github.event.repository.name }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_URL: ${{ github.event.pull_request.html_url }}
@@ -33,9 +32,8 @@ jobs:
             -H 'Content-type: application/json' \
             --data "$(jq -n \
               --arg repo "$PR_REPO" \
-              --arg title "$PR_TITLE" \
               --arg number "$PR_NUMBER" \
               --arg author "$PR_AUTHOR" \
               --arg url "$PR_URL" \
-              '{text: ("New " + $repo + " PR: <" + $url + "|" + $title + " (#" + $number + ")> by " + $author)}')" \
+              '{text: ("New " + $repo + " PR: <" + $url + "|#" + $number + "> by " + $author)}')" \
             "$SLACK_WEBHOOK_URL"

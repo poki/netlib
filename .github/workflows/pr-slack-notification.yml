@@ -1,0 +1,31 @@
+name: Slack notification
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  notify-slack:
+    name: Send
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: hetzner
+    timeout-minutes: 5
+    steps:
+      - name: Send PR link
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TECH_WEBHOOK_URL }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_TECH_WEBHOOK_URL is not configured; skipping Slack notification."
+            exit 0
+          fi
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H 'Content-type: application/json' \
+            --data "$(jq -n --arg text "$PR_URL" '{text: $text}')" \
+            "$SLACK_WEBHOOK_URL"

@@ -11,7 +11,7 @@ jobs:
   notify-slack:
     name: Send
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: hetzner
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Send PR link

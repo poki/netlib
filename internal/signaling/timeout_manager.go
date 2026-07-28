@@ -102,11 +102,16 @@ func (manager *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	err := manager.Store.MarkPeerAsDisconnected(ctx, p.ID)
 	if err != nil {
 		logger.Error("failed to record timeout peer", zap.Error(err))
-	} else {
-		err := manager.doLeaderElectionAndPublish(ctx, p.Game, p.Lobby)
-		if err != nil {
-			logger.Error("failed to do leader election", zap.Error(err), zap.String("game", p.Game), zap.String("lobby", p.Lobby))
-		}
+		return
+	}
+
+	if p.Lobby == "" {
+		return
+	}
+
+	err = manager.doLeaderElectionAndPublish(ctx, p.Game, p.Lobby)
+	if err != nil {
+		logger.Error("failed to do leader election", zap.Error(err), zap.String("game", p.Game), zap.String("lobby", p.Lobby))
 	}
 }
 

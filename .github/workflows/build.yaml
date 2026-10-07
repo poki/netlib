@@ -47,7 +47,7 @@ jobs:
     - name: Configure docker for GCP
       run: gcloud auth configure-docker europe-docker.pkg.dev
     - name: Build and push
-      uses: docker/build-push-action@v7.3.0
+      uses: docker/build-push-action@v7.4.0
       with:
         push: true
         tags: europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/netlib/signaling:${{ github.sha }}

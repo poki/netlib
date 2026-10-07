@@ -15,6 +15,10 @@ spec:
       containers:
       - name: signaling
         image: "europe-docker.pkg.dev/poki-core/netlib/signaling:$GITHUB_SHA"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
         ports:
         - name: signaling
           containerPort: 8080

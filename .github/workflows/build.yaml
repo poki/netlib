@@ -44,6 +44,8 @@ jobs:
         credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
     - name: 'Set up Cloud SDK'
       uses: google-github-actions/setup-gcloud@v3
+      with:
+        skip_install: true
     - name: Configure docker for GCP
       run: gcloud auth configure-docker europe-docker.pkg.dev
     - name: Build and push
@@ -69,6 +71,8 @@ jobs:
         credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
     - name: 'Set up Cloud SDK'
       uses: google-github-actions/setup-gcloud@v3
+      with:
+        skip_install: true
     - uses: google-github-actions/get-gke-credentials@v3
       with:
         cluster_name: production-eu-west-4

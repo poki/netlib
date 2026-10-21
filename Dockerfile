@@ -2,7 +2,7 @@ FROM golang:1.27.3-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f
 
 WORKDIR /netlib
 
-RUN apk --no-cache add ca-certificates git
+RUN apk --no-cache add --upgrade ca-certificates ca-certificates-bundle git
 
 COPY go* ./
 RUN go mod download

@@ -46,9 +46,9 @@ func NewClient(url string) *Client {
 			Transport: &http.Transport{
 				MaxConnsPerHost:     maxConnsPerHost,
 				MaxIdleConnsPerHost: maxIdleConnsPerHost,
-				Dial: (&net.Dialer{
+				DialContext: (&net.Dialer{
 					Timeout: timeout,
-				}).Dial,
+				}).DialContext,
 				TLSHandshakeTimeout: timeout,
 			},
 		},

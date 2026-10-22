@@ -55,6 +55,17 @@ const network = new Network('<your-game-id>')
 ```
 
 3. Create or join a lobby:
+
+For automatic matchmaking, quick-join the oldest available public lobby or create one atomically:
+
+```javascript
+network.on('ready', async () => {
+  const lobby = await network.quickJoin({ maxPlayers: 4 })
+  console.log('Joined lobby:', lobby?.code)
+})
+```
+
+Alternatively, create or join a specific lobby:
 ```js
 // Create a new lobby
 network.on('ready', () => {

@@ -148,6 +148,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "quickJoin":
+		packet := QuickJoinPacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleQuickJoinPacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	case "lobbyUpdate":
 		packet := LobbyUpdatePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
@@ -401,17 +411,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 
 	attempts := 0
 	for ; attempts < 20; attempts++ {
-		if packet.CodeFormat == "short" && attempts < 19 {
-			// The first 15 attempts will try to generate a 4 character code.
-			// After that, it will try to generate a 5 character code.
-			length := 4
-			if attempts > 15 {
-				length = 5
-			}
-			p.Lobby = util.GenerateShortLobbyCode(ctx, length)
-		} else {
-			p.Lobby = util.GenerateLobbyCode(ctx)
-		}
+		p.Lobby = util.GenerateLobbyCodeWithFormat(ctx, packet.CodeFormat, attempts)
 
 		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
 			Public:      &packet.Public,
@@ -454,7 +454,6 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 }
 
 func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
-	logger := logging.GetLogger(ctx)
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
@@ -485,11 +484,58 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		return err
 	}
 
-	p.Lobby = packet.Lobby
+	return p.finishJoin(ctx, packet.RequestID, packet.Lobby, existingPeers, "joined")
+}
+
+func (p *Peer) HandleQuickJoinPacket(ctx context.Context, packet QuickJoinPacket) error {
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	if p.Lobby != "" {
+		return fmt.Errorf("already in a lobby %s:%s as %s", p.Game, p.Lobby, p.ID)
+	}
+
+	if packet.CanUpdateBy == "" {
+		packet.CanUpdateBy = stores.CanUpdateByCreator
+	} else if packet.CanUpdateBy != "" {
+		if packet.CanUpdateBy != stores.CanUpdateByCreator &&
+			packet.CanUpdateBy != stores.CanUpdateByLeader &&
+			packet.CanUpdateBy != stores.CanUpdateByAnyone &&
+			packet.CanUpdateBy != stores.CanUpdateByNone {
+			return fmt.Errorf("invalid canUpdateBy value")
+		}
+	}
+
+	maxPlayers := DefaultMaxPlayers
+	if packet.MaxPlayers != nil {
+		maxPlayers = *packet.MaxPlayers
+	}
+	if maxPlayers < 0 {
+		return fmt.Errorf("invalid maxPlayers value")
+	}
+
+	lobbyCode, existingPeers, created, err := p.store.QuickJoinLobby(ctx, p.Game, p.ID, packet.CodeFormat, stores.LobbyOptions{
+		CustomData:  &packet.CustomData,
+		CanUpdateBy: &packet.CanUpdateBy,
+		MaxPlayers:  &maxPlayers,
+	})
+	if err != nil {
+		return err
+	}
+
+	action := "joined"
+	if created {
+		action = "created"
+	}
+	return p.finishJoin(ctx, packet.RequestID, lobbyCode, existingPeers, action)
+}
+
+func (p *Peer) finishJoin(ctx context.Context, requestID, lobbyCode string, existingPeers []string, action string) error {
+	p.Lobby = lobbyCode
 	p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
 	// Lobby might be empty when joining, then you need to become the leader.
-	_, err = p.doLeaderElectionAndPublish(ctx)
+	_, err := p.doLeaderElectionAndPublish(ctx)
 	if err != nil {
 		return err
 	}
@@ -500,7 +546,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	}
 
 	err = p.Send(ctx, JoinedPacket{
-		RequestID: packet.RequestID,
+		RequestID: requestID,
 		Type:      "joined",
 		LobbyCode: p.Lobby, // backwards compatibility
 		LobbyInfo: lobby,
@@ -520,12 +566,13 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 		}
 	}
 
-	logger.Debug("joined lobby",
+	logger := logging.GetLogger(ctx)
+	logger.Debug(action+" lobby",
 		zap.String("game", p.Game),
 		zap.String("lobby", p.Lobby),
 		zap.String("peer", p.ID),
 		zap.Strings("peers", lobby.Peers))
-	go metrics.Record(ctx, "lobby", "joined", p.Game, p.ID, p.Lobby)
+	go metrics.Record(ctx, "lobby", action, p.Game, p.ID, p.Lobby)
 
 	return nil
 }

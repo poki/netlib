@@ -16,6 +16,8 @@ export interface LobbySettings {
   canUpdateBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
+export type QuickJoinSettings = Omit<LobbySettings, 'public' | 'password'>
+
 export interface LobbyListEntry {
   code: string
   public: boolean
@@ -58,6 +60,7 @@ export type SignalingPacketTypes =
 | ListPacket
 | LobbiesPacket
 | PingPacket
+| QuickJoinPacket
 | WelcomePacket
 
 export interface PingPacket extends Base {
@@ -106,6 +109,10 @@ export interface JoinPacket extends Base {
   type: 'join'
   lobby: string
   password?: string
+}
+
+export interface QuickJoinPacket extends Base, QuickJoinSettings {
+  type: 'quickJoin'
 }
 
 export interface JoinedPacket extends Base {

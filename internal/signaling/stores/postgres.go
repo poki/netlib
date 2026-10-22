@@ -324,6 +324,19 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
+func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game string) (PlayerCounts, error) {
+	var counts PlayerCounts
+	err := s.DB.QueryRow(ctx, `
+		SELECT COUNT(*), COUNT(*) FILTER (WHERE EXISTS (
+			SELECT 1 FROM lobbies
+			WHERE lobbies.game = peers.game AND peers.peer = ANY(lobbies.peers)
+		))
+		FROM peers
+		WHERE game = $1 AND disconnected = FALSE
+	`, game).Scan(&counts.Online, &counts.InLobby)
+	return counts, err
+}
+
 func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {

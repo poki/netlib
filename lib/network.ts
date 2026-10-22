@@ -1,7 +1,7 @@
 import { EventEmitter } from 'eventemitter3'
 
 import { DefaultDataChannels, DefaultRTCConfiguration, DefaultSignalingURL } from '.'
-import { LobbyListEntry, LobbySettings, PeerConfiguration } from './types'
+import { LobbyListEntry, LobbySettings, PeerConfiguration, PlayerCounts } from './types'
 import Signaling, { SignalingError } from './signaling'
 import Peer from './peer'
 import Credentials from './credentials'
@@ -64,6 +64,17 @@ export default class Network extends EventEmitter<NetworkListeners> {
       return reply.lobbies
     }
     return []
+  }
+
+  async getPlayerCounts (): Promise<PlayerCounts> {
+    if (this._closing || this.signaling.receivedID === undefined) {
+      throw new Error('network is closing or not connected')
+    }
+    const reply = await this.signaling.request({ type: 'getPlayerCounts' })
+    if (reply.type === 'playerCounts') {
+      return reply.counts
+    }
+    throw new Error('unexpected player counts response')
   }
 
   async create (settings?: LobbySettings): Promise<string> {

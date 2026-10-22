@@ -59,6 +59,27 @@ interface Lobby {
 }
 ```
 
+#### Player Counts
+
+##### `getPlayerCounts(): Promise<PlayerCounts>`
+Returns a server-side snapshot of connected Netlib sessions for this instance's game ID.
+Call after the `ready` event.
+
+```typescript
+interface PlayerCounts {
+  online: number;   // Connected sessions, including yourself
+  inLobby: number;  // Connected sessions in public or private lobbies
+}
+
+const { online } = await network.getPlayerCounts();
+label.textContent = `${online} players online`;
+```
+
+`inLobby` is a subset of `online`. Counts represent sessions, not unique people;
+multiple tabs can count separately. Disconnects are reflected once detected by the
+server. Players outside a lobby are not necessarily searching for a game.
+The promise rejects if the network is not ready, is closing, or the request fails.
+
 #### Communication
 
 ##### `send(channel: string, peerId: string, data: any): void`

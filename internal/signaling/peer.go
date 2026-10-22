@@ -128,6 +128,16 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
+	case "getPlayerCounts":
+		packet := GetPlayerCountsPacket{}
+		if err := json.Unmarshal(raw, &packet); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %w", err)
+		}
+		err = p.HandleGetPlayerCountsPacket(ctx, packet)
+		if err != nil {
+			return fmt.Errorf("unable to handle packet: %w", err)
+		}
+
 	case "create":
 		packet := CreatePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
@@ -288,6 +298,12 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 	logger := logging.GetLogger(ctx)
 	go metrics.Record(ctx, "client", "close", p.Game, p.ID, p.Lobby)
 
+	if p.ID != "" {
+		if err := p.store.MarkPeerAsDisconnected(ctx, p.ID); err != nil {
+			return err
+		}
+	}
+
 	p.closedPacketReceived = true
 
 	logger.Debug("client closed",
@@ -371,6 +387,21 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 		RequestID: packet.RequestID,
 		Type:      "lobbies",
 		Lobbies:   lobbies,
+	})
+}
+
+func (p *Peer) HandleGetPlayerCountsPacket(ctx context.Context, packet GetPlayerCountsPacket) error {
+	if p.ID == "" {
+		return fmt.Errorf("peer not connected")
+	}
+	counts, err := p.store.GetPlayerCounts(ctx, p.Game)
+	if err != nil {
+		return err
+	}
+	return p.Send(ctx, PlayerCountsPacket{
+		RequestID: packet.RequestID,
+		Type:      "playerCounts",
+		Counts:    counts,
 	})
 }
 

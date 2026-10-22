@@ -490,3 +490,27 @@ Then('{string} failed to join the lobby', function (playerName: string) {
     throw new Error(`player is in lobby ${player.network.currentLobby as string}`)
   }
 })
+
+Then('{string} should see {int} players online and {int} in a lobby', async function (this: World, playerName: string, online: number, inLobby: number) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const counts = await player.network.getPlayerCounts()
+  if (counts.online !== online || counts.inLobby !== inLobby) {
+    throw new Error(`expected ${online} online and ${inLobby} in a lobby but got ${JSON.stringify(counts)}`)
+  }
+})
+
+When('{string} tries to request player counts', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  try {
+    this.lastError.delete(playerName)
+    await player.network.getPlayerCounts()
+  } catch (e) {
+    this.lastError.set(playerName, e as Error)
+  }
+})

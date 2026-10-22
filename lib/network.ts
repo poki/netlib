@@ -1,7 +1,7 @@
 import { EventEmitter } from 'eventemitter3'
 
 import { DefaultDataChannels, DefaultRTCConfiguration, DefaultSignalingURL } from '.'
-import { LobbyListEntry, LobbySettings, PeerConfiguration, PlayerCounts } from './types'
+import { LobbyListEntry, LobbySettings, PeerConfiguration, PlayerCounts, QuickJoinSettings } from './types'
 import Signaling, { SignalingError } from './signaling'
 import Peer from './peer'
 import Credentials from './credentials'
@@ -102,6 +102,20 @@ export default class Network extends EventEmitter<NetworkListeners> {
       type: 'join',
       lobby,
       password
+    })
+    if (reply.type === 'joined') {
+      return reply.lobbyInfo
+    }
+    return undefined
+  }
+
+  async quickJoin (settings?: QuickJoinSettings): Promise<LobbyListEntry | undefined> {
+    if (this._closing || this.signaling.receivedID === undefined) {
+      return undefined
+    }
+    const reply = await this.signaling.request({
+      type: 'quickJoin',
+      ...settings
     })
     if (reply.type === 'joined') {
       return reply.lobbyInfo

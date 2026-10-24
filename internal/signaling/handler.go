@@ -104,6 +104,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			Region:  region,
 		}
 		defer func() {
+			cancel()
 			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
 			conn.Close(websocket.StatusInternalError, "unexpected closure") // nolint:errcheck
 
@@ -122,7 +123,11 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			for {
 				select {
 				case <-ticker.C:
-					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil {
+					// Limit ping writes so a stalled connection cannot keep this goroutine alive indefinitely.
+					pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
+					err := peer.Send(pingCtx, PingPacket{Type: "ping"})
+					pingCancel()
+					if err != nil {
 						if !util.ShouldIgnoreNetworkError(err) {
 							if strings.Contains(err.Error(), "write: broken pipe") || strings.Contains(err.Error(), "connection reset by peer") {
 								logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
@@ -130,6 +135,8 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 								logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
 							}
 						}
+						cancel()
+						return
 					} else {
 						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
 						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.

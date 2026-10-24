@@ -288,7 +288,11 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 	logger := logging.GetLogger(ctx)
 	go metrics.Record(ctx, "client", "close", p.Game, p.ID, p.Lobby)
 
-	p.closedPacketReceived = true
+	if p.ID != "" {
+		if err := p.store.MarkPeerAsDisconnected(ctx, p.ID); err != nil {
+			return fmt.Errorf("unable to mark peer as disconnected: %w", err)
+		}
+	}
 
 	logger.Debug("client closed",
 		zap.String("game", p.Game),
@@ -322,6 +326,8 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 		p.Lobby = ""
 	}
 
+	// Keep deferred disconnect handling enabled if any cleanup above fails.
+	p.closedPacketReceived = true
 	return nil
 }
 

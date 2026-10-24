@@ -39,8 +39,7 @@ type Store interface {
 	MarkPeerAsActive(ctx context.Context, peerID string) error
 	MarkPeerAsDisconnected(ctx context.Context, peerID string) error
 	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error)
-	ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration) (string, bool, map[string][]string, error)
-	ResetAllPeerLastSeen(ctx context.Context) error
+	ClaimTimedOutPeers(ctx context.Context, threshold time.Duration, limit int) ([]TimedOutPeer, error)
 
 	CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error
 
@@ -82,4 +81,10 @@ type Lobby struct {
 type ElectionResult struct {
 	Leader string
 	Term   int
+}
+
+// TimedOutPeer includes the lobby memberships removed in the same transaction.
+type TimedOutPeer struct {
+	ID          string
+	GameLobbies map[string][]string
 }

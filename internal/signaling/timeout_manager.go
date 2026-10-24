@@ -19,21 +19,27 @@ type TimeoutManager struct {
 }
 
 func (manager *TimeoutManager) Run(ctx context.Context) {
-	logger := logging.GetLogger(ctx)
-
-	if err := manager.Store.ResetAllPeerLastSeen(ctx); err != nil {
-		logger.Error("failed to reset all peer last seen", zap.Error(err))
-	}
-
 	if manager.DisconnectThreshold == 0 {
 		// We update peer activity every 30 seconds. Make it possible to somehow miss
 		// two updates before we consider a peer timed out.
 		manager.DisconnectThreshold = time.Second * 90
 	}
 
+	// Allow clients to reconnect after a restart without refreshing stale rows.
+	grace := time.NewTimer(manager.DisconnectThreshold)
+	defer grace.Stop()
+	select {
+	case <-ctx.Done():
+		return
+	case <-grace.C:
+	}
 	for ctx.Err() == nil {
-		time.Sleep(time.Second)
 		manager.RunOnce(ctx)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+		}
 	}
 }
 
@@ -41,31 +47,32 @@ func (manager *TimeoutManager) RunOnce(ctx context.Context) {
 	logger := logging.GetLogger(ctx)
 
 	for ctx.Err() == nil {
-		peerID, disconnected, gameLobbies, err := manager.Store.ClaimNextTimedOutPeer(ctx, manager.DisconnectThreshold)
+		peers, err := manager.Store.ClaimTimedOutPeers(ctx, manager.DisconnectThreshold, 250)
 		if err != nil {
-			logger.Error("failed to claim next timedout peer", zap.Error(err))
+			logger.Error("failed to claim timedout peers", zap.Error(err))
+			return
 		}
-		if peerID == "" {
-			break
+		if len(peers) == 0 {
+			return
 		}
-
-		for gameID, lobbies := range gameLobbies {
-			for _, lobbyCode := range lobbies {
-				logger.Info("peer timeout", zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
-
-				if err := manager.disconnectPeerInLobby(ctx, peerID, gameID, lobbyCode); err != nil {
-					logger.Error("failed to disconnect peer", zap.Error(err), zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
-				}
-
-				// If the peer wasn't disconnected normally, they might still be the leader of a lobby.
-				// Just to be sure, do a leader election.
-				if !disconnected {
-					if err := manager.doLeaderElectionAndPublish(ctx, gameID, lobbyCode); err != nil {
-						logger.Error("failed to do leader election", zap.Error(err), zap.String("peer", peerID), zap.String("game", gameID), zap.String("lobby", lobbyCode))
+		// Several expired peers can share a lobby. Elect once after all removals.
+		type lobbyKey struct{ game, code string }
+		lobbies := make(map[lobbyKey]struct{})
+		for _, peer := range peers {
+			for game, codes := range peer.GameLobbies {
+				for _, code := range codes {
+					logger.Info("peer timeout", zap.String("peer", peer.ID), zap.String("game", game), zap.String("lobby", code))
+					if err := manager.disconnectPeerInLobby(ctx, peer.ID, game, code); err != nil {
+						logger.Error("failed to disconnect peer", zap.Error(err), zap.String("peer", peer.ID))
 					}
+					lobbies[lobbyKey{game, code}] = struct{}{}
+					go metrics.Record(ctx, "client", "timeout", game, peer.ID, code)
 				}
-
-				go metrics.Record(ctx, "client", "timeout", gameID, peerID, lobbyCode)
+			}
+		}
+		for lobby := range lobbies {
+			if err := manager.doLeaderElectionAndPublish(ctx, lobby.game, lobby.code); err != nil {
+				logger.Error("failed to do leader election", zap.Error(err), zap.String("game", lobby.game), zap.String("lobby", lobby.code))
 			}
 		}
 	}
@@ -123,6 +130,8 @@ func (manager *TimeoutManager) Reconnected(ctx context.Context, peerID, secret, 
 }
 
 func (manager *TimeoutManager) MarkPeerAsActive(ctx context.Context, peerID string) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	logger := logging.GetLogger(ctx)
 
 	err := manager.Store.MarkPeerAsActive(ctx, peerID)

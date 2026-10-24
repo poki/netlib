@@ -441,15 +441,16 @@ func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, countr
 }
 
 func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) error {
+	// Only an authenticated reconnect may reactivate a disconnected peer.
+	// Late heartbeats must not revive it or postpone timeout cleanup.
 	now := util.NowUTC(ctx)
 
 	_, err := s.DB.Exec(ctx, `
 		UPDATE peers
 		SET
-			disconnected = FALSE,
 			last_seen = $1,
 			updated_at = $1
-		WHERE peer = $2
+		WHERE peer = $2 AND disconnected = FALSE
 	`, now, peerID)
 	return err
 }
@@ -516,86 +517,93 @@ func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secre
 	return true, lobbies, nil
 }
 
-func (s *PostgresStore) ClaimNextTimedOutPeer(ctx context.Context, threshold time.Duration) (string, bool, map[string][]string, error) {
+func (s *PostgresStore) ClaimTimedOutPeers(ctx context.Context, threshold time.Duration, limit int) ([]TimedOutPeer, error) {
+	if limit <= 0 {
+		return nil, fmt.Errorf("cleanup limit must be positive")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	now := util.NowUTC(ctx)
-
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
-		return "", false, nil, err
+		return nil, err
 	}
 	defer tx.Rollback(context.Background()) //nolint:errcheck
 
-	var peerID string
-	var disconnected bool
-	err = tx.QueryRow(ctx, `
-		WITH d AS (
-			SELECT peer, disconnected
-			FROM peers
-			WHERE last_seen < $1
-			LIMIT 1
-		)
-		DELETE FROM peers
-		USING d
-		WHERE peers.peer = d.peer
-		RETURNING d.peer, d.disconnected
-	`, now.Add(-threshold)).Scan(&peerID, &disconnected)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", false, nil, nil
-		}
-		return "", false, nil, err
-	}
-
-	gameLobbies := make(map[string][]string)
-
 	rows, err := tx.Query(ctx, `
-		UPDATE lobbies
-		SET
-			peers = array_remove(peers, $1),
-			updated_at = $2
-		WHERE $1 = ANY(peers)
-		RETURNING game, code
-	`, peerID, now)
+		WITH expired AS (
+			SELECT peer FROM peers
+			WHERE last_seen < $1
+			ORDER BY last_seen, peer
+			LIMIT $2
+			FOR UPDATE SKIP LOCKED
+		)
+		DELETE FROM peers p USING expired e
+		WHERE p.peer = e.peer
+		RETURNING p.peer
+	`, now.Add(-threshold), limit)
 	if err != nil {
-		return "", false, nil, err
+		return nil, err
 	}
-
+	var result []TimedOutPeer
+	var ids []string
+	indexes := make(map[string]int)
 	for rows.Next() {
-		var game string
-		var lobby string
-
-		err = rows.Scan(&game, &lobby)
-		if err != nil {
-			return "", false, nil, err
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
 		}
-
-		gameLobbies[game] = append(gameLobbies[game], lobby)
+		indexes[id] = len(result)
+		ids = append(ids, id)
+		result = append(result, TimedOutPeer{ID: id, GameLobbies: make(map[string][]string)})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return nil, nil
 	}
 
-	if err = rows.Err(); err != nil {
-		return "", false, nil, err
+	// Lock each affected lobby once, retaining its old membership for notifications.
+	// Array overlap uses lobbies_peers; ANY(peers) cannot use that GIN index.
+	rows, err = tx.Query(ctx, `
+		WITH affected AS MATERIALIZED (
+			SELECT game, code, peers FROM lobbies
+			WHERE peers && $1::varchar(20)[]
+			ORDER BY game, code
+			FOR UPDATE
+		)
+		UPDATE lobbies l
+		SET peers = ARRAY(SELECT p FROM unnest(l.peers) AS p WHERE p <> ALL($1::varchar(20)[])),
+			updated_at = $2
+		FROM affected a
+		WHERE l.game = a.game AND l.code = a.code
+		RETURNING a.game, a.code, a.peers
+	`, ids, now)
+	if err != nil {
+		return nil, err
 	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return "", false, nil, err
+	for rows.Next() {
+		var game, code string
+		var members []string
+		if err := rows.Scan(&game, &code, &members); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		for _, id := range members {
+			if i, ok := indexes[id]; ok {
+				result[i].GameLobbies[game] = append(result[i].GameLobbies[game], code)
+			}
+		}
 	}
-
-	return peerID, disconnected, gameLobbies, nil
-}
-
-// ResetAllPeerLastSeen will reset all last_seen.
-// This is being called when the process restarts so it doesn't matter
-// how long the process was down.
-func (s *PostgresStore) ResetAllPeerLastSeen(ctx context.Context) error {
-	now := util.NowUTC(ctx)
-
-	_, err := s.DB.Exec(ctx, `
-		UPDATE peers
-		SET
-			last_seen = $1,
-			updated_at = $1
-	`, now)
-	return err
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (s *PostgresStore) CleanEmptyLobbies(ctx context.Context, olderThan time.Time) error {

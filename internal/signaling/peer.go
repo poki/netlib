@@ -159,12 +159,12 @@ func (p *Peer) HandlePacket(ctx context.Context, typ string, raw []byte) error {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
 
-	case "quickJoin":
-		packet := QuickJoinPacket{}
+	case "joinOrCreate":
+		packet := JoinOrCreatePacket{}
 		if err := json.Unmarshal(raw, &packet); err != nil {
 			return fmt.Errorf("unable to unmarshal json: %w", err)
 		}
-		err = p.HandleQuickJoinPacket(ctx, packet)
+		err = p.HandleJoinOrCreatePacket(ctx, packet)
 		if err != nil {
 			return fmt.Errorf("unable to handle packet: %w", err)
 		}
@@ -448,7 +448,7 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 
 	attempts := 0
 	for ; attempts < 20; attempts++ {
-		p.Lobby = util.GenerateLobbyCodeWithFormat(ctx, packet.CodeFormat, attempts)
+		p.Lobby = generateLobbyCodeWithFormat(ctx, packet.CodeFormat, attempts)
 
 		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
 			Public:      &packet.Public,
@@ -524,7 +524,7 @@ func (p *Peer) HandleJoinPacket(ctx context.Context, packet JoinPacket) error {
 	return p.finishJoin(ctx, packet.RequestID, packet.Lobby, existingPeers, "joined")
 }
 
-func (p *Peer) HandleQuickJoinPacket(ctx context.Context, packet QuickJoinPacket) error {
+func (p *Peer) HandleJoinOrCreatePacket(ctx context.Context, packet JoinOrCreatePacket) error {
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
@@ -551,7 +551,9 @@ func (p *Peer) HandleQuickJoinPacket(ctx context.Context, packet QuickJoinPacket
 		return fmt.Errorf("invalid maxPlayers value")
 	}
 
-	lobbyCode, existingPeers, created, err := p.store.QuickJoinLobby(ctx, p.Game, p.ID, packet.CodeFormat, stores.LobbyOptions{
+	lobbyCode, existingPeers, created, err := p.store.JoinOrCreateLobby(ctx, p.Game, p.ID, p.Country, p.Region, packet.Filter, func(attempt int) string {
+		return generateLobbyCodeWithFormat(ctx, packet.CodeFormat, attempt)
+	}, stores.LobbyOptions{
 		CustomData:  &packet.CustomData,
 		CanUpdateBy: &packet.CanUpdateBy,
 		MaxPlayers:  &maxPlayers,
@@ -699,4 +701,19 @@ func (p *Peer) doLeaderElectionAndPublish(ctx context.Context) (bool, error) {
 	}
 
 	return result != nil, nil
+}
+
+// generateLobbyCodeWithFormat generates a lobby code based on the specified format.
+// It uses longer codes when earlier attempts collided.
+func generateLobbyCodeWithFormat(ctx context.Context, format string, attempt int) string {
+	if format == "short" && attempt < 19 {
+		length := 4
+		if attempt > 15 {
+			length = 5
+		}
+
+		return util.GenerateShortLobbyCode(ctx, length)
+	}
+
+	return util.GenerateLobbyCode(ctx)
 }

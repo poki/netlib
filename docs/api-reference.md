@@ -38,18 +38,33 @@ interface LobbyOptions {
 ##### `join(code: string, password?: string): Promise<void>`
 Joins an existing lobby.
 
-##### `quickJoin(settings?: QuickJoinSettings): Promise<LobbyListEntry | undefined>`
-Joins the oldest public, password-free, nonempty lobby with available capacity for this game, or creates one atomically. Simultaneous quick-join requests share lobbies without exceeding their capacity. Lobbies with the same creation time are ordered by code.
+##### `joinOrCreate(settings?: JoinOrCreateSettings): Promise<LobbyListEntry | undefined>`
+Joins a random public, password-free, nonempty lobby with available capacity for this game, or creates one atomically. Simultaneous join-or-create requests share lobbies without exceeding their capacity.
 
 ```typescript
-type QuickJoinSettings = Omit<LobbySettings, 'public' | 'password'>;
+interface JoinOrCreateSettings extends Omit<LobbySettings, 'public' | 'password'> {
+  filter?: object;
+}
 
-const lobby = await network.quickJoin({ maxPlayers: 4 });
+const lobby = await network.joinOrCreate({
+  filter: { mode: "teams" },
+  customData: { mode: "teams" },
+  maxPlayers: 4
+});
 ```
 
-`QuickJoinSettings` reuses the settings accepted by `create()`, except `public` and `password`. Settings apply only when creating a lobby; they do not filter or modify existing lobbies. This includes `codeFormat`, `maxPlayers`, `customData`, and `canUpdateBy`. New lobbies are always public and password-free. Defaults match `create()`, including four players and creator-only update permissions. Empty lobbies are excluded. The method returns `undefined` when the network is closing or not ready, matching `join()`.
+Accepts the same settings as `create()`, except `public` and `password`, plus an optional `filter`.
 
-Use this instead of separate `list()`, `join()`, and `create()` calls for automatic matchmaking. Existing lobby and connection events work as usual. Callers using `create()` can still create separate lobbies. Deploy signaling server support before using this SDK method; older servers return an error and there is no client-side fallback.
+- `filter`: Selects existing lobbies using the same fields and MongoDB-style operators as `list()`. Invalid filters reject the request.
+- `codeFormat`, `maxPlayers`, `customData`, `canUpdateBy`: Apply only when creating a lobby. Defaults match `create()`.
+
+Filters use `code`, `playerCount`, `createdAt`, `updatedAt`, and `latency` for lobby properties. Other fields refer to custom data. Latency is estimated from the joining player's location.
+
+If no lobby matches, creates a public, password-free lobby. Filter values are not copied into its custom data. Set `customData` explicitly, as shown above.
+
+Returns `undefined` when the network is closing or not ready. Existing lobby and connection events work as usual.
+
+Requires signaling server support. Older servers return an error.
 
 ##### `leave(): Promise<void>`
 Leaves the current lobby without closing the network.

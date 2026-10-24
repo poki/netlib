@@ -16,7 +16,9 @@ export interface LobbySettings {
   canUpdateBy?: 'creator' | 'leader' | 'anyone' | 'none'
 }
 
-export type QuickJoinSettings = Omit<LobbySettings, 'public' | 'password'>
+export interface JoinOrCreateSettings extends Omit<LobbySettings, 'public' | 'password'> {
+  filter?: object // MongoDB-style filter on existing lobbies, with the same fields as list().
+}
 
 export interface LobbyListEntry {
   code: string
@@ -67,7 +69,7 @@ export type SignalingPacketTypes =
 | GetPlayerCountsPacket
 | PlayerCountsPacket
 | PingPacket
-| QuickJoinPacket
+| JoinOrCreatePacket
 | WelcomePacket
 
 export interface PingPacket extends Base {
@@ -118,8 +120,9 @@ export interface JoinPacket extends Base {
   password?: string
 }
 
-export interface QuickJoinPacket extends Base, QuickJoinSettings {
-  type: 'quickJoin'
+export interface JoinOrCreatePacket extends Base, Omit<JoinOrCreateSettings, 'filter'> {
+  type: 'joinOrCreate'
+  filter?: string
 }
 
 export interface JoinedPacket extends Base {

@@ -77,7 +77,9 @@ type JoinPacket struct {
 	Password string `json:"password"`
 }
 
-type QuickJoinPacket struct {
+type JoinOrCreatePacket struct {
+	Filter string `json:"filter"`
+
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 

@@ -194,24 +194,24 @@ When('{string} creates a lobby with these settings:', async function (this: Worl
   await player.network.create(settings)
 })
 
-When('{string} quick-joins with these settings:', async function (this: World, playerName: string, settingsBlob: string) {
+When('{string} joins or creates a lobby with these settings:', async function (this: World, playerName: string, settingsBlob: string) {
   const player = this.players.get(playerName)
   if (player == null) {
     throw new Error('no such player')
   }
   const settings = JSON.parse(settingsBlob)
-  await player.network.quickJoin(settings)
+  await player.network.joinOrCreate(settings)
 })
 
-When('{string} quick-join simultaneously with a maximum of {int} players', async function (this: World, playerNamesRaw: string, maxPlayers: number) {
+When('{string} join or create simultaneously with a maximum of {int} players', async function (this: World, playerNamesRaw: string, maxPlayers: number) {
   await Promise.all(playerNamesRaw.split(',').map(async playerName => {
     const player = this.players.get(playerName.trim())
     if (player == null) {
       throw new Error('no such player')
     }
-    const lobby = await player.network.quickJoin({ maxPlayers })
+    const lobby = await player.network.joinOrCreate({ maxPlayers })
     if (lobby === undefined || lobby.code !== player.network.currentLobby) {
-      throw new Error('quick-join did not return the current lobby')
+      throw new Error('join-or-create did not return the current lobby')
     }
   }))
 })

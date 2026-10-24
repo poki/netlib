@@ -106,13 +106,13 @@ func (manager *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	}
 
 	logger.Debug("peer marked as disconnected", zap.String("id", p.ID), zap.String("lobby", p.Lobby))
-	err := manager.Store.MarkPeerAsDisconnected(ctx, p.ID)
+	disconnected, err := manager.Store.MarkPeerAsDisconnected(ctx, p.ID, p.connectionID)
 	if err != nil {
 		logger.Error("failed to record timeout peer", zap.Error(err))
 		return
 	}
 
-	if p.Lobby == "" {
+	if !disconnected || p.Lobby == "" {
 		return
 	}
 
@@ -122,19 +122,19 @@ func (manager *TimeoutManager) Disconnected(ctx context.Context, p *Peer) {
 	}
 }
 
-func (manager *TimeoutManager) Reconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
+func (manager *TimeoutManager) Reconnected(ctx context.Context, peerID, secret, gameID, connectionID string) (bool, []string, error) {
 	logger := logging.GetLogger(ctx)
 
 	logger.Debug("peer marked as reconnected", zap.String("peer", peerID))
-	return manager.Store.MarkPeerAsReconnected(ctx, peerID, secret, gameID)
+	return manager.Store.MarkPeerAsReconnected(ctx, peerID, secret, gameID, connectionID)
 }
 
-func (manager *TimeoutManager) MarkPeerAsActive(ctx context.Context, peerID string) {
+func (manager *TimeoutManager) MarkPeerAsActive(ctx context.Context, peerID, connectionID string) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	logger := logging.GetLogger(ctx)
 
-	err := manager.Store.MarkPeerAsActive(ctx, peerID)
+	err := manager.Store.MarkPeerAsActive(ctx, peerID, connectionID)
 
 	// context.Canceled is expected when the connection is closed right as this function
 	// is called. We don't want to log this as an error.

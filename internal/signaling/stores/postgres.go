@@ -405,7 +405,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, r
 	return lobbies, nil
 }
 
-func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID string) error {
+func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID, connectionID string) error {
 	if len(peerID) > 20 {
 		logger := logging.GetLogger(ctx)
 		logger.Warn("peer id too long", zap.String("peerID", peerID))
@@ -414,9 +414,9 @@ func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID s
 
 	now := util.NowUTC(ctx)
 	_, err := s.DB.Exec(ctx, `
-		INSERT INTO peers (peer, secret, game, last_seen, updated_at)
-		VALUES ($1, $2, $3, $4, $4)
-	`, peerID, secret, gameID, now)
+		INSERT INTO peers (peer, secret, game, last_seen, updated_at, connection_id)
+		VALUES ($1, $2, $3, $4, $4, $5)
+	`, peerID, secret, gameID, now, connectionID)
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, countr
 	return err
 }
 
-func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) error {
+func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID, connectionID string) error {
 	// Only an authenticated reconnect may reactivate a disconnected peer.
 	// Late heartbeats must not revive it or postpone timeout cleanup.
 	now := util.NowUTC(ctx)
@@ -450,37 +450,39 @@ func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID string) err
 		SET
 			last_seen = $1,
 			updated_at = $1
-		WHERE peer = $2 AND disconnected = FALSE
-	`, now, peerID)
+		WHERE peer = $2 AND connection_id = $3 AND disconnected = FALSE
+	`, now, peerID, connectionID)
 	return err
 }
 
-func (s *PostgresStore) MarkPeerAsDisconnected(ctx context.Context, peerID string) error {
+// MarkPeerAsDisconnected ignores handlers superseded by an authenticated reconnect.
+func (s *PostgresStore) MarkPeerAsDisconnected(ctx context.Context, peerID, connectionID string) (bool, error) {
 	now := util.NowUTC(ctx)
-
-	_, err := s.DB.Exec(ctx, `
+	result, err := s.DB.Exec(ctx, `
 		UPDATE peers
-		SET
-			disconnected = TRUE,
-			updated_at = $1
-		WHERE peer = $2
-	`, now, peerID)
-	return err
+		SET disconnected = TRUE, updated_at = $1
+		WHERE peer = $2 AND connection_id = $3
+	`, now, peerID, connectionID)
+	if err != nil {
+		return false, err
+	}
+	return result.RowsAffected() > 0, nil
 }
 
-func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID string) (bool, []string, error) {
+func (s *PostgresStore) MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID, connectionID string) (bool, []string, error) {
 	now := util.NowUTC(ctx)
 
 	result, err := s.DB.Exec(ctx, `
 		UPDATE peers
 		SET
 			disconnected = FALSE,
+			connection_id = $5,
 			last_seen = $1,
 			updated_at = $1
 		WHERE peer = $2
 		AND secret = $3
 		AND game = $4
-	`, now, peerID, secret, gameID)
+	`, now, peerID, secret, gameID, connectionID)
 	if err != nil {
 		return false, nil, err
 	}

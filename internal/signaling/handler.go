@@ -15,10 +15,11 @@ import (
 	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
 
-const LobbyCleanInterval = 30 * time.Minute
+const LobbyCleanInterval = 5 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
 const peerPingDuration = 2 * time.Second
 const peerActiveUpdateInterval = 30 * time.Second
@@ -95,8 +96,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		}
 
 		peer := &Peer{
-			store: store,
-			conn:  conn,
+			connectionID: xid.New().String(),
+			store:        store,
+			conn:         conn,
 
 			retrievedIDCallback: manager.Reconnected,
 
@@ -143,7 +145,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 						if peer.ID != "" {
 							now := util.NowUTC(ctx)
 							if lastActiveUpdate.IsZero() || now.Sub(lastActiveUpdate) >= peerActiveUpdateInterval {
-								manager.MarkPeerAsActive(ctx, peer.ID)
+								manager.MarkPeerAsActive(ctx, peer.ID, peer.connectionID)
 								lastActiveUpdate = now
 							}
 						}

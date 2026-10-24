@@ -30,6 +30,11 @@ export interface LobbyListEntry {
   latency?: number
 }
 
+export interface PlayerCounts {
+  online: number
+  inLobby: number
+}
+
 interface Base {
   type: string
   rid?: string
@@ -57,6 +62,8 @@ export type SignalingPacketTypes =
 | LeftPacket
 | ListPacket
 | LobbiesPacket
+| GetPlayerCountsPacket
+| PlayerCountsPacket
 | PingPacket
 | WelcomePacket
 
@@ -201,4 +208,13 @@ export interface EventPacket extends Base {
   lobby?: string
 
   data?: { [key: string]: string }
+}
+
+export interface GetPlayerCountsPacket extends Base {
+  type: 'getPlayerCounts'
+}
+
+export interface PlayerCountsPacket extends Base {
+  type: 'playerCounts'
+  counts: PlayerCounts
 }

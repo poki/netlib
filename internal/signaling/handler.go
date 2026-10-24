@@ -15,10 +15,11 @@ import (
 	"github.com/poki/netlib/internal/metrics"
 	"github.com/poki/netlib/internal/signaling/stores"
 	"github.com/poki/netlib/internal/util"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
 
-const LobbyCleanInterval = 30 * time.Minute
+const LobbyCleanInterval = 5 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
 const peerPingDuration = 2 * time.Second
 const peerActiveUpdateInterval = 30 * time.Second
@@ -95,8 +96,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		}
 
 		peer := &Peer{
-			store: store,
-			conn:  conn,
+			connectionID: xid.New().String(),
+			store:        store,
+			conn:         conn,
 
 			retrievedIDCallback: manager.Reconnected,
 
@@ -104,6 +106,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			Region:  region,
 		}
 		defer func() {
+			cancel()
 			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
 			conn.Close(websocket.StatusInternalError, "unexpected closure") // nolint:errcheck
 
@@ -122,7 +125,11 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			for {
 				select {
 				case <-ticker.C:
-					if err := peer.Send(ctx, PingPacket{Type: "ping"}); err != nil {
+					// Limit ping writes so a stalled connection cannot keep this goroutine alive indefinitely.
+					pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
+					err := peer.Send(pingCtx, PingPacket{Type: "ping"})
+					pingCancel()
+					if err != nil {
 						if !util.ShouldIgnoreNetworkError(err) {
 							if strings.Contains(err.Error(), "write: broken pipe") || strings.Contains(err.Error(), "connection reset by peer") {
 								logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
@@ -130,13 +137,15 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 								logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
 							}
 						}
+						cancel()
+						return
 					} else {
 						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
 						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.
 						if peer.ID != "" {
 							now := util.NowUTC(ctx)
 							if lastActiveUpdate.IsZero() || now.Sub(lastActiveUpdate) >= peerActiveUpdateInterval {
-								manager.MarkPeerAsActive(ctx, peer.ID)
+								manager.MarkPeerAsActive(ctx, peer.ID, peer.connectionID)
 								lastActiveUpdate = now
 							}
 						}

@@ -24,8 +24,9 @@ type Peer struct {
 	conn  *websocket.Conn
 
 	closedPacketReceived bool
+	connectionID         string
 
-	retrievedIDCallback func(context.Context, string, string, string) (bool, []string, error)
+	retrievedIDCallback func(context.Context, string, string, string, string) (bool, []string, error)
 
 	ID      string
 	Secret  string
@@ -197,7 +198,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 	if packet.ID != "" && packet.Secret != "" {
 		logger.Debug("peer reconnecting", zap.String("game", packet.Game), zap.String("peer", packet.ID), zap.String("version", packet.Version))
 		var err error
-		hasReconnected, reconnectingLobbies, err = p.retrievedIDCallback(ctx, packet.ID, packet.Secret, packet.Game)
+		hasReconnected, reconnectingLobbies, err = p.retrievedIDCallback(ctx, packet.ID, packet.Secret, packet.Game, p.connectionID)
 		if err != nil {
 			return fmt.Errorf("unable to reconnect: %w", err)
 		}
@@ -223,7 +224,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		p.Secret = util.GenerateSecret(ctx)
 		logger.Debug("peer connecting", zap.String("game", p.Game), zap.String("peer", p.ID), zap.String("version", packet.Version))
 
-		if err := p.store.CreatePeer(ctx, p.ID, p.Secret, p.Game); err != nil {
+		if err := p.store.CreatePeer(ctx, p.ID, p.Secret, p.Game, p.connectionID); err != nil {
 			return fmt.Errorf("unable to create peer: %w", err)
 		}
 	}
@@ -288,7 +289,16 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 	logger := logging.GetLogger(ctx)
 	go metrics.Record(ctx, "client", "close", p.Game, p.ID, p.Lobby)
 
-	p.closedPacketReceived = true
+	if p.ID != "" {
+		disconnected, err := p.store.MarkPeerAsDisconnected(ctx, p.ID, p.connectionID)
+		if err != nil {
+			return fmt.Errorf("unable to mark peer as disconnected: %w", err)
+		}
+		if !disconnected {
+			p.closedPacketReceived = true
+			return nil
+		}
+	}
 
 	logger.Debug("client closed",
 		zap.String("game", p.Game),
@@ -322,6 +332,8 @@ func (p *Peer) HandleClosePacket(ctx context.Context, packet ClosePacket) error 
 		p.Lobby = ""
 	}
 
+	// Keep deferred disconnect handling enabled if any cleanup above fails.
+	p.closedPacketReceived = true
 	return nil
 }
 

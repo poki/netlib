@@ -276,6 +276,85 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 	return peerlist, nil
 }
 
+func (s *PostgresStore) QuickJoinLobby(ctx context.Context, game, peerID, codeFormat string, options LobbyOptions) (string, []string, bool, error) {
+	if len(peerID) > 20 {
+		return "", nil, false, ErrInvalidPeerID
+	}
+
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return "", nil, false, err
+	}
+	defer tx.Rollback(context.Background()) //nolint:errcheck
+
+	// Lock the game before looking for a lobby, including when none exists yet.
+	// Use the canonical UUID so different spellings of the same game share a lock.
+	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('quickJoin:' || $1::uuid::text, 0))`, game)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	var lobbyCode string
+	var peerlist []string
+	err = tx.QueryRow(ctx, `
+		SELECT code, peers
+		FROM lobbies
+		WHERE game = $1
+		AND public = true
+		AND password IS NULL
+		AND COALESCE(ARRAY_LENGTH(peers, 1), 0) > 0
+		AND (max_players = 0 OR ARRAY_LENGTH(peers, 1) < max_players)
+		ORDER BY created_at ASC, code ASC
+		LIMIT 1
+		FOR UPDATE
+	`, game).Scan(&lobbyCode, &peerlist)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", nil, false, err
+	}
+
+	created := errors.Is(err, pgx.ErrNoRows)
+	now := util.NowUTC(ctx)
+	if created {
+		for attempts := 0; attempts < 20; attempts++ {
+			lobbyCode = util.GenerateLobbyCodeWithFormat(ctx, codeFormat, attempts)
+			res, err := tx.Exec(ctx, `
+				INSERT INTO lobbies (code, game, peers, public, created_at, updated_at, leader, term, can_update_by, creator, max_players, custom_data)
+				VALUES ($1, $2, $3, true, $4, $4, $5, 1, $6, $5, $7, $8)
+				ON CONFLICT DO NOTHING
+			`, lobbyCode, game, []string{peerID}, now, peerID, options.CanUpdateBy, options.MaxPlayers, options.CustomData)
+			if err != nil {
+				return "", nil, false, err
+			}
+			if res.RowsAffected() > 0 {
+				break
+			}
+			if attempts == 19 {
+				return "", nil, false, ErrLobbyExists
+			}
+		}
+	} else {
+		if slices.Contains(peerlist, peerID) {
+			return "", nil, false, ErrAlreadyInLobby
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE lobbies
+			SET
+				peers = array_append(peers, $1),
+				updated_at = $2
+			WHERE code = $3
+			AND game = $4
+		`, peerID, now, lobbyCode, game)
+		if err != nil {
+			return "", nil, false, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", nil, false, err
+	}
+	return lobbyCode, peerlist, created, nil
+}
+
 func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) error {
 	now := util.NowUTC(ctx)
 

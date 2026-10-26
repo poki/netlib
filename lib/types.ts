@@ -212,6 +212,7 @@ export interface EventPacket extends Base {
 
 export interface GetPlayerCountsPacket extends Base {
   type: 'getPlayerCounts'
+  filter?: string
 }
 
 export interface PlayerCountsPacket extends Base {

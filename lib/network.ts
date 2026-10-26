@@ -66,11 +66,14 @@ export default class Network extends EventEmitter<NetworkListeners> {
     return []
   }
 
-  async getPlayerCounts (): Promise<PlayerCounts> {
+  async getPlayerCounts (filter?: object): Promise<PlayerCounts> {
     if (this._closing || this.signaling.receivedID === undefined) {
       throw new Error('network is closing or not connected')
     }
-    const reply = await this.signaling.request({ type: 'getPlayerCounts' })
+    const reply = await this.signaling.request({
+      type: 'getPlayerCounts',
+      filter: (filter != null) ? JSON.stringify(filter) : undefined
+    })
     if (reply.type === 'playerCounts') {
       return reply.counts
     }

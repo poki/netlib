@@ -25,7 +25,7 @@ type LobbyOptions struct {
 }
 
 type Store interface {
-	GetPlayerCounts(ctx context.Context, game string) (PlayerCounts, error)
+	GetPlayerCounts(ctx context.Context, game, country, region, filter string) (PlayerCounts, error)
 	CreateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 	JoinLobby(ctx context.Context, game, lobby, id, password string) ([]string, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) error

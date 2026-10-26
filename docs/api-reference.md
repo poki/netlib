@@ -61,7 +61,7 @@ interface Lobby {
 
 #### Player Counts
 
-##### `getPlayerCounts(): Promise<PlayerCounts>`
+##### `getPlayerCounts(filter?: object): Promise<PlayerCounts>`
 Returns a server-side snapshot of connected Netlib sessions for this instance's game ID.
 Call after the `ready` event.
 
@@ -74,6 +74,18 @@ interface PlayerCounts {
 const { online } = await network.getPlayerCounts();
 label.textContent = `${online} players online`;
 ```
+
+The optional filter uses the same MongoDB-style syntax as `list()`, including
+lobby custom data fields. It applies only to `inLobby`; `online` always counts all
+connected sessions for the game. Matching private lobbies are included, and each
+connected session is counted at most once.
+
+```typescript
+const { inLobby } = await network.getPlayerCounts({ kind: 'ranked' });
+```
+
+Omitting the filter or passing `{}` counts membership in any lobby. Invalid filters
+reject the promise.
 
 `inLobby` is a subset of `online`. Counts represent sessions, not unique people;
 multiple tabs can count separately. Disconnects are reflected once detected by the

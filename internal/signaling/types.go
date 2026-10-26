@@ -45,6 +45,7 @@ type LobbiesPacket struct {
 }
 
 type GetPlayerCountsPacket struct {
+	Filter    string `json:"filter"`
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`
 }

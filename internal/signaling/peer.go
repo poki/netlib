@@ -400,7 +400,7 @@ func (p *Peer) HandleGetPlayerCountsPacket(ctx context.Context, packet GetPlayer
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	counts, err := p.store.GetPlayerCounts(ctx, p.Game)
+	counts, err := p.store.GetPlayerCounts(ctx, p.Game, p.Country, p.Region, packet.Filter)
 	if err != nil {
 		return err
 	}

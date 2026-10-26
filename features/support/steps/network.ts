@@ -1,3 +1,4 @@
+import { strict as assert } from 'assert'
 import { After, DataTable, Given, Then, When } from '@cucumber/cucumber'
 import { World } from '../world'
 
@@ -500,4 +501,20 @@ Then('{string} should see {int} players online and {int} in a lobby', async func
   if (counts.online !== online || counts.inLobby !== inLobby) {
     throw new Error(`expected ${online} online and ${inLobby} in a lobby but got ${JSON.stringify(counts)}`)
   }
+})
+
+Then('{string} should see {int} players online and {int} in a lobby matching {string}', async function (this: World, playerName: string, online: number, inLobby: number, filter: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  assert.deepEqual(await player.network.getPlayerCounts(JSON.parse(filter)), { online, inLobby })
+})
+
+Then('{string} should reject player counts matching {string}', async function (this: World, playerName: string, filter: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  await assert.rejects(player.network.getPlayerCounts(JSON.parse(filter)), /invalid filter/)
 })

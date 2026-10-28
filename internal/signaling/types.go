@@ -44,6 +44,19 @@ type LobbiesPacket struct {
 	Lobbies []stores.Lobby `json:"lobbies"`
 }
 
+type GetPlayerCountsPacket struct {
+	Filter    string `json:"filter"`
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+}
+
+type PlayerCountsPacket struct {
+	RequestID string `json:"rid"`
+	Type      string `json:"type"`
+
+	Counts stores.PlayerCounts `json:"counts"`
+}
+
 type CreatePacket struct {
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`

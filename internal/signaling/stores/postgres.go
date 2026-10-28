@@ -324,6 +324,34 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
+func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, region, filter string) (PlayerCounts, error) {
+	var counts PlayerCounts
+	if filter == "" {
+		filter = "{}"
+	}
+	where, values, err := s.filterConverter.Convert([]byte(filter), 4)
+	if err != nil {
+		return counts, fmt.Errorf("invalid filter: %w", err)
+	}
+	err = s.DB.QueryRow(ctx, `
+		WITH game_lobbies AS (
+			SELECT code, peers, custom_data,
+				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
+				created_at AS "createdAt", updated_at AS "updatedAt",
+				lobby_latency_estimate(peers, $2, $3) AS latency
+			FROM lobbies
+			WHERE game = $1
+		)
+		SELECT COUNT(*), COUNT(*) FILTER (WHERE EXISTS (
+			SELECT 1 FROM game_lobbies
+			WHERE peers.peer = ANY(game_lobbies.peers) AND (`+where+`)
+		))
+		FROM peers
+		WHERE game = $1 AND disconnected = FALSE
+	`, append([]any{game, country, region}, values...)...).Scan(&counts.Online, &counts.InLobby)
+	return counts, err
+}
+
 func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {

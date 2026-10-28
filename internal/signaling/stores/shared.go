@@ -28,7 +28,7 @@ type Store interface {
 	GetPlayerCounts(ctx context.Context, game, country, region, filter string) (PlayerCounts, error)
 	CreateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 	JoinLobby(ctx context.Context, game, lobby, id, password string) ([]string, error)
-	JoinOrCreateLobby(ctx context.Context, game, peerID, country, region, lobbyFilter string, generateCode func(attempt int) string, options LobbyOptions) (string, []string, bool, error)
+	JoinOrCreateLobby(ctx context.Context, game, peerID, country, region, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error)

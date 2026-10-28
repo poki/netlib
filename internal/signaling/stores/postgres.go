@@ -277,7 +277,7 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 	return peerlist, nil
 }
 
-func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, country, region, lobbyFilter string, generateCode func(attempt int) string, options LobbyOptions) (string, []string, bool, error) {
+func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, country, region, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error) {
 	if len(peerID) > 20 {
 		return "", nil, false, ErrInvalidPeerID
 	}
@@ -341,7 +341,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 	now := util.NowUTC(ctx)
 	if !exists {
 		for attempts := range 20 {
-			lobbyCode = generateCode(attempts)
+			lobbyCode = util.GenerateLobbyCodeWithFormat(ctx, codeFormat, attempts)
 			res, err := tx.Exec(ctx, `
 				INSERT INTO lobbies (code, game, peers, public, created_at, updated_at, leader, term, can_update_by, creator, max_players, custom_data)
 				VALUES ($1, $2, $3, true, $4, $4, $5, 1, $6, $5, $7, $8)

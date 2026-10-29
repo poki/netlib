@@ -38,6 +38,34 @@ interface LobbyOptions {
 ##### `join(code: string, password?: string): Promise<void>`
 Joins an existing lobby.
 
+##### `joinOrCreate(settings?: JoinOrCreateSettings): Promise<LobbyListEntry | undefined>`
+Joins a random public, password-free, nonempty lobby with available capacity for this game, or creates one atomically. Simultaneous join-or-create requests share lobbies without exceeding their capacity.
+
+```typescript
+interface JoinOrCreateSettings extends Omit<LobbySettings, 'public' | 'password'> {
+  filter?: object;
+}
+
+const lobby = await network.joinOrCreate({
+  filter: { mode: "teams" },
+  customData: { mode: "teams" },
+  maxPlayers: 4
+});
+```
+
+Accepts the same settings as `create()`, except `public` and `password`, plus an optional `filter`.
+
+- `filter`: Selects existing lobbies using the same fields and MongoDB-style operators as `list()`. Invalid filters reject the request.
+- `codeFormat`, `maxPlayers`, `customData`, `canUpdateBy`: Apply only when creating a lobby. Defaults match `create()`.
+
+Filters use `code`, `playerCount`, `createdAt`, `updatedAt`, and `latency` for lobby properties. Other fields refer to custom data. Latency is estimated from the joining player's location.
+
+If no lobby matches, creates a public, password-free lobby. Filter values are not copied into its custom data. Set `customData` explicitly, as shown above.
+
+Returns `undefined` when the network is closing or not ready. Existing lobby and connection events work as usual.
+
+Requires signaling server support. Older servers return an error.
+
 ##### `leave(): Promise<void>`
 Leaves the current lobby without closing the network.
 

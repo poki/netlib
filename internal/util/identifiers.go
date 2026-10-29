@@ -69,3 +69,18 @@ func GenerateShortLobbyCode(ctx context.Context, chars int) string {
 	}
 	return strings.Join(ss, "")
 }
+
+// GenerateLobbyCodeWithFormat generates a lobby code based on the specified format.
+// It uses longer codes when earlier attempts collided.
+func GenerateLobbyCodeWithFormat(ctx context.Context, format string, attempt int) string {
+	if format == "short" && attempt < 19 {
+		length := 4
+		if attempt > 15 {
+			length = 5
+		}
+
+		return GenerateShortLobbyCode(ctx, length)
+	}
+
+	return GenerateLobbyCode(ctx)
+}

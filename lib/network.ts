@@ -1,7 +1,7 @@
 import { EventEmitter } from 'eventemitter3'
 
 import { DefaultDataChannels, DefaultRTCConfiguration, DefaultSignalingURL } from '.'
-import { LobbyListEntry, LobbySettings, PeerConfiguration, PlayerCounts } from './types'
+import { LobbyListEntry, LobbySettings, PeerConfiguration, PlayerCounts, JoinOrCreateSettings } from './types'
 import Signaling, { SignalingError } from './signaling'
 import Peer from './peer'
 import Credentials from './credentials'
@@ -102,6 +102,21 @@ export default class Network extends EventEmitter<NetworkListeners> {
       type: 'join',
       lobby,
       password
+    })
+    if (reply.type === 'joined') {
+      return reply.lobbyInfo
+    }
+    return undefined
+  }
+
+  async joinOrCreate (settings?: JoinOrCreateSettings): Promise<LobbyListEntry | undefined> {
+    if (this._closing || this.signaling.receivedID === undefined) {
+      return undefined
+    }
+    const reply = await this.signaling.request({
+      type: 'joinOrCreate',
+      ...settings,
+      filter: settings?.filter != null ? JSON.stringify(settings.filter) : undefined
     })
     if (reply.type === 'joined') {
       return reply.lobbyInfo

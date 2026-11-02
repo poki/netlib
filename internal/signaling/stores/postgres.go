@@ -285,7 +285,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 	if lobbyFilter == "" {
 		lobbyFilter = "{}"
 	}
-	where, values, err := s.filterConverter.Convert([]byte(lobbyFilter), 4)
+	where, values, err := s.filterConverter.Convert([]byte(lobbyFilter), 5)
 	if err != nil {
 		return "", nil, false, fmt.Errorf("invalid filter: %w", err)
 	}
@@ -313,6 +313,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 
 	var lobbyCode string
 	var peerlist []string
+	now := util.NowUTC(ctx)
 	err = tx.QueryRow(ctx, `
 		SELECT code, peers
 		FROM (
@@ -328,17 +329,21 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 		AND password IS NULL
 		AND COALESCE(ARRAY_LENGTH(peers, 1), 0) > 0
 		AND (max_players = 0 OR ARRAY_LENGTH(peers, 1) < max_players)
+		AND EXISTS (
+			SELECT 1 FROM peers p
+			WHERE p.game = $1 AND p.peer = ANY(game_lobbies.peers)
+			AND p.disconnected = FALSE AND p.last_seen >= $4
+		)
 		AND (`+where+`)
 		ORDER BY RANDOM()
 		LIMIT 1
 		FOR UPDATE
-	`, append([]any{game, country, region}, values...)...).Scan(&lobbyCode, &peerlist)
+	`, append([]any{game, country, region, now.Add(-DefaultPeerTimeout)}, values...)...).Scan(&lobbyCode, &peerlist)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, false, err
 	}
 
 	exists := !errors.Is(err, pgx.ErrNoRows)
-	now := util.NowUTC(ctx)
 	if !exists {
 		for attempts := range 20 {
 			lobbyCode = util.GenerateLobbyCodeWithFormat(ctx, codeFormat, attempts)

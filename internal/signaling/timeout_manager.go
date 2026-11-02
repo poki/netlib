@@ -22,7 +22,7 @@ func (manager *TimeoutManager) Run(ctx context.Context) {
 	if manager.DisconnectThreshold == 0 {
 		// We update peer activity every 30 seconds. Make it possible to somehow miss
 		// two updates before we consider a peer timed out.
-		manager.DisconnectThreshold = time.Second * 90
+		manager.DisconnectThreshold = stores.DefaultPeerTimeout
 	}
 
 	// Allow clients to reconnect after a restart without refreshing stale rows.

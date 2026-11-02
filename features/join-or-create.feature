@@ -3,6 +3,7 @@ Feature: Players can atomically find or create a public lobby
   Background:
     Given the "signaling" backend is running
 
+
   Scenario: Simultaneous join-or-create requests connect players in the same lobby
     Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
     And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
@@ -23,6 +24,7 @@ Feature: Players can atomically find or create a public lobby
     Then "blue" should have received only these lobbies:
       | code          | playerCount | maxPlayers | public | hasPassword |
       | 19yrzmetd2bn7 | 2           | 2          | true   | false       |
+
 
   Scenario: Creation settings apply only when join-or-create creates a lobby
     Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
@@ -62,9 +64,13 @@ Feature: Players can atomically find or create a public lobby
       | code | playerCount | maxPlayers | public | hasPassword | customData       | canUpdateBy |
       | SHC6 | 2           | 3          | true   | false       | {"mode":"teams"} | none        |
 
+
   Scenario: Join-or-create filters existing lobbies by custom data
     Given the "testproxy" backend is running
     Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
     And these lobbies exist:
       | code          | game                                 | playerCount | custom_data                | public |
       | 0qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | {"mode":"solo","level":5}  | true   |
@@ -94,9 +100,13 @@ Feature: Players can atomically find or create a public lobby
       """
     Then "blue" receives the network event "lobby" with the argument "2qva9vyurwbbl"
 
+
   Scenario: Join-or-create creates a lobby when no custom data matches
     Given the "testproxy" backend is running
     Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
     And these lobbies exist:
       | code          | game                                 | playerCount | custom_data     | public |
       | 0qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | {"mode":"solo"} | true   |
@@ -124,9 +134,14 @@ Feature: Players can atomically find or create a public lobby
       | code | playerCount | customData                 |
       | SHC6 | 1           | {"level":5,"mode":"teams"} |
 
+
   Scenario Outline: Join-or-create uses the same lobby fields as list
     Given the "testproxy" backend is running
     Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
+      | peer1 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
     And these lobbies exist:
       | code          | game                                 | playerCount | created_at           | updated_at           | custom_data                                                                           | public |
       | 2qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 2           | 2026-01-01T00:00:00Z | 2026-01-02T00:00:00Z | {"code":"different","playerCount":99,"createdAt":null,"updatedAt":null,"latency":999} | true   |
@@ -163,6 +178,72 @@ Feature: Players can atomically find or create a public lobby
             "$lt": 100
           }
         }
+      }
+      """
+    Then "blue" receives the network event "lobby" with the argument "0qva9vyurwbbl"
+
+
+  Scenario Outline: Join-or-create skips lobbies without a live member
+    Given the "testproxy" backend is running
+    And "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer         | game                                 | disconnected | last_seen            |
+      | disconnected | 4307bd86-e1df-41b8-b9df-e22afcf084bd | true         | now                  |
+      | expired      | 4307bd86-e1df-41b8-b9df-e22afcf084bd | false        | 2000-01-01T00:00:00Z |
+      | wrong-game   | 123e4567-e89b-12d3-a456-426614174000 | false        | now                  |
+    And these lobbies exist:
+      | code          | game                                 | peers   | max_players | public | custom_data                            |
+      | 0qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | <peers> | 2           | true   | {"q":"ttt-q2","kind":"ttt-classic-v2"} |
+    When "blue" joins or creates a lobby with these settings:
+      """json
+      {
+        "filter": {
+          "q": "ttt-q2",
+          "kind": {
+            "$in": [
+              "ttt-classic-v2"
+            ]
+          }
+        },
+        "codeFormat": "short",
+        "maxPlayers": 2,
+        "customData": {
+          "q": "ttt-q2",
+          "kind": "ttt-classic-v2"
+        }
+      }
+      """
+    Then "blue" receives the network event "lobby" with the argument "SHC6"
+
+    Examples:
+      | peers          |
+      | {disconnected} |
+      | {expired}      |
+      | {missing}      |
+      | {wrong-game}   |
+
+
+  Scenario: Join-or-create can reuse an old lobby with a live member
+    Given the "testproxy" backend is running
+    And "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer | game                                 |
+      | live | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
+    And these lobbies exist:
+      | code          | game                                 | peers  | max_players | created_at           | public | custom_data                            |
+      | 0qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | {live} | 2           | 2000-01-01T00:00:00Z | true   | {"q":"ttt-q2","kind":"ttt-classic-v2"} |
+    When "blue" joins or creates a lobby with these settings:
+      """json
+      {
+        "filter": {
+          "q": "ttt-q2",
+          "kind": {
+            "$in": [
+              "ttt-classic-v2"
+            ]
+          }
+        },
+        "maxPlayers": 2
       }
       """
     Then "blue" receives the network event "lobby" with the argument "0qva9vyurwbbl"

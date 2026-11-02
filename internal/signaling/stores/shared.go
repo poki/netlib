@@ -14,6 +14,8 @@ var ErrInvalidPeerID = errors.New("invalid peer id")
 var ErrInvalidPassword = errors.New("invalid password")
 var ErrLobbyIsFull = errors.New("lobby is full")
 
+const DefaultPeerTimeout = 90 * time.Second
+
 type SubscriptionCallback func(context.Context, []byte)
 
 type LobbyOptions struct {

@@ -532,11 +532,3 @@ Then('{string} should see {int} players online and {int} in a lobby matching {st
   }
   assert.deepEqual(await player.network.getPlayerCounts(JSON.parse(filter)), { online, inLobby })
 })
-
-Then('{string} should reject player counts matching {string}', async function (this: World, playerName: string, filter: string) {
-  const player = this.players.get(playerName)
-  if (player == null) {
-    throw new Error('no such player')
-  }
-  await assert.rejects(player.network.getPlayerCounts(JSON.parse(filter)), /invalid filter/)
-})

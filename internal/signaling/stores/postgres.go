@@ -444,6 +444,8 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, regi
 	if err != nil {
 		return counts, fmt.Errorf("invalid filter: %w", err)
 	}
+	// Build the matching membership set once instead of scanning lobbies for every
+	// connected peer. Deduplicate memberships so each session is counted once.
 	err = s.DB.QueryRow(ctx, `
 		WITH game_lobbies AS (
 			SELECT code, peers, custom_data,
@@ -452,13 +454,15 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, regi
 				lobby_latency_estimate(peers, $2, $3) AS latency
 			FROM lobbies
 			WHERE game = $1
+		), matching_lobby_peers AS (
+			SELECT DISTINCT UNNEST(peers) AS peer
+			FROM game_lobbies
+			WHERE `+where+`
 		)
-		SELECT COUNT(*), COUNT(*) FILTER (WHERE EXISTS (
-			SELECT 1 FROM game_lobbies
-			WHERE peers.peer = ANY(game_lobbies.peers) AND (`+where+`)
-		))
+		SELECT COUNT(*), COUNT(matching_lobby_peers.peer)
 		FROM peers
-		WHERE game = $1 AND disconnected = FALSE
+		LEFT JOIN matching_lobby_peers ON matching_lobby_peers.peer = peers.peer
+		WHERE peers.game = $1 AND disconnected = FALSE
 	`, append([]any{game, country, region}, values...)...).Scan(&counts.Online, &counts.InLobby)
 	return counts, err
 }

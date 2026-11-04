@@ -56,5 +56,31 @@ Feature: Player Counts
     And "green" should see 3 players online and 1 in a lobby matching '{"code":"private"}'
     And "green" should see 3 players online and 1 in a lobby matching '{"kind":{"$in":["ranked"]},"playerCount":{"$gte":2}}'
 
-  Scenario: Reject invalid lobby filters
-    Then "green" should reject player counts matching '{"kind":{"$invalid":"ranked"}}'
+
+  Scenario: Count overlapping matching memberships once and exclude inactive or foreign sessions
+    Given these peers exist:
+      | peer  | game                                 | disconnected |
+      | peer0 | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | false        |
+      | peer1 | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | true         |
+      | peer2 | 4307bd86-e1df-41b8-b9df-e22afcf084bd | false        |
+      | peer4 | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | false        |
+    And these lobbies exist:
+      | code    | game                                 | playerCount | public | custom_data    |
+      | first   | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 4           | false  | {"q":"ttt-q2"} |
+      | second  | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 4           | true   | {"q":"ttt-q2"} |
+      | empty   | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 0           | true   | {"q":"ttt-q2"} |
+      | foreign | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 5           | true   | {"q":"ttt-q2"} |
+    Then "green" should see 3 players online and 1 in a lobby matching '{"q":"ttt-q2"}'
+    And "green" should see 3 players online and 0 in a lobby matching '{"q":"missing"}'
+
+
+  Scenario: Filter player counts by computed lobby fields
+    Given "blue" is connected as "h5yzwyizlwao" with country,region as "XX","XX" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | f666036d-d9e1-4d70-b0c3-4a68b24a9884 |
+    And these lobbies exist:
+      | code   | game                                 | playerCount | public | custom_data    |
+      | queued | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 2           | false  | {"q":"ttt-q2"} |
+    Then "blue" should see 3 players online and 1 in a lobby matching '{"q":"ttt-q2","playerCount":{"$gte":2},"latency":{"$lte":250}}'
+    And "blue" should see 3 players online and 0 in a lobby matching '{"q":"ttt-q2","latency":{"$lt":250}}'

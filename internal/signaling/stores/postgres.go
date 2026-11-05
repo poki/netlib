@@ -446,6 +446,8 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, regi
 	}
 	// Build the matching membership set once instead of scanning lobbies for every
 	// connected peer. Deduplicate memberships so each session is counted once.
+	// Empty lobbies cannot contribute memberships; exclude them before filtering
+	// so the occupied-lobby index avoids scanning historical empty lobbies.
 	err = s.DB.QueryRow(ctx, `
 		WITH game_lobbies AS (
 			SELECT code, peers, custom_data,
@@ -453,7 +455,7 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, regi
 				created_at AS "createdAt", updated_at AS "updatedAt",
 				lobby_latency_estimate(peers, $2, $3) AS latency
 			FROM lobbies
-			WHERE game = $1
+			WHERE game = $1 AND cardinality(peers) > 0
 		), matching_lobby_peers AS (
 			SELECT DISTINCT UNNEST(peers) AS peer
 			FROM game_lobbies

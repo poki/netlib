@@ -22,7 +22,6 @@ import (
 const LobbyCleanInterval = 5 * time.Minute
 const LobbyCleanThreshold = 24 * time.Hour
 const peerPingDuration = 2 * time.Second
-const peerActiveUpdateInterval = 30 * time.Second
 
 // Countries to track states/regions for the avg-latency-at-Xs events.
 // United States
@@ -44,6 +43,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		Store: store,
 	}
 	go manager.Run(ctx)
+	go manager.RunActivityUpdates(ctx)
 
 	go func() {
 		logger := logging.GetLogger(ctx)
@@ -121,7 +121,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		go func() { // Sending ping packet every X to check if the tcp connection is still alive.
 			ticker := time.NewTicker(peerPingDuration)
 			defer ticker.Stop()
-			var lastActiveUpdate time.Time
 			for {
 				select {
 				case <-ticker.C:
@@ -139,16 +138,6 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 						}
 						cancel()
 						return
-					} else {
-						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
-						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.
-						if peer.ID != "" {
-							now := util.NowUTC(ctx)
-							if lastActiveUpdate.IsZero() || now.Sub(lastActiveUpdate) >= peerActiveUpdateInterval {
-								manager.MarkPeerAsActive(ctx, peer.ID, peer.connectionID)
-								lastActiveUpdate = now
-							}
-						}
 					}
 				case <-ctx.Done():
 					return
@@ -158,7 +147,13 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 		for ctx.Err() == nil {
 			var raw []byte
-			if _, raw, err = conn.Read(ctx); err != nil {
+
+			// Close silent sockets so session cleanup cannot leave indefinitely
+			// open connections behind after their peer rows have expired.
+			readCtx, readCancel := context.WithTimeout(ctx, stores.DefaultPeerTimeout)
+			_, raw, err = conn.Read(readCtx)
+			readCancel()
+			if err != nil {
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
 
@@ -183,6 +178,10 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				}
 				continue
 			}
+
+			// Any packet from an authenticated session, including client pings,
+			// proves activity. Server writes alone do not prove the client is alive.
+			manager.RecordPeerActivity(peer.ID, peer.connectionID)
 
 			switch base.Type {
 			case "credentials":
@@ -222,7 +221,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				go metrics.RecordEvent(reqCtx, params)
 
 			case "ping", "pong":
-				// ignore, ping/pong is just for the tcp keepalive.
+				// Activity was recorded above; no response is needed.
 
 			default:
 				if err := peer.HandlePacket(reqCtx, base.Type, raw); err != nil {

@@ -37,12 +37,6 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     this.replayQueue = new Map()
 
     this.ws = this.connect()
-
-    // Send a ping every 5 seconds to keep the connection alive,
-    // and to detect when the connection is lost.
-    this.pingInterval = setInterval(() => {
-      this.ping()
-    }, 5000)
   }
 
   private connect (): WebSocket {
@@ -57,6 +51,11 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         secret: this.receivedSecret,
         version
       })
+
+      // Start heartbeats for each connection, including reconnects.
+      this.pingInterval = setInterval(() => {
+        this.ping()
+      }, 5000)
     }
     const onError = (e: Event): void => {
       const error = new SignalingError('socket-error', 'unexpected websocket error', e)

@@ -15,6 +15,7 @@ var ErrInvalidPassword = errors.New("invalid password")
 var ErrLobbyIsFull = errors.New("lobby is full")
 
 const DefaultPeerTimeout = 90 * time.Second
+const MatchmakingPeerTimeout = 20 * time.Second
 
 type SubscriptionCallback func(context.Context, []byte)
 
@@ -40,7 +41,7 @@ type Store interface {
 
 	CreatePeer(ctx context.Context, peerID, secret, gameID, connectionID string) error
 	UpdatePeerGeo(ctx context.Context, peerID string, country, region string) error
-	MarkPeerAsActive(ctx context.Context, peerID, connectionID string) error
+	MarkPeersAsActive(ctx context.Context, peerIDs, connectionIDs []string) error
 	MarkPeerAsDisconnected(ctx context.Context, peerID, connectionID string) (bool, error)
 	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID, connectionID string) (bool, []string, error)
 	ClaimTimedOutPeers(ctx context.Context, threshold time.Duration, limit int) ([]TimedOutPeer, error)

@@ -271,7 +271,16 @@ When('{string} disconnects', async function (this: World, playerName: string) {
   if (player == null) {
     throw new Error('no such player')
   }
+  const ws = (player.network as any).signaling.ws as WebSocket
   player.network.close()
+
+  // The local close event fires before the server removes the player from its
+  // lobby. Wait for the close handshake before continuing with other players.
+  if (ws.readyState !== WebSocket.CLOSED) {
+    await new Promise<void>(resolve => {
+      ws.addEventListener('close', () => resolve(), { once: true })
+    })
+  }
 })
 
 When('{string} leaves the lobby', async function (this: World, playerName: string) {
@@ -436,6 +445,18 @@ When('{string} disconnected from the signaling server', function (this: World, p
     throw new Error('no such player')
   }
   ;(player.network as any).signaling.ws.close()
+})
+
+When('{string} stops sending signaling pings', function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  clearInterval((player.network as any).signaling.pingInterval)
+})
+
+When('we wait {int} seconds', async function (seconds: number) {
+  await new Promise(resolve => setTimeout(resolve, seconds * 1000))
 })
 
 When('the websocket of {string} is reconnected', function (this: World, playerName: string) {

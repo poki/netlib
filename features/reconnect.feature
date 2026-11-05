@@ -95,3 +95,37 @@ Feature: Players can create and connect a network of players
     Then "green" receives the network event "connected" with the argument "[Peer: h5yzwyizlwao]"
     And "blue" receives the network event "connected" with the argument "[Peer: 1u8fw4aph5ypt]"
 
+
+  Scenario: Heartbeats keep sessions alive across reconnects while silent sessions expire
+    Given "blue" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And "yellow" is connected as "h5yzwyizlwao" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    When the websocket of "yellow" is reconnected
+    Then "yellow" receives the network event "signalingreconnected"
+
+    When "green" creates a network for game "de352868-ee35-474c-b703-510a37f911b2"
+    Then "green" receives the network event "ready"
+    When "green" creates a lobby with these settings:
+      """json
+      { "public": true, "maxPlayers": 2, "customData": { "q": "activity-test" } }
+      """
+    And "green" stops sending signaling pings
+    And we wait 25 seconds
+
+    When "red" creates a network for game "de352868-ee35-474c-b703-510a37f911b2"
+    Then "red" receives the network event "ready"
+    When "red" joins or creates a lobby with these settings:
+      """json
+      { "filter": { "q": "activity-test" }, "maxPlayers": 2, "customData": { "q": "activity-test" } }
+      """
+    And "red" requests lobbies with:
+      """json
+      { "q": "activity-test" }
+      """
+    Then "red" should receive 2 lobbies
+
+    When we wait 70 seconds
+    Then "green" receives the network event "signalingerror" with the argument "[socket-error: signaling socket closed]"
+    And "blue" has not seen any "signalingerror" event
+    And "yellow" has not seen a new "signalingerror" event
+    And "blue" should see 2 players online and 0 in a lobby
+

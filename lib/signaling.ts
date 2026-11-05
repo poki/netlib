@@ -4,6 +4,8 @@ import Peer from './peer'
 import { LobbyListEntry, SignalingPacketTypes } from './types'
 import { version } from '../package.json'
 
+const RequestTimeout = 30000
+
 interface SignalingListeners {
   credentials: (data: SignalingPacketTypes) => void | Promise<void>
 }
@@ -37,12 +39,6 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     this.replayQueue = new Map()
 
     this.ws = this.connect()
-
-    // Send a ping every 5 seconds to keep the connection alive,
-    // and to detect when the connection is lost.
-    this.pingInterval = setInterval(() => {
-      this.ping()
-    }, 5000)
   }
 
   private connect (): WebSocket {
@@ -50,6 +46,10 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     const onOpen = (): void => {
       this.reconnectAttempt = 0
       this.reconnecting = false
+      // Start on every connection: reconnect() clears the previous interval.
+      if (this.pingInterval === undefined) {
+        this.pingInterval = setInterval(() => { this.ping() }, 5000)
+      }
       this.send({
         type: 'hello',
         game: this.network.gameID,
@@ -62,6 +62,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       const error = new SignalingError('socket-error', 'unexpected websocket error', e)
       this.network._onSignalingError(error)
       if (ws.readyState === WebSocket.CLOSED) {
+        this.rejectRequests()
         this.reconnecting = false
         ws.removeEventListener('open', onOpen)
         ws.removeEventListener('error', onError)
@@ -78,6 +79,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
     const onMessage = (ev: MessageEvent): void => this.enqueueSignalingMessage(ev.data)
     const onClose = (): void => {
+      this.rejectRequests()
       if (!this.network.closing) {
         const error = new SignalingError('socket-error', 'signaling socket closed')
         this.network._onSignalingError(error)
@@ -108,9 +110,6 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
 
     this.close()
 
-    this.requests.forEach((r) => r.reject(new SignalingError('socket-error', 'signaling socket closed')))
-    this.requests.clear()
-
     if (this.reconnectAttempt > 42) {
       this.network.emit('failed')
       this.network._onSignalingError(new SignalingError('socket-error', 'giving up on reconnecting to signaling server'))
@@ -125,11 +124,18 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   }
 
   close (): void {
+    this.rejectRequests()
     if (this.pingInterval !== undefined) {
       clearInterval(this.pingInterval)
       this.pingInterval = undefined
     }
     this.ws.close()
+  }
+
+  private rejectRequests (): void {
+    const error = new SignalingError('socket-error', 'signaling socket closed')
+    this.requests.forEach(request => request.reject(error))
+    this.requests.clear()
   }
 
   async request (packet: SignalingPacketTypes): Promise<SignalingPacketTypes> {
@@ -142,8 +148,28 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
       packet.rid = rid
       this.network.log('requesting signaling packet:', packet.type)
       const data = JSON.stringify(packet)
-      this.requests.set(rid, { resolve, reject, type: packet.type })
-      this.ws.send(data)
+      const timeout = setTimeout(() => {
+        this.requests.delete(rid)
+        reject(new SignalingError('socket-error', `signaling request timed out: ${packet.type}`, undefined, 'request-timeout'))
+      }, RequestTimeout)
+      const request: RequestHandler = {
+        resolve: reply => {
+          clearTimeout(timeout)
+          resolve(reply)
+        },
+        reject: error => {
+          clearTimeout(timeout)
+          reject(error)
+        },
+        type: packet.type
+      }
+      this.requests.set(rid, request)
+      try {
+        this.ws.send(data)
+      } catch (error) {
+        this.requests.delete(rid)
+        request.reject(error)
+      }
     })
   }
 
@@ -197,9 +223,9 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
 
     const request = this.requests.get(packet.rid)
-    // Only credential responses can resolve immediately: _addPeer waits for them
-    // while handling a queued connect packet, so queueing them would deadlock.
-    if (request?.type !== 'credentials') {
+    // Credentials unblock _addPeer. Errors and read-only counts can also settle
+    // without waiting for queued WebRTC operations; lobby changes must stay ordered.
+    if (request == null || (request.type !== 'credentials' && request.type !== 'getPlayerCounts' && packet.type !== 'error')) {
       return
     }
 

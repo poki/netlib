@@ -28,10 +28,10 @@ type TimeoutManager struct {
 }
 
 const peerActivityFlushInterval = 2 * time.Second
+const peerActivityFlushTimeout = 10 * time.Second
 
 func (manager *TimeoutManager) Run(ctx context.Context) {
 	if manager.DisconnectThreshold == 0 {
-		// Retain disconnected sessions for reconnects, independently of matchmaking.
 		manager.DisconnectThreshold = stores.DefaultPeerTimeout
 	}
 
@@ -163,34 +163,26 @@ func (manager *TimeoutManager) RunActivityUpdates(ctx context.Context) {
 			return
 		case <-ticker.C:
 			manager.activityMutex.Lock()
-			active := manager.activePeers
-			manager.activePeers = nil
-			manager.activityMutex.Unlock()
-
-			if len(active) == 0 {
-				continue
-			}
-
-			peerIDs := make([]string, 0, len(active))
-			connectionIDs := make([]string, 0, len(active))
-
-			for peer := range active {
+			peerIDs := make([]string, 0, len(manager.activePeers))
+			connectionIDs := make([]string, 0, len(manager.activePeers))
+			for peer := range manager.activePeers {
 				peerIDs = append(peerIDs, peer.ID)
 				connectionIDs = append(connectionIDs, peer.ConnectionID)
 			}
+			clear(manager.activePeers)
+			manager.activityMutex.Unlock()
+			if len(peerIDs) == 0 {
+				continue
+			}
 
-			// Bound flush time so batches cannot build up behind a slow database.
-			flushCtx, cancel := context.WithTimeout(ctx, peerActivityFlushInterval)
+			flushCtx, cancel := context.WithTimeout(ctx, peerActivityFlushTimeout)
 			err := manager.Store.MarkPeersAsActive(flushCtx, peerIDs, connectionIDs)
 			cancel()
 			if err != nil && !errors.Is(err, context.Canceled) {
 				logging.GetLogger(ctx).Error("failed to update peer activity", zap.Error(err))
 			}
-
-			// Failed batches are discarded. Retrying with NOW() would make old
-			// traffic appear fresh; subsequent messages populate the next batch.
-			// Since it takes many flush intervals for a peer to be seen as inactive,
-			// occasional missed updates are not critical.
+			// Discard failed batches. Subsequent activity supplies fresh updates;
+			// retrying here would give old activity a new timestamp.
 		}
 	}
 }

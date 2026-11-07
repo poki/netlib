@@ -338,7 +338,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 		ORDER BY RANDOM()
 		LIMIT 1
 		FOR UPDATE
-	`, append([]any{game, country, region, now.Add(-MatchmakingPeerTimeout)}, values...)...).Scan(&lobbyCode, &peerlist)
+	`, append([]any{game, country, region, now.Add(-DefaultPeerTimeout)}, values...)...).Scan(&lobbyCode, &peerlist)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, false, err
 	}
@@ -591,17 +591,19 @@ func (s *PostgresStore) MarkPeersAsActive(ctx context.Context, peerIDs, connecti
 	if len(peerIDs) == 0 {
 		return nil
 	}
+	now := util.NowUTC(ctx)
 
 	_, err := s.DB.Exec(ctx, `
 		UPDATE peers p
 		SET
-			last_seen = NOW() AT TIME ZONE 'UTC',
-			updated_at = NOW() AT TIME ZONE 'UTC'
+			last_seen = $3,
+			updated_at = GREATEST(p.updated_at, $3)
 		FROM unnest($1::varchar(20)[], $2::varchar(20)[]) AS active(peer, connection_id)
 		WHERE p.peer = active.peer
 		  AND p.connection_id = active.connection_id
 		  AND p.disconnected = FALSE
-	`, peerIDs, connectionIDs)
+		  AND p.last_seen < $3
+	`, peerIDs, connectionIDs, now)
 	return err
 }
 

@@ -15,7 +15,6 @@ var ErrInvalidPassword = errors.New("invalid password")
 var ErrLobbyIsFull = errors.New("lobby is full")
 
 const DefaultPeerTimeout = 90 * time.Second
-const MatchmakingPeerTimeout = 20 * time.Second
 
 type SubscriptionCallback func(context.Context, []byte)
 

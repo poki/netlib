@@ -41,7 +41,7 @@ Joins an existing lobby.
 ##### `joinOrCreate(settings?: JoinOrCreateSettings): Promise<LobbyListEntry | undefined>`
 Joins a random public, password-free, nonempty lobby with available capacity for this game, or creates one atomically. Simultaneous join-or-create requests share lobbies without exceeding their capacity.
 
-An existing lobby must contain at least one active, connected player.
+An existing lobby must contain at least one connected player whose server-side activity was refreshed within the last 90 seconds. The server refreshes activity while it can send signaling pings, including for older clients that do not send heartbeats after reconnecting.
 
 ```typescript
 interface JoinOrCreateSettings extends Omit<LobbySettings, 'public' | 'password'> {

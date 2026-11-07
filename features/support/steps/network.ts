@@ -173,8 +173,12 @@ Given('these peers exist:', async function (this: World, peers: DataTable) {
   })
 })
 
-When('{string} creates a network for game {string}', async function (this: World, playerName: string, gameID: string) {
-  await this.createPlayer(playerName, gameID)
+When(/^"([^"]+)" creates a network for game "([^"]+)"( and immediately disconnects)?$/, async function (this: World, playerName: string, gameID: string, immediately: string | null) {
+  const created = this.createPlayer(playerName, gameID)
+  if (immediately != null) {
+    this.players.get(playerName)?.network.close()
+  }
+  await created
 })
 
 When('{string} creates a lobby', async function (this: World, playerName: string) {
@@ -273,14 +277,47 @@ When('{string} disconnects', async function (this: World, playerName: string) {
   }
   const ws = (player.network as any).signaling.ws as WebSocket
   player.network.close()
+  await waitForSocketClose(ws, playerName)
+})
 
-  // The local close event fires before the server removes the player from its
-  // lobby. Wait for the close handshake before continuing with other players.
+// The local close event fires before the server removes lobby membership.
+async function waitForSocketClose (ws: WebSocket, playerName: string): Promise<void> {
   if (ws.readyState !== WebSocket.CLOSED) {
-    await new Promise<void>(resolve => {
-      ws.addEventListener('close', () => resolve(), { once: true })
+    await new Promise<void>((resolve, reject) => {
+      const onClose = (): void => {
+        clearTimeout(timeout)
+        resolve()
+      }
+      const timeout = setTimeout(() => {
+        ws.removeEventListener('close', onClose)
+        reject(new Error(`signaling socket for ${playerName} did not close`))
+      }, 5000)
+      ws.addEventListener('close', onClose, { once: true })
     })
   }
+}
+
+When('{string} disconnects during signaling reconnect backoff', function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  ;(player.network as any).signaling.reconnect()
+  player.network.close()
+})
+
+Then('the signaling socket of {string} stays closed', async function (this: World, playerName: string) {
+  const player = this.players.get(playerName)
+  if (player == null) {
+    throw new Error('no such player')
+  }
+  const signaling = (player.network as any).signaling
+  const ws = signaling.ws as WebSocket
+  await waitForSocketClose(ws, playerName)
+  await new Promise(resolve => setTimeout(resolve, 300))
+  assert.equal(player.network.closing, true)
+  assert.equal(signaling.ws, ws, 'signaling reconnected after closing')
+  assert.equal(ws.readyState, WebSocket.CLOSED)
 })
 
 When('{string} leaves the lobby', async function (this: World, playerName: string) {
@@ -445,14 +482,6 @@ When('{string} disconnected from the signaling server', function (this: World, p
     throw new Error('no such player')
   }
   ;(player.network as any).signaling.ws.close()
-})
-
-When('{string} stops sending signaling pings', function (this: World, playerName: string) {
-  const player = this.players.get(playerName)
-  if (player == null) {
-    throw new Error('no such player')
-  }
-  clearInterval((player.network as any).signaling.pingInterval)
 })
 
 When('we wait {int} seconds', async function (seconds: number) {

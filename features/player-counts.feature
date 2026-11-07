@@ -72,6 +72,8 @@ Feature: Player Counts
       | foreign | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 5           | true   | {"q":"ttt-q2"} |
     Then "green" should see 3 players online and 1 in a lobby matching '{"q":"ttt-q2"}'
     And "green" should see 3 players online and 0 in a lobby matching '{"q":"missing"}'
+    And "green" should see 3 players online and 0 in a lobby matching '{"playerCount":0}'
+    And "green" should see 3 players online and 1 in a lobby matching '{"$or":[{"q":"ttt-q2"},{"playerCount":0}]}'
 
 
   Scenario: Filter player counts by computed lobby fields

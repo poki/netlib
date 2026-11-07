@@ -144,7 +144,7 @@ export default class Network extends EventEmitter<NetworkListeners> {
   }
 
   close (reason?: string): void {
-    if (this._closing || this.signaling.receivedID === undefined) {
+    if (this._closing) {
       return
     }
     this._closing = true

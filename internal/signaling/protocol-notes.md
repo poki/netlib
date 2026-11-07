@@ -7,7 +7,13 @@
 ## Server responds with:
 <= `{"type": "welcome", "id": "newPeerID"}`
 
-## Then the connection idles until client calls create() or join('lobby')
+## Keepalives
+
+The server sends `{"type": "ping"}` every 2 seconds. Current clients also send
+`{"type": "ping"}` every 5 seconds, including after reconnecting. No application-level
+pong is required.
+
+## Lobby operations
 
 ## On create():
 => `{"type": "create"}`

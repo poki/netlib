@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -44,6 +45,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		Store: store,
 	}
 	go manager.Run(ctx)
+	go manager.RunActivityUpdates(ctx)
 
 	go func() {
 		logger := logging.GetLogger(ctx)
@@ -118,6 +120,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			}
 		}()
 
+		var activityPeer atomic.Pointer[peerConnection]
 		go func() { // Sending ping packet every X to check if the tcp connection is still alive.
 			ticker := time.NewTicker(peerPingDuration)
 			defer ticker.Stop()
@@ -130,24 +133,26 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 					err := peer.Send(pingCtx, PingPacket{Type: "ping"})
 					pingCancel()
 					if err != nil {
+						peerID := ""
+						if active := activityPeer.Load(); active != nil {
+							peerID = active.ID
+						}
 						if !util.ShouldIgnoreNetworkError(err) {
 							if strings.Contains(err.Error(), "write: broken pipe") || strings.Contains(err.Error(), "connection reset by peer") {
-								logger.Warn("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+								logger.Warn("failed to send ping packet", zap.String("peer", peerID), zap.Error(err))
 							} else {
-								logger.Error("failed to send ping packet", zap.String("peer", peer.ID), zap.Error(err))
+								logger.Error("failed to send ping packet", zap.String("peer", peerID), zap.Error(err))
 							}
 						}
 						cancel()
 						return
-					} else {
-						// If we can send a ping packet, and the peer has an ID, we update the peer as being active.
-						// If the peer doesn't have an ID yet, it's still in the process of connecting, so we don't update it.
-						if peer.ID != "" {
-							now := util.NowUTC(ctx)
-							if lastActiveUpdate.IsZero() || now.Sub(lastActiveUpdate) >= peerActiveUpdateInterval {
-								manager.MarkPeerAsActive(ctx, peer.ID, peer.connectionID)
-								lastActiveUpdate = now
-							}
+					}
+					// Older clients stop sending heartbeats after reconnecting.
+					if active := activityPeer.Load(); active != nil {
+						now := util.NowUTC(ctx)
+						if lastActiveUpdate.IsZero() || now.Sub(lastActiveUpdate) >= peerActiveUpdateInterval {
+							manager.RecordPeerActivity(active.ID, active.ConnectionID)
+							lastActiveUpdate = now
 						}
 					}
 				case <-ctx.Done():
@@ -158,6 +163,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 		for ctx.Err() == nil {
 			var raw []byte
+
 			if _, raw, err = conn.Read(ctx); err != nil {
 				util.ErrorAndDisconnect(ctx, conn, err)
 			}
@@ -222,7 +228,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 				go metrics.RecordEvent(reqCtx, params)
 
 			case "ping", "pong":
-				// ignore, ping/pong is just for the tcp keepalive.
+				// No response is needed for client keepalives.
 
 			default:
 				if err := peer.HandlePacket(reqCtx, base.Type, raw); err != nil {
@@ -232,6 +238,9 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 						util.ErrorAndDisconnect(reqCtx, conn, err)
 					}
 				}
+			}
+			if activityPeer.Load() == nil && peer.ID != "" {
+				activityPeer.Store(&peerConnection{ID: peer.ID, ConnectionID: peer.connectionID})
 			}
 		}
 	})

@@ -27,6 +27,7 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   private readonly requests: Map<string, RequestHandler> = new Map()
 
   private pingInterval?: ReturnType<typeof setInterval>
+  private reconnectTimeout?: ReturnType<typeof setTimeout>
   private messageQueue: Promise<void> = Promise.resolve()
 
   constructor (private readonly network: Network, peers: Map<string, Peer>, url: string) {
@@ -37,17 +38,15 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     this.replayQueue = new Map()
 
     this.ws = this.connect()
-
-    // Send a ping every 5 seconds to keep the connection alive,
-    // and to detect when the connection is lost.
-    this.pingInterval = setInterval(() => {
-      this.ping()
-    }, 5000)
   }
 
   private connect (): WebSocket {
     const ws = new WebSocket(this.url)
     const onOpen = (): void => {
+      if (this.network.closing || ws !== this.ws) {
+        ws.close()
+        return
+      }
       this.reconnectAttempt = 0
       this.reconnecting = false
       this.send({
@@ -57,10 +56,17 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
         secret: this.receivedSecret,
         version
       })
+
+      // Start heartbeats for each connection, including reconnects.
+      this.pingInterval = setInterval(() => {
+        this.ping()
+      }, 5000)
     }
     const onError = (e: Event): void => {
-      const error = new SignalingError('socket-error', 'unexpected websocket error', e)
-      this.network._onSignalingError(error)
+      if (!this.network.closing) {
+        const error = new SignalingError('socket-error', 'unexpected websocket error', e)
+        this.network._onSignalingError(error)
+      }
       if (ws.readyState === WebSocket.CLOSED) {
         this.reconnecting = false
         ws.removeEventListener('open', onOpen)
@@ -118,13 +124,20 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
     }
     void this.event('signaling', 'attempt-reconnect')
     this.reconnecting = true
-    setTimeout(() => {
-      this.ws = this.connect()
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = undefined
+      if (!this.network.closing) {
+        this.ws = this.connect()
+      }
     }, Math.random() * 100 * this.reconnectAttempt)
     this.reconnectAttempt += 1
   }
 
   close (): void {
+    if (this.reconnectTimeout !== undefined) {
+      clearTimeout(this.reconnectTimeout)
+      this.reconnectTimeout = undefined
+    }
     if (this.pingInterval !== undefined) {
       clearInterval(this.pingInterval)
       this.pingInterval = undefined
@@ -216,6 +229,9 @@ export default class Signaling extends EventEmitter<SignalingListeners> {
   }
 
   private async handleSignalingMessage (packet: SignalingPacketTypes): Promise<void> {
+    if (this.network.closing) {
+      return
+    }
     try {
       if (packet.rid !== undefined) {
         const request = this.requests.get(packet.rid)

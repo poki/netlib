@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/koenbollen/logging"
@@ -12,16 +13,25 @@ import (
 	"go.uber.org/zap"
 )
 
+type peerConnection struct {
+	ID           string
+	ConnectionID string
+}
+
 type TimeoutManager struct {
 	DisconnectThreshold time.Duration
 
 	Store stores.Store
+
+	activityMutex sync.Mutex
+	activePeers   map[peerConnection]struct{}
 }
+
+const peerActivityFlushInterval = 2 * time.Second
+const peerActivityFlushTimeout = 10 * time.Second
 
 func (manager *TimeoutManager) Run(ctx context.Context) {
 	if manager.DisconnectThreshold == 0 {
-		// We update peer activity every 30 seconds. Make it possible to somehow miss
-		// two updates before we consider a peer timed out.
 		manager.DisconnectThreshold = stores.DefaultPeerTimeout
 	}
 
@@ -129,17 +139,51 @@ func (manager *TimeoutManager) Reconnected(ctx context.Context, peerID, secret, 
 	return manager.Store.MarkPeerAsReconnected(ctx, peerID, secret, gameID, connectionID)
 }
 
-func (manager *TimeoutManager) MarkPeerAsActive(ctx context.Context, peerID, connectionID string) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	logger := logging.GetLogger(ctx)
+func (manager *TimeoutManager) RecordPeerActivity(peerID, connectionID string) {
+	if peerID == "" {
+		return
+	}
 
-	err := manager.Store.MarkPeerAsActive(ctx, peerID, connectionID)
+	manager.activityMutex.Lock()
+	defer manager.activityMutex.Unlock()
 
-	// context.Canceled is expected when the connection is closed right as this function
-	// is called. We don't want to log this as an error.
-	if err != nil && !errors.Is(err, context.Canceled) {
-		logger.Error("failed to mark peer as active", zap.Error(err), zap.String("peer", peerID))
+	if manager.activePeers == nil {
+		manager.activePeers = make(map[peerConnection]struct{})
+	}
+
+	manager.activePeers[peerConnection{ID: peerID, ConnectionID: connectionID}] = struct{}{}
+}
+
+func (manager *TimeoutManager) RunActivityUpdates(ctx context.Context) {
+	ticker := time.NewTicker(peerActivityFlushInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			manager.activityMutex.Lock()
+			peerIDs := make([]string, 0, len(manager.activePeers))
+			connectionIDs := make([]string, 0, len(manager.activePeers))
+			for peer := range manager.activePeers {
+				peerIDs = append(peerIDs, peer.ID)
+				connectionIDs = append(connectionIDs, peer.ConnectionID)
+			}
+			clear(manager.activePeers)
+			manager.activityMutex.Unlock()
+			if len(peerIDs) == 0 {
+				continue
+			}
+
+			flushCtx, cancel := context.WithTimeout(ctx, peerActivityFlushTimeout)
+			err := manager.Store.MarkPeersAsActive(flushCtx, peerIDs, connectionIDs)
+			cancel()
+			if err != nil && !errors.Is(err, context.Canceled) {
+				logging.GetLogger(ctx).Error("failed to update peer activity", zap.Error(err))
+			}
+			// Discard failed batches. Subsequent activity supplies fresh updates;
+			// retrying here would give old activity a new timestamp.
+		}
 	}
 }
 

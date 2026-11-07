@@ -55,6 +55,32 @@ Feature: Players can create and connect a network of players
     And "green" receives the network event "signalingreconnected"
 
 
+  Scenario: A reconnected network stays connected and can close
+    Given "green" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    When the websocket of "green" is reconnected
+    Then "green" receives the network event "signalingreconnected"
+    When we wait 6 seconds
+    Then "green" has not seen a new "signalingerror" event
+    When "green" disconnects
+    Then "green" receives the network event "close"
+    And the signaling socket of "green" stays closed
+
+
+  Scenario: A network can close before it is ready
+    When "green" creates a network for game "4307bd86-e1df-41b8-b9df-e22afcf084bd" and immediately disconnects
+    Then "green" receives the network event "close"
+    And the signaling socket of "green" stays closed
+    And "green" has not seen any "ready" event
+
+
+  Scenario: Closing during reconnect backoff prevents another signaling connection
+    Given "green" is connected as "1u8fw4aph5ypt" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    When "green" disconnects during signaling reconnect backoff
+    Then "green" receives the network event "close"
+    And the signaling socket of "green" stays closed
+    And "green" has not seen any "signalingreconnected" event
+
+
   Scenario: Two player get disconnected
     Given webrtc is intercepted by the testproxy
 
@@ -94,4 +120,3 @@ Feature: Players can create and connect a network of players
     When "blue" connects to the lobby "19yrzmetd2bn7"
     Then "green" receives the network event "connected" with the argument "[Peer: h5yzwyizlwao]"
     And "blue" receives the network event "connected" with the argument "[Peer: 1u8fw4aph5ypt]"
-

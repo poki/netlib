@@ -585,18 +585,25 @@ func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, countr
 	return err
 }
 
-func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID, connectionID string) error {
+func (s *PostgresStore) MarkPeersAsActive(ctx context.Context, peerIDs, connectionIDs []string) error {
 	// Only an authenticated reconnect may reactivate a disconnected peer.
 	// Late heartbeats must not revive it or postpone timeout cleanup.
+	if len(peerIDs) == 0 {
+		return nil
+	}
 	now := util.NowUTC(ctx)
 
 	_, err := s.DB.Exec(ctx, `
-		UPDATE peers
+		UPDATE peers p
 		SET
-			last_seen = $1,
-			updated_at = $1
-		WHERE peer = $2 AND connection_id = $3 AND disconnected = FALSE
-	`, now, peerID, connectionID)
+			last_seen = $3,
+			updated_at = GREATEST(p.updated_at, $3)
+		FROM unnest($1::varchar(20)[], $2::varchar(20)[]) AS active(peer, connection_id)
+		WHERE p.peer = active.peer
+		  AND p.connection_id = active.connection_id
+		  AND p.disconnected = FALSE
+		  AND p.last_seen < $3
+	`, peerIDs, connectionIDs, now)
 	return err
 }
 

@@ -25,6 +25,7 @@ type Peer struct {
 
 	closedPacketReceived bool
 	connectionID         string
+	origin               string
 
 	retrievedIDCallback func(context.Context, string, string, string, string) (bool, []string, error)
 
@@ -270,7 +271,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			p.Lobby = lobbyID
 			p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby, "version", packet.Version)
+			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby, "version", packet.Version, "origin", p.origin)
 
 			// We just reconnected, and we might be the only peer in the lobby.
 			// So do an election to make sure we then become the leader.
@@ -299,7 +300,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			}
 		}
 	} else {
-		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby, "version", packet.Version)
+		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby, "version", packet.Version, "origin", p.origin)
 	}
 
 	return nil

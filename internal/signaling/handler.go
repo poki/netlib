@@ -97,6 +97,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 		peer := &Peer{
 			connectionID: xid.New().String(),
+			origin:       r.Header.Get("Origin"),
 			store:        store,
 			conn:         conn,
 
@@ -107,7 +108,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		}
 		defer func() {
 			cancel()
-			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", peer.origin))
 			conn.Close(websocket.StatusInternalError, "unexpected closure") // nolint:errcheck
 
 			if !peer.closedPacketReceived {
@@ -227,7 +228,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			default:
 				if err := peer.HandlePacket(reqCtx, base.Type, raw); err != nil {
 					if err == ErrUnknownPacketType {
-						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", peer.origin))
 					} else {
 						util.ErrorAndDisconnect(reqCtx, conn, err)
 					}

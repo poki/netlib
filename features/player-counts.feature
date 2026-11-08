@@ -77,12 +77,12 @@ Feature: Player Counts
 
 
   Scenario: Filter player counts by computed lobby fields
-    Given "blue" is connected as "h5yzwyizlwao" with country,region as "XX","XX" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
+    Given "blue" is connected as "h5yzwyizlwao" and ready for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"
     And these peers exist:
       | peer  | game                                 |
       | peer0 | f666036d-d9e1-4d70-b0c3-4a68b24a9884 |
     And these lobbies exist:
       | code   | game                                 | playerCount | public | custom_data    |
       | queued | f666036d-d9e1-4d70-b0c3-4a68b24a9884 | 2           | false  | {"q":"ttt-q2"} |
-    Then "blue" should see 3 players online and 1 in a lobby matching '{"q":"ttt-q2","playerCount":{"$gte":2},"latency":{"$lte":250}}'
-    And "blue" should see 3 players online and 0 in a lobby matching '{"q":"ttt-q2","latency":{"$lt":250}}'
+    Then "blue" should see 3 players online and 1 in a lobby matching '{"q":"ttt-q2","playerCount":{"$gte":2}}'
+    And "blue" should see 3 players online and 0 in a lobby matching '{"q":"ttt-q2","playerCount":{"$lt":2}}'

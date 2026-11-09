@@ -39,7 +39,7 @@ type PostgresStore struct {
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	filterConverter, err := filter.NewConverter(
-		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "matchmakingRegion"),
 		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 	)
 	if err != nil {
@@ -200,10 +200,10 @@ func (s *PostgresStore) CreateLobby(ctx context.Context, game, lobbyCode, peerID
 
 	now := util.NowUTC(ctx)
 	res, err := s.DB.Exec(ctx, `
-		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator, password, max_players)
-		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7, $9, $10)
+		INSERT INTO lobbies (code, game, peers, public, custom_data, created_at, updated_at, leader, term, can_update_by, creator, password, max_players, matchmaking_region)
+		VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 1, $8, $7, $9, $10, $11)
 		ON CONFLICT DO NOTHING
-	`, lobbyCode, game, []string{peerID}, options.Public, options.CustomData, now, peerID, options.CanUpdateBy, hashedPassword, options.MaxPlayers)
+	`, lobbyCode, game, []string{peerID}, options.Public, options.CustomData, now, peerID, options.CanUpdateBy, hashedPassword, options.MaxPlayers, options.MatchmakingRegion)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 	return peerlist, nil
 }
 
-func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error) {
+func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, lobbyFilter, codeFormat string, regions []string, allowAnyRegion bool, options LobbyOptions) (string, []string, bool, error) {
 	if len(peerID) > 20 {
 		return "", nil, false, ErrInvalidPeerID
 	}
@@ -314,43 +314,67 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, lob
 	var lobbyCode string
 	var peerlist []string
 	now := util.NowUTC(ctx)
-	err = tx.QueryRow(ctx, `
+	args := append([]any{game, now.Add(-DefaultPeerTimeout)}, values...)
+	eligibleLobbies := `
 		SELECT code, peers
 		FROM (
 			SELECT *,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
 				created_at AS "createdAt",
-				updated_at AS "updatedAt"
+				updated_at AS "updatedAt",
+				matchmaking_region AS "matchmakingRegion"
 			FROM lobbies
 			WHERE game = $1
 		) AS game_lobbies
 		WHERE public = true
 		AND password IS NULL
-		AND COALESCE(ARRAY_LENGTH(peers, 1), 0) > 0
+		AND cardinality(peers) > 0
 		AND (max_players = 0 OR ARRAY_LENGTH(peers, 1) < max_players)
 		AND EXISTS (
 			SELECT 1 FROM peers p
 			WHERE p.game = $1 AND p.peer = ANY(game_lobbies.peers)
 			AND p.disconnected = FALSE AND p.last_seen >= $2
 		)
-		AND (`+where+`)
-		ORDER BY RANDOM()
-		LIMIT 1
-		FOR UPDATE
-	`, append([]any{game, now.Add(-DefaultPeerTimeout)}, values...)...).Scan(&lobbyCode, &peerlist)
+		AND (` + where + `)`
+	const firstLobby = ` LIMIT 1 FOR UPDATE`
+
+	// An empty region list means worldwide matchmaking.
+	query := eligibleLobbies + firstLobby
+	if len(regions) > 0 {
+		args = append(args, regions)
+		// Probe the region index in preference order and stop at the first eligible lobby.
+		query = fmt.Sprintf(`
+			SELECT hit.code, hit.peers
+			FROM unnest($%d::text[]) WITH ORDINALITY AS preference(region, priority)
+			CROSS JOIN LATERAL (`, len(args)) + eligibleLobbies + `
+				AND matchmaking_region = preference.region` + firstLobby + `
+			) AS hit
+			ORDER BY preference.priority
+			LIMIT 1`
+		if allowAnyRegion {
+			query = `WITH regional AS (` + query + `)
+				SELECT code, peers FROM regional
+				UNION ALL
+				SELECT code, peers FROM (` + eligibleLobbies + `
+					AND NOT EXISTS (SELECT 1 FROM regional)` + firstLobby + `
+				) AS worldwide`
+		}
+	}
+
+	err = tx.QueryRow(ctx, query, args...).Scan(&lobbyCode, &peerlist)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, false, err
 	}
+	foundLobby := err == nil
 
-	exists := !errors.Is(err, pgx.ErrNoRows)
-	if !exists {
+	if !foundLobby {
 		for attempts := range 20 {
 			lobbyCode = util.GenerateLobbyCodeWithFormat(ctx, codeFormat, attempts)
 			res, err := tx.Exec(ctx, `
-				INSERT INTO lobbies (code, game, peers, public, created_at, updated_at, leader, term, can_update_by, creator, max_players, custom_data)
-				VALUES ($1, $2, $3, true, $4, $4, $5, 1, $6, $5, $7, $8)
+				INSERT INTO lobbies (code, game, peers, public, created_at, updated_at, leader, term, can_update_by, creator, max_players, custom_data, matchmaking_region)
+				VALUES ($1, $2, $3, true, $4, $4, $5, 1, $6, $5, $7, $8, $9)
 				ON CONFLICT DO NOTHING
-			`, lobbyCode, game, []string{peerID}, now, peerID, options.CanUpdateBy, options.MaxPlayers, options.CustomData)
+			`, lobbyCode, game, []string{peerID}, now, peerID, options.CanUpdateBy, options.MaxPlayers, options.CustomData, options.MatchmakingRegion)
 			if err != nil {
 				return "", nil, false, err
 			}
@@ -383,7 +407,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, lob
 		return "", nil, false, err
 	}
 
-	return lobbyCode, peerlist, !exists, nil
+	return lobbyCode, peerlist, !foundLobby, nil
 }
 
 func (s *PostgresStore) LeaveLobby(ctx context.Context, game, lobbyCode, peerID string) error {
@@ -419,11 +443,12 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 			can_update_by,
 			creator,
 			password IS NOT NULL,
-			max_players
+			max_players,
+			COALESCE(matchmaking_region, '')
 		FROM lobbies
 		WHERE code = $1
 		AND game = $2
-	`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
+`, lobbyCode, game).Scan(&lobby.Code, &lobby.Peers, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.MatchmakingRegion)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Lobby{}, ErrNotFound
@@ -451,7 +476,9 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, filter string
 		WITH game_lobbies AS (
 			SELECT code, peers, custom_data,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
-				created_at AS "createdAt", updated_at AS "updatedAt"
+				created_at AS "createdAt",
+				updated_at AS "updatedAt",
+				matchmaking_region AS "matchmakingRegion"
 			FROM lobbies
 			WHERE game = $1 AND cardinality(peers) > 0
 		), matching_lobby_peers AS (
@@ -504,24 +531,17 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort stri
 	var lobbies []Lobby
 	rows, err := s.DB.Query(ctx, `
 		WITH game_lobbies AS (
-			SELECT
-				code,
+			SELECT *,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
-				public,
-				custom_data,
 				created_at AS "createdAt",
 				updated_at AS "updatedAt",
-				leader,
-				term,
-				can_update_by,
-				creator,
-				password IS NOT NULL,
-				max_players
+				matchmaking_region AS "matchmakingRegion"
 			FROM lobbies
 			WHERE game = $1
 			  AND public = true
 		)
-		SELECT *
+		SELECT code, "playerCount", public, custom_data, "createdAt", "updatedAt",
+		       leader, term, can_update_by, creator, password IS NOT NULL, max_players, COALESCE("matchmakingRegion", '')
 		FROM game_lobbies
 		WHERE `+where+`
 		ORDER BY `+order+`
@@ -534,7 +554,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort stri
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.MatchmakingRegion)
 		if err != nil {
 			return nil, err
 		}

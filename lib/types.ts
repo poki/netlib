@@ -17,6 +17,8 @@ export interface LobbySettings {
 }
 
 export interface JoinOrCreateSettings extends Omit<LobbySettings, 'public' | 'password'> {
+  // Region search order before creating a lobby. Defaults to 'region-neighbors-any'.
+  matchmaking?: 'any' | 'region' | 'region-neighbors' | 'region-any' | 'region-neighbors-any'
   filter?: object // MongoDB-style filter on existing lobbies, with the same fields as list().
 }
 

@@ -20,6 +20,14 @@ Given('{string} is connected as {string} and ready for game {string}', async fun
   }
 })
 
+Given('{string} is connected from country {string} subdivision {string} and ready for game {string}', async function (this: World, playerName: string, country: string, subdivision: string, game: string) {
+  const player = await this.createPlayer(playerName, game, { country, subdivision })
+  const event = await player.waitForEvent('ready')
+  if (event == null) {
+    throw new Error(`unable to add player ${playerName} to network`)
+  }
+})
+
 async function areJoinedInALobby (this: World, playerNamesRaw: string, publc: boolean): Promise<void> {
   const playerNames = playerNamesRaw.split(',').map(s => s.trim())
   if (playerNames.length < 2) {

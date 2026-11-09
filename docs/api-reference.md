@@ -39,28 +39,42 @@ interface LobbyOptions {
 Joins an existing lobby.
 
 ##### `joinOrCreate(settings?: JoinOrCreateSettings): Promise<LobbyListEntry | undefined>`
-Joins a random public, password-free, nonempty lobby with available capacity for this game, or creates one atomically. Simultaneous join-or-create requests share lobbies without exceeding their capacity.
+Joins a public, password-free, nonempty lobby with available capacity for this game, or creates one atomically. Simultaneous join-or-create requests share lobbies without exceeding their capacity.
 
 An existing lobby must contain at least one connected session with a heartbeat in the last 90 seconds. Lobbies containing only disconnected, expired, or missing sessions are skipped. Lobby age alone does not indicate whether its players are active; use a `createdAt` filter if matchmaking should also limit lobby age.
 
 ```typescript
 interface JoinOrCreateSettings extends Omit<LobbySettings, 'public' | 'password'> {
   filter?: object;
+  matchmaking?: "any" | "region" | "region-neighbors" | "region-any" | "region-neighbors-any";
 }
 
 const lobby = await network.joinOrCreate({
+  matchmaking: "region-any",
   filter: { mode: "teams" },
   customData: { mode: "teams" },
   maxPlayers: 4
 });
 ```
 
-Accepts the same settings as `create()`, except `public` and `password`, plus an optional `filter`.
+Accepts the same settings as `create()`, except `public` and `password`, plus the following matchmaking settings.
+
+`matchmaking` sets the region search order. The first eligible lobby wins. If every lookup misses, Netlib creates a lobby in the creator’s region.
+
+| Mode | Search order |
+| --- | --- |
+| `any` | Any eligible lobby in the game, regardless of region |
+| `region` | Player’s region only |
+| `region-neighbors` | Exact region, then configured neighbors in order |
+| `region-any` | Exact region, then any eligible lobby worldwide |
+| `region-neighbors-any` (default) | Exact region, then configured neighbors, then any eligible lobby worldwide |
+
+The signaling server derives the player’s region from the connection. If the location is unknown, it uses `eu-west` for matchmaking and lobby creation. Worldwide searches include lobbies with no assigned region. Explicit joins by code work across regions.
 
 - `filter`: Selects existing lobbies using the same fields and MongoDB-style operators as `list()`. Invalid filters reject the request.
 - `codeFormat`, `maxPlayers`, `customData`, `canUpdateBy`: Apply only when creating a lobby. Defaults match `create()`.
 
-Filters use `code`, `playerCount`, `createdAt`, and `updatedAt` for lobby properties. Other fields refer to custom data.
+Filters use `code`, `playerCount`, `createdAt`, `updatedAt`, and `matchmakingRegion` for lobby properties. Other fields refer to custom data.
 
 If no lobby matches, creates a public, password-free lobby. Filter values are not copied into its custom data. Set `customData` explicitly, as shown above.
 
@@ -73,19 +87,23 @@ Leaves the current lobby without closing the network.
 
 ##### `list(filter?: object): Promise<Lobby[]>`
 Lists available lobbies with optional MongoDB-style filtering.
+
+For example, `network.list({ matchmakingRegion: "eu-west" })` lists public lobbies assigned to Western Europe. Omit the region filter to list public lobbies worldwide.
+
 ```typescript
 interface Lobby {
-  code: string;          // Lobby identifier
-  playerCount: number;   // Current number of players
-  public: boolean;       // Whether lobby is listed
-  customData: any;       // Custom lobby data
-  createdAt: Date;       // Creation timestamp
-  updatedAt: Date;       // Last update timestamp
-  leader: string;        // Current leader's peer ID
-  canUpdateBy: string;   // Who can update settings
-  creator: string;       // Creator's peer ID
-  hasPassword: boolean;  // Password protection status
-  maxPlayers: number;    // Player limit
+  code: string;              // Lobby identifier
+  playerCount: number;       // Current number of players
+  public: boolean;           // Whether lobby is listed
+  customData: any;           // Custom lobby data
+  createdAt: Date;           // Creation timestamp
+  updatedAt: Date;           // Last update timestamp
+  leader: string;            // Current leader's peer ID
+  canUpdateBy: string;       // Who can update settings
+  creator: string;           // Creator's peer ID
+  hasPassword: boolean;      // Password protection status
+  maxPlayers: number;        // Player limit
+  matchmakingRegion: string; // Lobby's matchmaking region
 }
 ```
 

@@ -19,18 +19,19 @@ const DefaultPeerTimeout = 90 * time.Second
 type SubscriptionCallback func(context.Context, []byte)
 
 type LobbyOptions struct {
-	Public      *bool
-	CustomData  *map[string]any
-	CanUpdateBy *string
-	Password    *string
-	MaxPlayers  *int
+	MatchmakingRegion string
+	Public            *bool
+	CustomData        *map[string]any
+	CanUpdateBy       *string
+	Password          *string
+	MaxPlayers        *int
 }
 
 type Store interface {
 	GetPlayerCounts(ctx context.Context, game, filter string) (PlayerCounts, error)
 	CreateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 	JoinLobby(ctx context.Context, game, lobby, id, password string) ([]string, error)
-	JoinOrCreateLobby(ctx context.Context, game, peerID, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error)
+	JoinOrCreateLobby(ctx context.Context, game, peerID, lobbyFilter, codeFormat string, regions []string, allowAnyRegion bool, options LobbyOptions) (string, []string, bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
 	ListLobbies(ctx context.Context, game, filter, sort string, limit int) ([]Lobby, error)
@@ -74,6 +75,8 @@ type Lobby struct {
 
 	Leader string `json:"leader,omitempty"`
 	Term   int    `json:"term"`
+
+	MatchmakingRegion string `json:"matchmakingRegion"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

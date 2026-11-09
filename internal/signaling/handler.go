@@ -98,6 +98,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 		peer := &Peer{
 			connectionID: xid.New().String(),
 			origin:       r.Header.Get("Origin"),
+			region:       matchmakingRegion(r.Header.Get("CF-IPCountry"), r.Header.Get("X-Geo-Region")),
 			store:        store,
 			conn:         conn,
 

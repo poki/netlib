@@ -12,7 +12,15 @@ import { PeerConfiguration } from '../../lib/types'
 import { Network } from '../../lib'
 
 ;(global as any).fetch = fetch
-;(global as any).WebSocket = ws
+// Simulate the edge headers on a real WebSocket handshake, including reconnects.
+;(global as any).WebSocket = class extends ws {
+  constructor (address: string) {
+    const url = new URL(address)
+    const location = new URLSearchParams(url.hash.slice(1))
+    url.hash = ''
+    super(url.toString(), { headers: { 'CF-IPCountry': location.get('country') ?? '', 'X-Geo-Region': location.get('subdivision') ?? '' } })
+  }
+}
 ;(global as any).RTCPeerConnection = wrtc.RTCPeerConnection
 
 process.env.NODE_ENV = 'test'
@@ -48,13 +56,17 @@ export class World extends CucumberWorld {
     }
   }
 
-  public async createPlayer (playerName: string, gameID: string): Promise<Player> {
+  public async createPlayer (playerName: string, gameID: string, location?: { country: string, subdivision: string }): Promise<Player> {
     return await new Promise((resolve) => {
       const config: PeerConfiguration = {}
       if (this.useTestProxy) {
         config.testproxyURL = this.testproxyURL
       }
-      const network = new Network(gameID, config, this.signalingURL)
+      let signalingURL = this.signalingURL
+      if (location !== undefined && signalingURL !== undefined) {
+        signalingURL += '#' + new URLSearchParams(location).toString()
+      }
+      const network = new Network(gameID, config, signalingURL)
       const player = new Player(playerName, network)
       this.players.set(playerName, player)
 

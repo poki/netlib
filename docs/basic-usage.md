@@ -158,6 +158,7 @@ Each lobby in the result includes:
 - `creator`: The peer who created the lobby
 - `hasPassword`: Whether the lobby has a password
 - `maxPlayers`: Maximum number of players allowed in the lobby
+- `matchmakingRegion`: The lobby's matchmaking region
 
 ## Best Practices
 

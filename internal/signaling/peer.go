@@ -26,6 +26,7 @@ type Peer struct {
 	closedPacketReceived bool
 	connectionID         string
 	origin               string
+	region               string
 
 	retrievedIDCallback func(context.Context, string, string, string, string) (bool, []string, error)
 
@@ -444,11 +445,12 @@ func (p *Peer) HandleCreatePacket(ctx context.Context, packet CreatePacket) erro
 		p.Lobby = util.GenerateLobbyCodeWithFormat(ctx, packet.CodeFormat, attempts)
 
 		err := p.store.CreateLobby(ctx, p.Game, p.Lobby, p.ID, stores.LobbyOptions{
-			Public:      &packet.Public,
-			CustomData:  &packet.CustomData,
-			CanUpdateBy: &packet.CanUpdateBy,
-			Password:    &packet.Password,
-			MaxPlayers:  &maxPlayers,
+			MatchmakingRegion: p.region,
+			Public:            &packet.Public,
+			CustomData:        &packet.CustomData,
+			CanUpdateBy:       &packet.CanUpdateBy,
+			Password:          &packet.Password,
+			MaxPlayers:        &maxPlayers,
 		})
 		if err != nil {
 			if err == stores.ErrLobbyExists {
@@ -544,10 +546,30 @@ func (p *Peer) HandleJoinOrCreatePacket(ctx context.Context, packet JoinOrCreate
 		return fmt.Errorf("invalid maxPlayers value")
 	}
 
-	lobbyCode, existingPeers, created, err := p.store.JoinOrCreateLobby(ctx, p.Game, p.ID, packet.Filter, packet.CodeFormat, stores.LobbyOptions{
-		CustomData:  &packet.CustomData,
-		CanUpdateBy: &packet.CanUpdateBy,
-		MaxPlayers:  &maxPlayers,
+	var regions []string
+	allowAnyRegion := false
+	mode := packet.Matchmaking
+	if mode == "" {
+		mode = "region-neighbors-any"
+	}
+	switch mode {
+	case "any":
+		allowAnyRegion = true
+	case "region", "region-any":
+		regions = []string{p.region}
+		allowAnyRegion = mode == "region-any"
+	case "region-neighbors", "region-neighbors-any":
+		regions = append([]string{p.region}, regionNeighbors[p.region]...)
+		allowAnyRegion = mode == "region-neighbors-any"
+	default:
+		return fmt.Errorf("invalid matchmaking mode %q", packet.Matchmaking)
+	}
+
+	lobbyCode, existingPeers, created, err := p.store.JoinOrCreateLobby(ctx, p.Game, p.ID, packet.Filter, packet.CodeFormat, regions, allowAnyRegion, stores.LobbyOptions{
+		MatchmakingRegion: p.region,
+		CustomData:        &packet.CustomData,
+		CanUpdateBy:       &packet.CanUpdateBy,
+		MaxPlayers:        &maxPlayers,
 	})
 	if err != nil {
 		return err

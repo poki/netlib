@@ -38,7 +38,8 @@ Feature: customData on lobbies can be used for filtering and extra information
           },
           "canUpdateBy": "creator",
           "leader": "1u8fw4aph5ypt",
-          "term": 1
+          "term": 1,
+          "matchmakingRegion": "eu-west"
         }
       ]
       """
@@ -65,7 +66,8 @@ Feature: customData on lobbies can be used for filtering and extra information
           },
           "canUpdateBy": "creator",
           "leader": "1u8fw4aph5ypt",
-          "term": 1
+          "term": 1,
+          "matchmakingRegion": "eu-west"
         }
       ]
       """
@@ -209,7 +211,8 @@ Feature: customData on lobbies can be used for filtering and extra information
           },
           "canUpdateBy": "creator",
           "leader": "h5yzwyizlwao",
-          "term": 2
+          "term": 2,
+          "matchmakingRegion": "eu-west"
         }
       ]
       """

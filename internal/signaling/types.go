@@ -78,7 +78,8 @@ type JoinPacket struct {
 }
 
 type JoinOrCreatePacket struct {
-	Filter string `json:"filter"`
+	Matchmaking string `json:"matchmaking"`
+	Filter      string `json:"filter"`
 
 	RequestID string `json:"rid"`
 	Type      string `json:"type"`

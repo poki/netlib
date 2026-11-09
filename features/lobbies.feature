@@ -40,8 +40,8 @@ Feature: Lobby Discovery
       {}
       """
     Then "green" should have received only these lobbies:
-      | code          | playerCount |
-      | 19yrzmetd2bn7 | 1           |
+      | code          | playerCount | matchmakingRegion |
+      | 19yrzmetd2bn7 | 1           | eu-west           |
 
   Scenario: Only list public lobbies
     Given "green" creates a network for game "f666036d-d9e1-4d70-b0c3-4a68b24a9884"

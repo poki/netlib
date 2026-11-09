@@ -30,7 +30,8 @@ Feature: Lobbies have a leader that can control the lobby
           "customData": null,
           "canUpdateBy": "creator",
           "leader": "1u8fw4aph5ypt",
-          "term": 1
+          "term": 1,
+          "matchmakingRegion": "eu-west"
         }
       ]
       """
@@ -72,7 +73,8 @@ Feature: Lobbies have a leader that can control the lobby
           },
           "canUpdateBy": "creator",
           "leader": "1u8fw4aph5ypt",
-          "term": 1
+          "term": 1,
+          "matchmakingRegion": ""
         }
       ]
       """

@@ -225,3 +225,132 @@ Feature: Players can atomically find or create a public lobby
       }
       """
     Then "blue" receives the network event "lobby" with the argument "0qva9vyurwbbl"
+
+
+  Scenario Outline: Regional matchmaking tries the player's region first, then neighbors, and creates a lobby if neither matches
+    Given "blue" is connected from country "<country>" subdivision "<subdivision>" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And the "testproxy" backend is running
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
+    And these lobbies exist:
+      | code   | game                                 | playerCount | public | matchmaking_region |
+      | first  | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | <region1>          |
+      | second | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | <region2>          |
+    And these lobbies exist:
+      | code   | game                                 | playerCount | public |
+      | legacy | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   |
+    When "blue" joins or creates a lobby with these settings:
+      """json
+      {
+        "matchmaking": "<mode>",
+        "codeFormat": "short"
+      }
+      """
+    Then "blue" receives the network event "lobby" with the argument "<lobby>"
+
+    Examples:
+      | country | subdivision | mode             | region1    | region2        | lobby  |
+      | SE      |             | region-neighbors | eu-west    | eu-north       | second |
+      | PL      |             | region-neighbors | eu-west    | eu-north       | first  |
+      | US      | US-CA       | region-neighbors | eu-west    | eu-north       | SHC6   |
+      | US      | CA          | region-neighbors | na-east    | na-central     | second |
+      | US      | NY          | region-neighbors | eu-west    | na-west        | second |
+      | US      | CA          | region-neighbors | eu-west    | na-east        | second |
+      | US      |             | region-neighbors | eu-west    | na-west        | second |
+      | CA      |             | region-neighbors | eu-west    | na-east        | second |
+      | HK      |             | region-neighbors | cn         | asia-southeast | second |
+      | CN      |             | region           | asia-east  | cn             | second |
+      | PK      |             | region           | asia-south | pk             | second |
+      | PK      |             | region-neighbors | gulf       | eu-west        | second |
+      | PK      |             | region-neighbors | asia-south | asia-southeast | second |
+      | CO      |             | region-neighbors | sa-south   | na-east        | second |
+      | MA      |             | region-neighbors | eu-west    | eu-north       | first  |
+
+
+  Scenario: A lobby created with default matchmaking keeps its creator's region
+    Given "blue" is connected from country "US" subdivision "US-CA" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    When "blue" joins or creates a lobby with these settings:
+      """json
+      {
+        "codeFormat": "short",
+        "maxPlayers": 2,
+        "customData": {
+          "mode": "race"
+        }
+      }
+      """
+    Then "blue" receives the network event "lobby" with the argument "SHC6"
+    Given "green" is connected from country "CA" subdivision "BC" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    When "green" joins or creates a lobby with these settings:
+      """json
+      {
+        "matchmaking": "region-neighbors",
+        "filter": {
+          "mode": "race"
+        }
+      }
+      """
+    Then "green" receives the network event "lobby" with the argument "SHC6"
+
+
+  Scenario: Regional fallback skips a full lobby in the player's region and applies the game filter to neighbors
+    Given the "testproxy" backend is running
+    And "blue" is connected from country "SE" subdivision "" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
+    And these lobbies exist:
+      | code      | game                                 | playerCount | public | max_players | matchmaking_region | custom_data     |
+      | full      | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | 1           | eu-north           | {"mode":"race"} |
+      | different | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | 2           | eu-west            | {"mode":"solo"} |
+      | available | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | 2           | eu-east            | {"mode":"race"} |
+    When "blue" joins or creates a lobby with these settings:
+      """json
+      {
+        "matchmaking": "region-neighbors",
+        "filter": {
+          "mode": "race"
+        }
+      }
+      """
+    Then "blue" receives the network event "lobby" with the argument "available"
+
+
+  Scenario Outline: Regional options control the order and scope of lobby searches
+    Given the "testproxy" backend is running
+    And "blue" is connected from country "<country>" subdivision "" and ready for game "4307bd86-e1df-41b8-b9df-e22afcf084bd"
+    And these peers exist:
+      | peer  | game                                 |
+      | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
+    And these lobbies exist:
+      | code     | game                                 | playerCount | public | matchmaking_region | custom_data |
+      | distant  | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | na-west            | {"level":3} |
+      | neighbor | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | eu-east            | {"level":2} |
+      | west     | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | eu-west            | {"level":1} |
+    And these lobbies exist:
+      | code   | game                                 | playerCount | public | custom_data |
+      | legacy | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 1           | true   | {"level":4} |
+    When "blue" joins or creates a lobby with these settings:
+      """json
+      {"filter":{"level":{"$gte":<level>,"$lte":<max>}},<setting>"codeFormat":"short"}
+      """
+    Then "blue" receives the network event "lobby" with the argument "<expected>"
+
+    Examples:
+      | country | setting                               | level | max | expected |
+      | NL      |                                       | 1     | 3   | west     |
+      | NL      |                                       | 2     | 3   | neighbor |
+      | NL      |                                       | 3     | 3   | distant  |
+      | NL      |                                       | 4     | 4   | legacy   |
+      | NL      | "matchmaking":"region-neighbors-any", | 1     | 3   | west     |
+      | NL      | "matchmaking":"region-neighbors-any", | 2     | 3   | neighbor |
+      | NL      | "matchmaking":"region",               | 2     | 3   | SHC6     |
+      | NL      | "matchmaking":"region-neighbors",     | 3     | 3   | SHC6     |
+      | NL      | "matchmaking":"any",                  | 3     | 3   | distant  |
+      | NL      | "matchmaking":"any",                  | 4     | 4   | legacy   |
+      | NL      | "matchmaking":"region-any",           | 3     | 3   | distant  |
+      | NL      | "matchmaking":"region-neighbors-any", | 5     | 5   | SHC6     |
+      | XX      | "matchmaking":"region",               | 1     | 1   | west     |
+      |         | "matchmaking":"region-neighbors",     | 2     | 3   | neighbor |
+      | XX      | "matchmaking":"region",               | 3     | 3   | SHC6     |

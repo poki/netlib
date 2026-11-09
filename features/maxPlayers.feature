@@ -25,8 +25,9 @@ Feature: Lobbies can have a maximum number of players
     Then "green" failed to join the lobby
     And the latest error for "green" is "lobby is full"
 
-    When "yellow" disconnects
-    Then "yellow" receives the network event "close"
+    When "blue" disconnects
+    Then "blue" receives the network event "close"
+    And "yellow" becomes the leader of the lobby
 
     # The lobby is not full anymore
     When "green" connects to the lobby "3t3cfgcqup9e"

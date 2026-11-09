@@ -296,6 +296,19 @@ When('{string} requests lobbies with:', async function (this: World, playerName:
   player.lastReceivedLobbies = lobbies
 })
 
+Then('{string} receives connected events for {string} and {string} in either order', async function (this: World, playerName: string, first: string, second: string) {
+  const player = this.players.get(playerName)
+  const firstPeer = this.players.get(first)
+  const secondPeer = this.players.get(second)
+  if (player == null || firstPeer == null || secondPeer == null) {
+    throw new Error('no such player')
+  }
+  const firstEvent = await player.waitForEvent('connected')
+  const secondEvent = await player.waitForEvent('connected')
+  const peerIDs = new Set([firstEvent.eventPayload[0].id, secondEvent.eventPayload[0].id])
+  assert.deepEqual(peerIDs, new Set([firstPeer.network.id, secondPeer.network.id]))
+})
+
 Then('{string} receives the network event {string}', async function (this: World, playerName: string, eventName: string) {
   const player = this.players.get(playerName)
   if (player == null) {

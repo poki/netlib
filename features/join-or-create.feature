@@ -143,8 +143,8 @@ Feature: Players can atomically find or create a public lobby
       | peer0 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
       | peer1 | 4307bd86-e1df-41b8-b9df-e22afcf084bd |
     And these lobbies exist:
-      | code          | game                                 | playerCount | created_at           | updated_at           | custom_data                                                                           | public |
-      | 2qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 2           | 2026-01-01T00:00:00Z | 2026-01-02T00:00:00Z | {"code":"different","playerCount":99,"createdAt":null,"updatedAt":null,"latency":999} | true   |
+      | code          | game                                 | playerCount | created_at           | updated_at           | custom_data                                                             | public |
+      | 2qva9vyurwbbl | 4307bd86-e1df-41b8-b9df-e22afcf084bd | 2           | 2026-01-01T00:00:00Z | 2026-01-02T00:00:00Z | {"code":"different","playerCount":99,"createdAt":null,"updatedAt":null} | true   |
     When "blue" joins or creates a lobby with these settings:
       """json
       {
@@ -159,28 +159,6 @@ Feature: Players can atomically find or create a public lobby
       | {"playerCount":{"$gte":2,"$lt":3}}                     |
       | {"createdAt":{"$gte":"2026-01-01","$lt":"2026-01-02"}} |
       | {"updatedAt":{"$gte":"2026-01-02","$lt":"2026-01-03"}} |
-      | {"latency":{"$lte":250}}                               |
-
-  Scenario: Join-or-create filters latency from the joining player's location
-    Given the "testproxy" backend is running
-    And these lobbies exist:
-      | code          | game                                 | peers   | public |
-      | 0qva9vyurwbbl | 123e4567-e89b-12d3-a456-426614174000 | {peerA} | true   |
-    And these peers exist:
-      | peer  | game                                 | country | region |
-      | peerA | 123e4567-e89b-12d3-a456-426614174000 | US      | US-CA  |
-    And "blue" is connected as "1u8fw4aph5ypt" with country,region as "US","US-CA" and ready for game "123e4567-e89b-12d3-a456-426614174000"
-    When "blue" joins or creates a lobby with these settings:
-      """json
-      {
-        "filter": {
-          "latency": {
-            "$lt": 100
-          }
-        }
-      }
-      """
-    Then "blue" receives the network event "lobby" with the argument "0qva9vyurwbbl"
 
 
   Scenario Outline: Join-or-create skips lobbies without a live member

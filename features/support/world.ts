@@ -48,25 +48,13 @@ export class World extends CucumberWorld {
     }
   }
 
-  public async createPlayer (playerName: string, gameID: string, country?: string, region?: string): Promise<Player> {
+  public async createPlayer (playerName: string, gameID: string): Promise<Player> {
     return await new Promise((resolve) => {
       const config: PeerConfiguration = {}
       if (this.useTestProxy) {
         config.testproxyURL = this.testproxyURL
       }
-      let signalingURL = this.signalingURL
-      if (signalingURL !== undefined && (country !== undefined || region !== undefined)) {
-        const url = new URL(signalingURL)
-        if (country !== undefined) {
-          url.searchParams.set('country', country)
-        }
-        if (region !== undefined) {
-          url.searchParams.set('region', region)
-        }
-        signalingURL = url.toString()
-      }
-
-      const network = new Network(gameID, config, signalingURL)
+      const network = new Network(gameID, config, this.signalingURL)
       const player = new Player(playerName, network)
       this.players.set(playerName, player)
 

@@ -60,7 +60,7 @@ Accepts the same settings as `create()`, except `public` and `password`, plus an
 - `filter`: Selects existing lobbies using the same fields and MongoDB-style operators as `list()`. Invalid filters reject the request.
 - `codeFormat`, `maxPlayers`, `customData`, `canUpdateBy`: Apply only when creating a lobby. Defaults match `create()`.
 
-Filters use `code`, `playerCount`, `createdAt`, `updatedAt`, and `latency` for lobby properties. Other fields refer to custom data. Latency is estimated from the joining player's location.
+Filters use `code`, `playerCount`, `createdAt`, and `updatedAt` for lobby properties. Other fields refer to custom data.
 
 If no lobby matches, creates a public, password-free lobby. Filter values are not copied into its custom data. Set `customData` explicitly, as shown above.
 

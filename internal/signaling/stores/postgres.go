@@ -39,7 +39,7 @@ type PostgresStore struct {
 
 func NewPostgresStore(ctx context.Context, db *pgxpool.Pool) (*PostgresStore, error) {
 	filterConverter, err := filter.NewConverter(
-		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt", "latency"),
+		filter.WithNestedJSONB("custom_data", "code", "playerCount", "createdAt", "updatedAt"),
 		filter.WithEmptyCondition("TRUE"), // No filter returns all lobbies.
 	)
 	if err != nil {
@@ -277,7 +277,7 @@ func (s *PostgresStore) JoinLobby(ctx context.Context, game, lobbyCode, peerID, 
 	return peerlist, nil
 }
 
-func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, country, region, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error) {
+func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error) {
 	if len(peerID) > 20 {
 		return "", nil, false, ErrInvalidPeerID
 	}
@@ -285,7 +285,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 	if lobbyFilter == "" {
 		lobbyFilter = "{}"
 	}
-	where, values, err := s.filterConverter.Convert([]byte(lobbyFilter), 5)
+	where, values, err := s.filterConverter.Convert([]byte(lobbyFilter), 3)
 	if err != nil {
 		return "", nil, false, fmt.Errorf("invalid filter: %w", err)
 	}
@@ -320,8 +320,7 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 			SELECT *,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
 				created_at AS "createdAt",
-				updated_at AS "updatedAt",
-				lobby_latency_estimate(peers, $2, $3) AS latency
+				updated_at AS "updatedAt"
 			FROM lobbies
 			WHERE game = $1
 		) AS game_lobbies
@@ -332,13 +331,13 @@ func (s *PostgresStore) JoinOrCreateLobby(ctx context.Context, game, peerID, cou
 		AND EXISTS (
 			SELECT 1 FROM peers p
 			WHERE p.game = $1 AND p.peer = ANY(game_lobbies.peers)
-			AND p.disconnected = FALSE AND p.last_seen >= $4
+			AND p.disconnected = FALSE AND p.last_seen >= $2
 		)
 		AND (`+where+`)
 		ORDER BY RANDOM()
 		LIMIT 1
 		FOR UPDATE
-	`, append([]any{game, country, region, now.Add(-DefaultPeerTimeout)}, values...)...).Scan(&lobbyCode, &peerlist)
+	`, append([]any{game, now.Add(-DefaultPeerTimeout)}, values...)...).Scan(&lobbyCode, &peerlist)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, false, err
 	}
@@ -435,12 +434,12 @@ func (s *PostgresStore) GetLobby(ctx context.Context, game, lobbyCode string) (L
 	return lobby, nil
 }
 
-func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, region, filter string) (PlayerCounts, error) {
+func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, filter string) (PlayerCounts, error) {
 	var counts PlayerCounts
 	if filter == "" {
 		filter = "{}"
 	}
-	where, values, err := s.filterConverter.Convert([]byte(filter), 4)
+	where, values, err := s.filterConverter.Convert([]byte(filter), 2)
 	if err != nil {
 		return counts, fmt.Errorf("invalid filter: %w", err)
 	}
@@ -452,8 +451,7 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, regi
 		WITH game_lobbies AS (
 			SELECT code, peers, custom_data,
 				COALESCE(ARRAY_LENGTH(peers, 1), 0) AS "playerCount",
-				created_at AS "createdAt", updated_at AS "updatedAt",
-				lobby_latency_estimate(peers, $2, $3) AS latency
+				created_at AS "createdAt", updated_at AS "updatedAt"
 			FROM lobbies
 			WHERE game = $1 AND cardinality(peers) > 0
 		), matching_lobby_peers AS (
@@ -465,11 +463,11 @@ func (s *PostgresStore) GetPlayerCounts(ctx context.Context, game, country, regi
 		FROM peers
 		LEFT JOIN matching_lobby_peers ON matching_lobby_peers.peer = peers.peer
 		WHERE peers.game = $1 AND disconnected = FALSE
-	`, append([]any{game, country, region}, values...)...).Scan(&counts.Online, &counts.InLobby)
+	`, append([]any{game}, values...)...).Scan(&counts.Online, &counts.InLobby)
 	return counts, err
 }
 
-func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error) {
+func (s *PostgresStore) ListLobbies(ctx context.Context, game, filter, sort string, limit int) ([]Lobby, error) {
 	// TODO: Remove this.
 	if filter == "" {
 		filter = "{}"
@@ -479,7 +477,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, r
 		limit = 50
 	}
 
-	preValues := []any{game, country, region, limit}
+	preValues := []any{game, limit}
 
 	where, values, err := s.filterConverter.Convert([]byte(filter), len(preValues)+1)
 	if err != nil {
@@ -518,8 +516,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, r
 				can_update_by,
 				creator,
 				password IS NOT NULL,
-				max_players,
-				lobby_latency_estimate(peers, $2, $3) AS latency
+				max_players
 			FROM lobbies
 			WHERE game = $1
 			  AND public = true
@@ -528,7 +525,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, r
 		FROM game_lobbies
 		WHERE `+where+`
 		ORDER BY `+order+`
-		LIMIT $4
+		LIMIT $2
 	`, append(preValues, values...)...)
 	if err != nil {
 		return nil, err
@@ -537,7 +534,7 @@ func (s *PostgresStore) ListLobbies(ctx context.Context, game string, country, r
 
 	for rows.Next() {
 		var lobby Lobby
-		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers, &lobby.Latency)
+		err = rows.Scan(&lobby.Code, &lobby.PlayerCount, &lobby.Public, &lobby.CustomData, &lobby.CreatedAt, &lobby.UpdatedAt, &lobby.Leader, &lobby.Term, &lobby.CanUpdateBy, &lobby.Creator, &lobby.HasPassword, &lobby.MaxPlayers)
 		if err != nil {
 			return nil, err
 		}
@@ -566,23 +563,6 @@ func (s *PostgresStore) CreatePeer(ctx context.Context, peerID, secret, gameID, 
 		return err
 	}
 	return nil
-}
-
-func (s *PostgresStore) UpdatePeerGeo(ctx context.Context, peerID string, country, region string) error {
-	now := util.NowUTC(ctx)
-
-	_, err := s.DB.Exec(ctx, `
-		UPDATE peers
-		SET
-			country = CASE
-				WHEN $1 = '' OR $1 = 'XX' THEN NULL
-				ELSE $1
-			END,
-			region = NULLIF($2, ''),
-			updated_at = $3
-		WHERE peer = $4
-	`, country, region, now, peerID)
-	return err
 }
 
 func (s *PostgresStore) MarkPeerAsActive(ctx context.Context, peerID, connectionID string) error {

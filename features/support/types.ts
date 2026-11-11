@@ -91,22 +91,19 @@ function matchEvent (e: RecordedEvent, eventName: string, matchArguments: any[] 
   if (e.eventName !== eventName) {
     return false
   }
-  let argumentsMatch = true
-  matchArguments.forEach((arg, i) => {
+  return matchArguments.every((arg, i) => {
     if (typeof arg === 'string' || arg instanceof String) {
       // Fool typescript into calling toString() on the event argument:
-      argumentsMatch = `${e.eventPayload[i] as string}` === arg
+      return `${e.eventPayload[i] as string}` === arg
     } else if (e.eventPayload[i] instanceof Object) {
       const a = { ...e.eventPayload[i] }
       delete a.createdAt
       delete a.updatedAt
       delete arg.createdAt
       delete arg.updatedAt
-      argumentsMatch = JSON.stringify(a) === JSON.stringify(arg)
+      return JSON.stringify(a) === JSON.stringify(arg)
     } else {
-      argumentsMatch = e.eventPayload[i] === arg
+      return e.eventPayload[i] === arg
     }
-    return argumentsMatch
   })
-  return argumentsMatch
 }

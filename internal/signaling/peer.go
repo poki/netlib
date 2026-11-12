@@ -25,15 +25,14 @@ type Peer struct {
 
 	closedPacketReceived bool
 	connectionID         string
+	origin               string
 
 	retrievedIDCallback func(context.Context, string, string, string, string) (bool, []string, error)
 
-	ID      string
-	Secret  string
-	Game    string
-	Lobby   string
-	Country string
-	Region  string
+	ID     string
+	Secret string
+	Game   string
+	Lobby  string
 }
 
 func (p *Peer) Send(ctx context.Context, packet any) error {
@@ -249,12 +248,6 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 		}
 	}
 
-	if p.Country != "" || p.Region != "" {
-		if err := p.store.UpdatePeerGeo(ctx, p.ID, p.Country, p.Region); err != nil {
-			logger.Warn("failed to persist peer geolocation", zap.Error(err))
-		}
-	}
-
 	err := p.Send(ctx, WelcomePacket{
 		Type:   "welcome",
 		ID:     p.ID,
@@ -270,7 +263,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			p.Lobby = lobbyID
 			p.store.Subscribe(ctx, p.ForwardMessage, p.Game, p.Lobby, p.ID)
 
-			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby, "version", packet.Version)
+			go metrics.Record(ctx, "client", "reconnected", p.Game, p.ID, p.Lobby, "version", packet.Version, "origin", p.origin)
 
 			// We just reconnected, and we might be the only peer in the lobby.
 			// So do an election to make sure we then become the leader.
@@ -299,7 +292,7 @@ func (p *Peer) HandleHelloPacket(ctx context.Context, packet HelloPacket) error 
 			}
 		}
 	} else {
-		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby, "version", packet.Version)
+		go metrics.Record(ctx, "client", "connected", p.Game, p.ID, p.Lobby, "version", packet.Version, "origin", p.origin)
 	}
 
 	return nil
@@ -392,7 +385,7 @@ func (p *Peer) HandleListPacket(ctx context.Context, packet ListPacket) error {
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	lobbies, err := p.store.ListLobbies(ctx, p.Game, p.Country, p.Region, packet.Filter, packet.Sort, packet.Limit)
+	lobbies, err := p.store.ListLobbies(ctx, p.Game, packet.Filter, packet.Sort, packet.Limit)
 	if err != nil {
 		return err
 	}
@@ -410,7 +403,7 @@ func (p *Peer) HandleGetPlayerCountsPacket(ctx context.Context, packet GetPlayer
 	if p.ID == "" {
 		return fmt.Errorf("peer not connected")
 	}
-	counts, err := p.store.GetPlayerCounts(ctx, p.Game, p.Country, p.Region, packet.Filter)
+	counts, err := p.store.GetPlayerCounts(ctx, p.Game, packet.Filter)
 	if err != nil {
 		return err
 	}
@@ -551,7 +544,7 @@ func (p *Peer) HandleJoinOrCreatePacket(ctx context.Context, packet JoinOrCreate
 		return fmt.Errorf("invalid maxPlayers value")
 	}
 
-	lobbyCode, existingPeers, created, err := p.store.JoinOrCreateLobby(ctx, p.Game, p.ID, p.Country, p.Region, packet.Filter, packet.CodeFormat, stores.LobbyOptions{
+	lobbyCode, existingPeers, created, err := p.store.JoinOrCreateLobby(ctx, p.Game, p.ID, packet.Filter, packet.CodeFormat, stores.LobbyOptions{
 		CustomData:  &packet.CustomData,
 		CanUpdateBy: &packet.CanUpdateBy,
 		MaxPlayers:  &maxPlayers,

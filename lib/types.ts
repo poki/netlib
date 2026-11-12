@@ -31,7 +31,6 @@ export interface LobbyListEntry {
   term: number
   createdAt: string
   updatedAt: string
-  latency?: number
 }
 
 export interface PlayerCounts {

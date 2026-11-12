@@ -97,17 +97,15 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 		peer := &Peer{
 			connectionID: xid.New().String(),
+			origin:       r.Header.Get("Origin"),
 			store:        store,
 			conn:         conn,
 
 			retrievedIDCallback: manager.Reconnected,
-
-			Country: country,
-			Region:  region,
 		}
 		defer func() {
 			cancel()
-			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+			logger.Debug("peer websocket closed", zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", peer.origin))
 			conn.Close(websocket.StatusInternalError, "unexpected closure") // nolint:errcheck
 
 			if !peer.closedPacketReceived {
@@ -208,14 +206,14 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 
 				// Add country and region to event data of the avg-latency-at-Xs events.
 				// We want to use this data to build a latency world map.
-				if strings.HasPrefix(params.Action, "avg-latency-at-") && strings.HasSuffix(params.Action, "s") && params.Data != nil && peer != nil {
-					params.Data["country"] = peer.Country
+				if strings.HasPrefix(params.Action, "avg-latency-at-") && strings.HasSuffix(params.Action, "s") && params.Data != nil {
+					params.Data["country"] = country
 
 					// For big countries, also track the region/state so we can try and use this to
 					// estimate latencies more accurately. We only do this for a select set of countries
 					// to limit the amount of data we collect.
-					if slices.Contains(countriesToTrackStates, peer.Country) {
-						params.Data["region"] = peer.Region
+					if slices.Contains(countriesToTrackStates, country) {
+						params.Data["region"] = region
 					}
 				}
 
@@ -227,7 +225,7 @@ func Handler(ctx context.Context, store stores.Store, cloudflare *cloudflare.Cre
 			default:
 				if err := peer.HandlePacket(reqCtx, base.Type, raw); err != nil {
 					if err == ErrUnknownPacketType {
-						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", r.Header.Get("Origin")))
+						logger.Warn("unknown packet type received", zap.String("type", base.Type), zap.String("peer", peer.ID), zap.String("game", peer.Game), zap.String("origin", peer.origin))
 					} else {
 						util.ErrorAndDisconnect(reqCtx, conn, err)
 					}

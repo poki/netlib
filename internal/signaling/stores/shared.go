@@ -27,19 +27,18 @@ type LobbyOptions struct {
 }
 
 type Store interface {
-	GetPlayerCounts(ctx context.Context, game, country, region, filter string) (PlayerCounts, error)
+	GetPlayerCounts(ctx context.Context, game, filter string) (PlayerCounts, error)
 	CreateLobby(ctx context.Context, Game, LobbyCode, PeerID string, options LobbyOptions) error
 	JoinLobby(ctx context.Context, game, lobby, id, password string) ([]string, error)
-	JoinOrCreateLobby(ctx context.Context, game, peerID, country, region, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error)
+	JoinOrCreateLobby(ctx context.Context, game, peerID, lobbyFilter, codeFormat string, options LobbyOptions) (string, []string, bool, error)
 	LeaveLobby(ctx context.Context, game, lobby, id string) error
 	GetLobby(ctx context.Context, game, lobby string) (Lobby, error)
-	ListLobbies(ctx context.Context, game string, country, region string, filter, sort string, limit int) ([]Lobby, error)
+	ListLobbies(ctx context.Context, game, filter, sort string, limit int) ([]Lobby, error)
 
 	Subscribe(ctx context.Context, callback SubscriptionCallback, game, lobby, peerID string)
 	Publish(ctx context.Context, topic string, data []byte) error
 
 	CreatePeer(ctx context.Context, peerID, secret, gameID, connectionID string) error
-	UpdatePeerGeo(ctx context.Context, peerID string, country, region string) error
 	MarkPeerAsActive(ctx context.Context, peerID, connectionID string) error
 	MarkPeerAsDisconnected(ctx context.Context, peerID, connectionID string) (bool, error)
 	MarkPeerAsReconnected(ctx context.Context, peerID, secret, gameID, connectionID string) (bool, []string, error)
@@ -75,8 +74,6 @@ type Lobby struct {
 
 	Leader string `json:"leader,omitempty"`
 	Term   int    `json:"term"`
-
-	Latency *float32 `json:"latency,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
